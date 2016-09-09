@@ -1,0 +1,35 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "stuff", "stuff", "{1ABDD7C1-1F8D-402D-8692-3E4B66962DE0}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		CONTRIBUTING.md = CONTRIBUTING.md
+		LICENSE.md = LICENSE.md
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rebus.SqlServer", "Rebus.SqlServer\Rebus.SqlServer.csproj", "{FE4FDE82-15A0-4C95-B640-779E8F72E870}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rebus.SqlServer.Tests", "Rebus.SqlServer.Tests\Rebus.SqlServer.Tests.csproj", "{7EFCAF69-991E-4991-A03B-077BE4B9952A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FE4FDE82-15A0-4C95-B640-779E8F72E870}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE4FDE82-15A0-4C95-B640-779E8F72E870}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE4FDE82-15A0-4C95-B640-779E8F72E870}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE4FDE82-15A0-4C95-B640-779E8F72E870}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
