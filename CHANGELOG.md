@@ -1,5 +1,5 @@
 # Changelog
 
-## 2.0.0-a1
+## 2.0.0-b01
 
 * Test release
