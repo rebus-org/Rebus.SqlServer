@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Rebus.Config;
 using Rebus.DataBus;
 using Rebus.Logging;
+using Rebus.SqlServer;
+using Rebus.SqlServer.DataBus;
 
-namespace Rebus.SqlServer.DataBus
+namespace Rebus.Config
 {
     /// <summary>
     /// Configuration extensions for SQL Server data bus

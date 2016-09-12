@@ -7,7 +7,7 @@
     <ProjectGuid>{FE4FDE82-15A0-4C95-B640-779E8F72E870}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Rebus.SqlServer</RootNamespace>
+    <RootNamespace>Rebus</RootNamespace>
     <AssemblyName>Rebus.SqlServer</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -29,6 +29,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\Rebus.SqlServer.XML</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Rebus, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -47,32 +48,36 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Config\SqlServerSagaConfigurationExtensions.cs" />
+    <Compile Include="Config\SqlServerSagaSnapshotsConfigurationExtensions.cs" />
+    <Compile Include="Config\SqlServerSubscriptionsConfigurationExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo_Patch.cs" />
-    <Compile Include="DataBus\SqlServerDataBusConfigurationExtensions.cs" />
-    <Compile Include="DataBus\SqlServerDataBusStorage.cs" />
-    <Compile Include="DisabledTimeoutManager.cs" />
-    <Compile Include="DbConnectionFactoryProvider.cs" />
-    <Compile Include="DbConnectionProvider.cs" />
-    <Compile Include="DbConnectionWrapper.cs" />
-    <Compile Include="IDbConnection.cs" />
-    <Compile Include="IDbConnectionProvider.cs" />
-    <Compile Include="Ponder.cs" />
-    <Compile Include="SqlServerMagic.cs" />
-    <Compile Include="SqlServerPersistenceConfigurationExtensions.cs" />
-    <Compile Include="Sagas\SqlServerSagaSnapshotStorage.cs" />
-    <Compile Include="Sagas\SqlServerSagaStorage.cs" />
-    <Compile Include="Subscriptions\SqlServerSubscriptionStorage.cs" />
-    <Compile Include="Timeouts\SqlServerTimeoutManager.cs" />
+    <Compile Include="Config\SqlServerDataBusConfigurationExtensions.cs" />
+    <Compile Include="SqlServer\DataBus\SqlServerDataBusStorage.cs" />
+    <Compile Include="SqlServer\DisabledTimeoutManager.cs" />
+    <Compile Include="SqlServer\DbConnectionFactoryProvider.cs" />
+    <Compile Include="SqlServer\DbConnectionProvider.cs" />
+    <Compile Include="SqlServer\DbConnectionWrapper.cs" />
+    <Compile Include="SqlServer\IDbConnection.cs" />
+    <Compile Include="SqlServer\IDbConnectionProvider.cs" />
+    <Compile Include="SqlServer\Ponder.cs" />
+    <Compile Include="SqlServer\SqlServerMagic.cs" />
+    <Compile Include="Config\SqlServerTimeoutsConfigurationExtensions.cs" />
+    <Compile Include="SqlServer\Sagas\SqlServerSagaSnapshotStorage.cs" />
+    <Compile Include="SqlServer\Sagas\SqlServerSagaStorage.cs" />
+    <Compile Include="SqlServer\Subscriptions\SqlServerSubscriptionStorage.cs" />
+    <Compile Include="SqlServer\Timeouts\SqlServerTimeoutManager.cs" />
     <None Include="packages.config" />
     <None Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Transport\SqlServerTransport.cs" />
-    <Compile Include="Transport\SqlServerTransportConfigurationExtensions.cs" />
+    <Compile Include="SqlServer\Transport\SqlServerTransport.cs" />
+    <Compile Include="SqlServer\Transport\SqlServerTransportConfigurationExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Rebus.SqlServer.nuspec">
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>$(ProjectDir)\..\scripts\patch_assemblyinfo.cmd $(ProjectDir)</PreBuildEvent>
