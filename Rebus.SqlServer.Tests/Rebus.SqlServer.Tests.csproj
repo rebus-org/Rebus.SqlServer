@@ -68,6 +68,7 @@
     <Compile Include="Bugs\TestBugWhenSendingMessagesInParallel.cs" />
     <Compile Include="DataBus\SqlServerDataBusStorageFactory.cs" />
     <Compile Include="DataBus\SqlServerDataBusStorageTest.cs" />
+    <Compile Include="DataBus\TestSqlServerDataBusLazyRead.cs" />
     <Compile Include="DataBus\TestSqlServerDataBusStorage.cs" />
     <Compile Include="Integration\NativeDeferTest.cs" />
     <Compile Include="Integration\TestSqlAllTheWay.cs" />

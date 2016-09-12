@@ -131,33 +131,31 @@ CREATE TABLE [{_tableName}] (
             try
             {
                 // update last read time quickly
-                using (var connection = await _connectionProvider.GetConnection())
-                {
-                    await UpdateLastReadTime(id, connection);
-                    await connection.Complete();
-                }
+                await UpdateLastReadTime(id);
 
-                using (var connection = await _connectionProvider.GetConnection())
-                {
+                var connection = await _connectionProvider.GetConnection();
 
-                    using (var command = connection.CreateCommand())
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = $"SELECT TOP 1 [Data] FROM [{_tableName}] WITH (NOLOCK) WHERE [Id] = @id";
+                    command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
+
+                    var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+                    if (!await reader.ReadAsync())
                     {
-                        command.CommandText = $"SELECT TOP 1 [Data] FROM [{_tableName}] WITH (NOLOCK) WHERE [Id] = @id";
-                        command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
-
-                        using (var reader = await command.ExecuteReaderAsync())
-                        {
-                            if (!await reader.ReadAsync())
-                            {
-                                throw new ArgumentException($"Row with ID {id} not found");
-                            }
-
-                            var dataOrdinal = reader.GetOrdinal("data");
-                            var stream = reader.GetStream(dataOrdinal);
-
-                            return stream;
-                        }
+                        throw new ArgumentException($"Row with ID {id} not found");
                     }
+
+                    var dataOrdinal = reader.GetOrdinal("data");
+                    var stream = reader.GetStream(dataOrdinal);
+
+                    return new StreamWrapper(stream, () =>
+                    {
+                        // defer closing these until the returned stream is closed
+                        reader.Dispose();
+                        connection.Dispose();
+                    });
                 }
             }
             catch (ArgumentException)
@@ -167,6 +165,15 @@ CREATE TABLE [{_tableName}] (
             catch (Exception exception)
             {
                 throw new RebusApplicationException(exception, $"Could not load data with ID {id}");
+            }
+        }
+
+        async Task UpdateLastReadTime(string id)
+        {
+            using (var connection = await _connectionProvider.GetConnection())
+            {
+                await UpdateLastReadTime(id, connection);
+                await connection.Complete();
             }
         }
 

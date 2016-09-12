@@ -54,6 +54,7 @@
     <Compile Include="Properties\AssemblyInfo_Patch.cs" />
     <Compile Include="Config\SqlServerDataBusConfigurationExtensions.cs" />
     <Compile Include="SqlServer\DataBus\SqlServerDataBusStorage.cs" />
+    <Compile Include="SqlServer\DataBus\StreamWrapper.cs" />
     <Compile Include="SqlServer\DisabledTimeoutManager.cs" />
     <Compile Include="SqlServer\DbConnectionFactoryProvider.cs" />
     <Compile Include="SqlServer\DbConnectionProvider.cs" />
