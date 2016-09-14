@@ -12,3 +12,6 @@
 
 * Optimized streamed reading of data
 
+## 2.0.0-b04
+
+* Dispose connection properly also when an error occurs

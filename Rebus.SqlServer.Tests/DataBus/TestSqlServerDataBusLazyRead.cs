@@ -25,12 +25,12 @@ namespace Rebus.SqlServer.Tests.DataBus
             _factory.CleanUp();
         }
 
-        [TestCase(1024*1024*10)]
+        [TestCase(1024*1024*100)]
         public async Task ReadingIsLazy(int byteCount)
         {
             const string dataId = "known id";
 
-            Console.WriteLine("Generating data...");
+            Console.WriteLine($"Generating {byteCount/(double)(1024*1024):0.00} MB of data...");
 
             var data = GenerateData(byteCount);
 
@@ -44,13 +44,20 @@ namespace Rebus.SqlServer.Tests.DataBus
             using (var source = await _storage.Read(dataId))
             using (var destination = new MemoryStream())
             {
-                Console.WriteLine($"Opening stream took {stopwatch.Elapsed.TotalSeconds:0.00} s");
+                var elapsedWhenStreamIsOpen = stopwatch.Elapsed;
+
+                Console.WriteLine($"Opening stream took {elapsedWhenStreamIsOpen.TotalSeconds:0.00} s");
 
                 await source.CopyToAsync(destination);
 
-                Console.WriteLine($"Entire operation took {stopwatch.Elapsed.TotalSeconds:0.00} s");
-            }
+                var elapsedWhenStreamHasBeenRead = stopwatch.Elapsed;
 
+                Console.WriteLine($"Entire operation took {elapsedWhenStreamHasBeenRead.TotalSeconds:0.00} s");
+
+                var fraction = elapsedWhenStreamHasBeenRead.TotalSeconds/10;
+                Assert.That(elapsedWhenStreamIsOpen.TotalSeconds, Is.LessThan(fraction), 
+                    "Expected time to open stream to be less than 1/10 of the time it takes to read the entire stream");
+            }
         }
 
         static byte[] GenerateData(int byteCount)

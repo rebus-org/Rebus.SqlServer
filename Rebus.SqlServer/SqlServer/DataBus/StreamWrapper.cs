@@ -1,19 +1,26 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Rebus.SqlServer.DataBus
 {
+    /// <summary>
+    /// Wraps a stream and an action, calling the action when the stream is disposed
+    /// </summary>
     class StreamWrapper : Stream
     {
         readonly Stream _innerStream;
-        readonly Action _disposeAction;
+        readonly IDisposable[] _disposables;
 
-        public StreamWrapper(Stream innerStream,  Action disposeAction)
+        public StreamWrapper(Stream innerStream, IEnumerable<IDisposable> disposables)
         {
             if (innerStream == null) throw new ArgumentNullException(nameof(innerStream));
+            if (disposables == null) throw new ArgumentNullException(nameof(disposables));
             _innerStream = innerStream;
-            _disposeAction = disposeAction;
+            _disposables = disposables.ToArray();
         }
+
         public override void Flush()
         {
             _innerStream.Flush();
@@ -52,7 +59,10 @@ namespace Rebus.SqlServer.DataBus
 
         protected override void Dispose(bool disposing)
         {
-            _disposeAction();
+            foreach (var disposable in _disposables)
+            {
+                disposable.Dispose();
+            }
             base.Dispose(disposing);
         }
     }

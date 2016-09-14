@@ -137,25 +137,34 @@ CREATE TABLE [{_tableName}] (
 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = $"SELECT TOP 1 [Data] FROM [{_tableName}] WITH (NOLOCK) WHERE [Id] = @id";
-                    command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
-
-                    var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-
-                    if (!await reader.ReadAsync())
+                    try
                     {
-                        throw new ArgumentException($"Row with ID {id} not found");
+                        command.CommandText = $"SELECT TOP 1 [Data] FROM [{_tableName}] WITH (NOLOCK) WHERE [Id] = @id";
+                        command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
+
+                        var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+                        if (!await reader.ReadAsync())
+                        {
+                            throw new ArgumentException($"Row with ID {id} not found");
+                        }
+
+                        var dataOrdinal = reader.GetOrdinal("data");
+                        var stream = reader.GetStream(dataOrdinal);
+
+                        return new StreamWrapper(stream, new IDisposable[]
+                        {
+                            // defer closing these until the returned stream is closed
+                            reader,
+                            connection
+                        });
                     }
-
-                    var dataOrdinal = reader.GetOrdinal("data");
-                    var stream = reader.GetStream(dataOrdinal);
-
-                    return new StreamWrapper(stream, () =>
+                    catch
                     {
-                        // defer closing these until the returned stream is closed
-                        reader.Dispose();
+                        // if something of the above fails, we did not pass the connection to someone who can dispose it... wherefore:
                         connection.Dispose();
-                    });
+                        throw;
+                    }
                 }
             }
             catch (ArgumentException)
