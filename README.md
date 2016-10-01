@@ -1,4 +1,4 @@
-# Rebus.TODO
+# Rebus.SqlServer
 
 [![install from nuget](https://img.shields.io/nuget/v/Rebus.SqlServer.svg?style=flat-square)](https://www.nuget.org/packages/Rebus.SqlServer)
 
