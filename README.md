@@ -1,5 +1,7 @@
 # Rebus.TODO
 
+[![install from nuget](https://img.shields.io/nuget/v/Rebus.SqlServer.svg?style=flat-square)](https://www.nuget.org/packages/Rebus.SqlServer)
+
 Provides Microsoft SQL Server implementations for [Rebus](https://github.com/rebus-org/Rebus) for
 
 * transport
