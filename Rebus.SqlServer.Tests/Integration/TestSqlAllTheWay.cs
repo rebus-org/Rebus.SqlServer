@@ -22,7 +22,7 @@ namespace Rebus.SqlServer.Tests.Integration
 
         protected override void SetUp()
         {
-            SqlTestHelper.DropTable("RebusMessages");
+            DropTables();
 
             _handlerActivator = new BuiltinHandlerActivator();
 
@@ -41,7 +41,14 @@ namespace Rebus.SqlServer.Tests.Integration
 
         protected override void TearDown()
         {
+            DropTables();
+        }
+
+        static void DropTables()
+        {
             SqlTestHelper.DropTable("RebusMessages");
+            SqlTestHelper.DropTable("SagaIndex");
+            SqlTestHelper.DropTable("Sagas");
         }
 
         [Test]
