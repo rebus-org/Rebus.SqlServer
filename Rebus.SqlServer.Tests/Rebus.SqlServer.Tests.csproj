@@ -71,6 +71,7 @@
     <Compile Include="DataBus\TestSqlServerDataBusLazyRead.cs" />
     <Compile Include="DataBus\TestSqlServerDataBusStorage.cs" />
     <Compile Include="Integration\NativeDeferTest.cs" />
+    <Compile Include="Integration\SnapshotIsolationLevel.cs" />
     <Compile Include="Integration\TestSqlAllTheWay.cs" />
     <Compile Include="Sagas\SqlServerSagaSnapshotStorageTest.cs" />
     <Compile Include="Sagas\SqlServerSagaStorageFactory.cs" />
