@@ -54,11 +54,12 @@ namespace Rebus.SqlServer.Tests
 
         public static void DropTable(string tableName)
         {
-            DropObject($"DROP TABLE [{tableName}]", connection =>
+            var table = new TableName(tableName);
+            DropObject($"DROP TABLE {table.QualifiedName}", connection =>
             {
                 var tableNames = connection.GetTableNames();
 
-                return tableNames.Contains(tableName, StringComparer.InvariantCultureIgnoreCase);
+                return tableNames.Contains(table);
             });
         }
 

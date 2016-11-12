@@ -87,7 +87,7 @@ namespace Rebus.SqlServer.Tests.Integration
                     return _innerConnection.CreateCommand();
                 }
 
-                public IEnumerable<string> GetTableNames()
+                public IEnumerable<TableName> GetTableNames()
                 {
                     return _innerConnection.GetTableNames();
                 }
@@ -97,9 +97,9 @@ namespace Rebus.SqlServer.Tests.Integration
                     await _innerConnection.Complete();
                 }
 
-                public IEnumerable<DbColumn> GetColumns(string dataTableName)
+                public IEnumerable<DbColumn> GetColumns(string schema, string dataTableName)
                 {
-                    return _innerConnection.GetColumns(dataTableName);
+                    return _innerConnection.GetColumns(schema, dataTableName);
                 }
 
                 public void Dispose()

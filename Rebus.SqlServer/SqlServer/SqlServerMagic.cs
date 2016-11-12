@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Dynamic;
+using System.Linq;
 
 namespace Rebus.SqlServer
 {
@@ -23,9 +25,11 @@ namespace Rebus.SqlServer
         /// <summary>
         /// Gets the names of all tables in the current database
         /// </summary>
-        public static List<string> GetTableNames(this SqlConnection connection, SqlTransaction transaction = null)
+        public static List<TableName> GetTableNames(this SqlConnection connection, SqlTransaction transaction = null)
         {
-            return GetNamesFrom(connection, transaction, "sys.tables");
+            return GetNamesFrom(connection, transaction, "INFORMATION_SCHEMA.TABLES", new []{ "TABLE_SCHEMA", "TABLE_NAME" })
+                .Select(x => new TableName((string)x.TABLE_SCHEMA, (string)x.TABLE_NAME))
+                .ToList();
         }
 
         /// <summary>
@@ -33,13 +37,13 @@ namespace Rebus.SqlServer
         /// </summary>
         public static List<string> GetIndexNames(this SqlConnection connection, SqlTransaction transaction = null)
         {
-            return GetNamesFrom(connection, transaction, "sys.indexes");
+            return GetNamesFrom(connection, transaction, "sys.indexes", new []{ "name" }).Select(x => (string)x.name).ToList();
         }
 
         /// <summary>
         /// Gets the names of all tables in the current database
         /// </summary>
-        public static Dictionary<string, SqlDbType> GetColumns(this SqlConnection connection, string tableName, SqlTransaction transaction = null)
+        public static Dictionary<string, SqlDbType> GetColumns(this SqlConnection connection, string schema, string tableName, SqlTransaction transaction = null)
         {
             var results = new Dictionary<string, SqlDbType>();
 
@@ -50,7 +54,7 @@ namespace Rebus.SqlServer
                     command.Transaction = transaction;
                 }
 
-                command.CommandText = $"SELECT [COLUMN_NAME] AS 'name', [DATA_TYPE] AS 'type' FROM [INFORMATION_SCHEMA].[COLUMNS] WHERE [TABLE_NAME] = '{tableName}'";
+                command.CommandText = $"SELECT [COLUMN_NAME] AS 'name', [DATA_TYPE] AS 'type' FROM [INFORMATION_SCHEMA].[COLUMNS] WHERE [TABLE_SCHEMA] = '{schema}' AND [TABLE_NAME] = '{tableName}'";
 
                 using (var reader = command.ExecuteReader())
                 {
@@ -85,12 +89,12 @@ namespace Rebus.SqlServer
         /// </summary>
         public static List<string> GetDatabaseNames(this SqlConnection connection, SqlTransaction transaction = null)
         {
-            return GetNamesFrom(connection, transaction, "sys.databases");
+            return GetNamesFrom(connection, transaction, "sys.databases", new []{ "name" }).Select(x => (string)x.name).ToList();
         }
 
-        static List<string> GetNamesFrom(SqlConnection connection, SqlTransaction transaction, string systemTableName)
+        static List<dynamic> GetNamesFrom(SqlConnection connection, SqlTransaction transaction, string systemTableName, string[] columnNames)
         {
-            var names = new List<string>();
+            var names = new List<dynamic>();
 
             using (var command = connection.CreateCommand())
             {
@@ -99,15 +103,19 @@ namespace Rebus.SqlServer
                     command.Transaction = transaction;
                 }
 
-                command.CommandText = $"SELECT [name] FROM {systemTableName}";
+                command.CommandText = $"SELECT {string.Join(",", columnNames)} FROM {systemTableName}";
 
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        var name = reader["name"].ToString();
+                        dynamic obj = new ExpandoObject();
+                        foreach (var columnName in columnNames)
+                        {
+                            ((IDictionary<string, object>)obj)[columnName] = reader[columnName].ToString();
+                        }
 
-                        names.Add(name);
+                        names.Add(obj);
                     }
                 }
             }

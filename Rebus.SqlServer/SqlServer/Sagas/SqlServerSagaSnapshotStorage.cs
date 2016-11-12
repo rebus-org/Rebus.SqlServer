@@ -16,7 +16,7 @@ namespace Rebus.SqlServer.Sagas
     public class SqlServerSagaSnapshotStorage : ISagaSnapshotStorage
     {
         readonly IDbConnectionProvider _connectionProvider;
-        readonly string _tableName;
+        readonly TableName _tableName;
         readonly ILog _log;
 
         static readonly ObjectSerializer DataSerializer = new ObjectSerializer();
@@ -29,7 +29,7 @@ namespace Rebus.SqlServer.Sagas
         {
             _log = rebusLoggerFactory.GetCurrentClassLogger();
             _connectionProvider = connectionProvider;
-            _tableName = tableName;
+            _tableName = new TableName(tableName);
         }
 
         /// <summary>
@@ -40,29 +40,36 @@ namespace Rebus.SqlServer.Sagas
             using (var connection = _connectionProvider.GetConnection().Result)
             {
                 var tableNames = connection.GetTableNames();
-
-                if (tableNames.Contains(_tableName, StringComparer.OrdinalIgnoreCase))
+                
+                if (tableNames.Contains(_tableName))
                 {
                     return;
                 }
 
-                _log.Info("Table '{0}' does not exist - it will be created now", _tableName);
+                _log.Info($"Table '{_tableName.QualifiedName}' does not exist - it will be created now");
 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = string.Format(@"
-CREATE TABLE [dbo].[{0}] (
-	[id] [uniqueidentifier] NOT NULL,
-	[revision] [int] NOT NULL,
-	[data] [nvarchar](max) NOT NULL,
-	[metadata] [nvarchar](max) NOT NULL,
-    CONSTRAINT [PK_{0}] PRIMARY KEY CLUSTERED 
-    (
-	    [id] ASC,
-        [revision] ASC
+                    command.CommandText = $@"
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
+	EXEC('CREATE SCHEMA {_tableName.Schema}')
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
+    CREATE TABLE {_tableName.QualifiedName} (
+	    [id] [uniqueidentifier] NOT NULL,
+	    [revision] [int] NOT NULL,
+	    [data] [nvarchar](max) NOT NULL,
+	    [metadata] [nvarchar](max) NOT NULL,
+        CONSTRAINT [PK_{_tableName.Schema}_{_tableName.Name}] PRIMARY KEY CLUSTERED 
+        (
+	        [id] ASC,
+            [revision] ASC
+        )
     )
-)
-", _tableName);
+
+";
                     command.ExecuteNonQuery();
                 }
 
@@ -82,7 +89,7 @@ CREATE TABLE [dbo].[{0}] (
                     command.CommandText =
                         $@"
 
-INSERT INTO [{_tableName}] (
+INSERT INTO {_tableName.QualifiedName} (
     [id],
     [revision],
     [data],

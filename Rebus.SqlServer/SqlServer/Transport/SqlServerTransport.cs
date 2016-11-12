@@ -42,7 +42,7 @@ namespace Rebus.SqlServer.Transport
         const int OperationCancelledNumber = 3980;
 
         readonly IDbConnectionProvider _connectionProvider;
-        readonly string _tableName;
+        readonly TableName _tableName;
         readonly string _inputQueueName;
         readonly ILog _log;
 
@@ -56,7 +56,7 @@ namespace Rebus.SqlServer.Transport
         public SqlServerTransport(IDbConnectionProvider connectionProvider, string tableName, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
             _connectionProvider = connectionProvider;
-            _tableName = tableName;
+            _tableName = new TableName(tableName);
             _inputQueueName = inputQueueName;
             _log = rebusLoggerFactory.GetCurrentClassLogger();
 
@@ -104,7 +104,7 @@ namespace Rebus.SqlServer.Transport
             }
             catch (SqlException exception)
             {
-                throw new RebusApplicationException(exception, $"Error attempting to initialize SQL transport schema with mesages table [dbo].[{_tableName}]");
+                throw new RebusApplicationException(exception, $"Error attempting to initialize SQL transport schema with mesages table {_tableName.QualifiedName}");
             }
         }
 
@@ -113,51 +113,58 @@ namespace Rebus.SqlServer.Transport
             using (var connection = _connectionProvider.GetConnection().Result)
             {
                 var tableNames = connection.GetTableNames();
-
-                if (tableNames.Contains(_tableName, StringComparer.OrdinalIgnoreCase))
+                
+                if (tableNames.Contains(_tableName))
                 {
-                    _log.Info("Database already contains a table named '{0}' - will not create anything", _tableName);
+                    _log.Info($"Database already contains a table named '{_tableName.QualifiedName}' - will not create anything");
                     return;
                 }
 
-                _log.Info("Table '{0}' does not exist - it will be created now", _tableName);
+                _log.Info($"Table '{_tableName.QualifiedName}' does not exist - it will be created now");
 
                 ExecuteCommands(connection, $@"
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
+	EXEC('CREATE SCHEMA {_tableName.Schema}')
 
-CREATE TABLE [dbo].[{_tableName}]
-(
-	[id] [bigint] IDENTITY(1,1) NOT NULL,
-	[recipient] [nvarchar](200) NOT NULL,
-	[priority] [int] NOT NULL,
-    [expiration] [datetime2] NOT NULL,
-    [visible] [datetime2] NOT NULL,
-	[headers] [varbinary](max) NOT NULL,
-	[body] [varbinary](max) NOT NULL,
-    CONSTRAINT [PK_{_tableName}] PRIMARY KEY CLUSTERED 
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
+    CREATE TABLE {_tableName.QualifiedName}
+    (
+	    [id] [bigint] IDENTITY(1,1) NOT NULL,
+	    [recipient] [nvarchar](200) NOT NULL,
+	    [priority] [int] NOT NULL,
+        [expiration] [datetime2] NOT NULL,
+        [visible] [datetime2] NOT NULL,
+	    [headers] [varbinary](max) NOT NULL,
+	    [body] [varbinary](max) NOT NULL,
+        CONSTRAINT [PK_{_tableName.Schema}_{_tableName.Name}] PRIMARY KEY CLUSTERED 
+        (
+	        [recipient] ASC,
+	        [priority] ASC,
+	        [id] ASC
+        )
+    )
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_RECEIVE_{_tableName.Schema}_{_tableName.Name}')
+    CREATE NONCLUSTERED INDEX [IDX_RECEIVE_{_tableName.Schema}_{_tableName.Name}] ON {_tableName.QualifiedName}
     (
 	    [recipient] ASC,
 	    [priority] ASC,
+        [visible] ASC,
+        [expiration] ASC,
 	    [id] ASC
     )
-)
 
 ----
 
-CREATE NONCLUSTERED INDEX [IDX_RECEIVE_{_tableName}] ON [dbo].[{_tableName}]
-(
-	[recipient] ASC,
-	[priority] ASC,
-    [visible] ASC,
-    [expiration] ASC,
-	[id] ASC
-)
-
-----
-
-CREATE NONCLUSTERED INDEX [IDX_EXPIRATION_{_tableName}] ON [dbo].[{_tableName}]
-(
-    [expiration] ASC
-)
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_EXPIRATION_{_tableName.Schema}_{_tableName.Name}')
+    CREATE NONCLUSTERED INDEX [IDX_EXPIRATION_{_tableName.Schema}_{_tableName.Name}] ON {_tableName.QualifiedName}
+    (
+        [expiration] ASC
+    )
 
 ");
 
@@ -202,7 +209,7 @@ CREATE NONCLUSTERED INDEX [IDX_EXPIRATION_{_tableName}] ON [dbo].[{_tableName}]
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = $@"
-INSERT INTO [{_tableName}]
+INSERT INTO {_tableName.QualifiedName}
 (
     [recipient],
     [headers],
@@ -262,7 +269,7 @@ VALUES
 				[id],
 				[headers],
 				[body]
-		FROM	[{_tableName}] M WITH (ROWLOCK, READPAST)
+		FROM	{_tableName.QualifiedName} M WITH (ROWLOCK, READPAST)
 		WHERE	M.[recipient] = @recipient
 		AND		M.[visible] < getdate()
 		AND		M.[expiration] > getdate()
@@ -348,7 +355,7 @@ VALUES
                         command.CommandText =
                             $@"
 ;with TopCTE as (
-	SELECT TOP 1 [id] FROM [{_tableName}] WITH (ROWLOCK, READPAST)
+	SELECT TOP 1 [id] FROM {_tableName.QualifiedName} WITH (ROWLOCK, READPAST)
 				WHERE [recipient] = @recipient 
 					AND [expiration] < getdate()
 )
