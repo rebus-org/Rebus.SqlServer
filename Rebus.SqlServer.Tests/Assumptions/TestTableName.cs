@@ -7,6 +7,20 @@ namespace Rebus.SqlServer.Tests.Assumptions
     [TestFixture]
     public class TestTableName
     {
+        [TestCase("[bimse]", "[bimse]", true)]
+        [TestCase("[bimse]", "[BIMSE]", true)]
+        public void CheckEquality(string name1, string name2, bool expectedToBeEqual)
+        {
+            var tableName1 = TableName.Parse(name1);
+            var tableName2 = TableName.Parse(name2);
+
+            var what = expectedToBeEqual
+                ? Is.EqualTo(tableName2)
+                : Is.Not.EqualTo(tableName2);
+
+            Assert.That(tableName1, what);
+        }
+
         [TestCase("table].[schema")]
         [TestCase("table] .[schema")]
         [TestCase("table]  .[schema")]

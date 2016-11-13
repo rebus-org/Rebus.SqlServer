@@ -122,9 +122,12 @@ namespace Rebus.SqlServer.Transport
 
                 _log.Info($"Table '{_tableName.QualifiedName}' does not exist - it will be created now");
 
+                var receiveIndexName = $"IDX_RECEIVE_{_tableName.Schema}_{_tableName.Name}";
+                var expirationIndexName = $"IDX_EXPIRATION_{_tableName.Schema}_{_tableName.Name}";
+
                 ExecuteCommands(connection, $@"
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
-	EXEC('CREATE SCHEMA {_tableName.Schema}')
+	EXEC('CREATE SCHEMA [{_tableName.Schema}]')
 
 ----
 
@@ -148,8 +151,8 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_RECEIVE_{_tableName.Schema}_{_tableName.Name}')
-    CREATE NONCLUSTERED INDEX [IDX_RECEIVE_{_tableName.Schema}_{_tableName.Name}] ON {_tableName.QualifiedName}
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
+    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {_tableName.QualifiedName}
     (
 	    [recipient] ASC,
 	    [priority] ASC,
@@ -160,8 +163,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_RECEIVE_{_tableName.S
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IDX_EXPIRATION_{_tableName.Schema}_{_tableName.Name}')
-    CREATE NONCLUSTERED INDEX [IDX_EXPIRATION_{_tableName.Schema}_{_tableName.Name}] ON {_tableName.QualifiedName}
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
+    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON {_tableName.QualifiedName}
     (
         [expiration] ASC
     )

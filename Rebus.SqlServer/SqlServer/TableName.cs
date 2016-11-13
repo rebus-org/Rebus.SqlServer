@@ -89,25 +89,7 @@ namespace Rebus.SqlServer
                 $"The table name '{name}' cannot be used because it contained multiple '.' characters - if you intend to use '.' as part of a table name, please be sure to enclose the name in brackets, e.g. like this: '[Table name with spaces and .s]'");
         }
 
-        TableName(string tableName)
-        {
-            if (tableName.Contains("."))
-            {
-                var splitted = tableName.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-                var schema = splitted[0];
-                var name = string.Join(".", splitted.Skip(1));
-
-                Schema = StripBrackets(schema);
-                Name = StripBrackets(name);
-            }
-            else
-            {
-                Schema = "dbo";
-                Name = StripBrackets(tableName);
-            }
-        }
-
-        string StripBrackets(string value)
+        static string StripBrackets(string value)
         {
             if (value.StartsWith("["))
             {
@@ -121,13 +103,19 @@ namespace Rebus.SqlServer
             return value;
         }
 
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return QualifiedName;
+        }
 
         /// <inheritdoc />
         public bool Equals(TableName other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return string.Equals(Schema, other.Schema) && string.Equals(Name, other.Name);
+            return string.Equals(Schema, other.Schema, StringComparison.CurrentCultureIgnoreCase)
+                   && string.Equals(Name, other.Name, StringComparison.CurrentCultureIgnoreCase);
         }
 
         /// <inheritdoc />

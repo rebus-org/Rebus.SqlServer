@@ -102,9 +102,10 @@ namespace Rebus.SqlServer.Sagas
 
                 _log.Info($"Saga tables '{_dataTableName.QualifiedName}' (data) and '{_indexTableName.QualifiedName}' (index) do not exist - they will be created now");
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = $@"
+                var sagaIdIndexName = $"IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id";
+
+                await ExecuteCommands(connection, $@"
+
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_dataTableName.Schema}')
 	EXEC('CREATE SCHEMA {_dataTableName.Schema}')
 
@@ -120,14 +121,9 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_d
 	        [id] ASC
         )
     )
-";
 
-                    await command.ExecuteNonQueryAsync();
-                }
+----
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_indexTableName.Schema}')
 	EXEC('CREATE SCHEMA {_indexTableName.Schema}')
 
@@ -149,41 +145,134 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_i
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id')
-    CREATE NONCLUSTERED INDEX [IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id] ON {_indexTableName.QualifiedName}
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{sagaIdIndexName}')
+    CREATE NONCLUSTERED INDEX [{sagaIdIndexName}] ON {_indexTableName.QualifiedName}
     (
 	    [saga_id] ASC
     )
-";
 
-                    await command.ExecuteNonQueryAsync();
-                }
+----
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText =
-                        $@"
 ALTER TABLE {_indexTableName.QualifiedName} WITH CHECK 
     ADD CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id] FOREIGN KEY([saga_id])
 
 REFERENCES {_dataTableName.QualifiedName} ([id]) ON DELETE CASCADE
-";
 
-                    await command.ExecuteNonQueryAsync();
-                }
+----
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText =
-                        $@"
 ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id]
-";
 
-                    await command.ExecuteNonQueryAsync();
-                }
+");
+
+
+//                using (var command = connection.CreateCommand())
+//                {
+//                    command.CommandText = $@"
+//IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_dataTableName.Schema}')
+//	EXEC('CREATE SCHEMA {_dataTableName.Schema}')
+
+//----
+
+//IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_dataTableName.Schema}' AND TABLE_NAME = '{_dataTableName.Name}')
+//    CREATE TABLE {_dataTableName.QualifiedName} (
+//	    [id] [uniqueidentifier] NOT NULL,
+//	    [revision] [int] NOT NULL,
+//	    [data] [varbinary](max) NOT NULL,
+//        CONSTRAINT [PK_{_dataTableName.Schema}_{_dataTableName.Name}] PRIMARY KEY CLUSTERED 
+//        (
+//	        [id] ASC
+//        )
+//    )
+//";
+
+//                    await command.ExecuteNonQueryAsync();
+//                }
+
+//                using (var command = connection.CreateCommand())
+//                {
+//                    var sagaIdIndexName = $"IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id";
+
+//                    command.CommandText = $@"
+//IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_indexTableName.Schema}')
+//	EXEC('CREATE SCHEMA {_indexTableName.Schema}')
+
+//----
+
+//IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_indexTableName.Schema}' AND TABLE_NAME = '{_indexTableName.Name}')
+//    CREATE TABLE {_indexTableName.QualifiedName} (
+//	    [saga_type] [nvarchar](40) NOT NULL,
+//	    [key] [nvarchar](200) NOT NULL,
+//	    [value] [nvarchar](200) NOT NULL,
+//	    [saga_id] [uniqueidentifier] NOT NULL,
+//        CONSTRAINT [PK_{_indexTableName.Schema}_{_indexTableName.Name}] PRIMARY KEY CLUSTERED 
+//        (
+//	        [key] ASC,
+//	        [value] ASC,
+//	        [saga_type] ASC
+//        )
+//    )
+
+//----
+
+//IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{sagaIdIndexName}')
+//    CREATE NONCLUSTERED INDEX [{sagaIdIndexName}] ON {_indexTableName.QualifiedName}
+//    (
+//	    [saga_id] ASC
+//    )
+//";
+
+//                    await command.ExecuteNonQueryAsync();
+//                }
+
+//                using (var command = connection.CreateCommand())
+//                {
+//                    command.CommandText =
+//                        $@"
+
+//ALTER TABLE {_indexTableName.QualifiedName} WITH CHECK 
+//    ADD CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id] FOREIGN KEY([saga_id])
+
+//REFERENCES {_dataTableName.QualifiedName} ([id]) ON DELETE CASCADE
+
+//";
+
+//                    await command.ExecuteNonQueryAsync();
+//                }
+
+//                using (var command = connection.CreateCommand())
+//                {
+//                    command.CommandText =
+//                        $@"
+//ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id]
+//";
+
+//                    await command.ExecuteNonQueryAsync();
+//                }
 
                 await connection.Complete();
             }
+        }
+
+        async Task ExecuteCommands(IDbConnection connection, string sqlCommands)
+        {
+            foreach (var commandText in sqlCommands.Split(new[] {"----"}, StringSplitOptions.RemoveEmptyEntries))
+            {
+                try
+                {
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = commandText;
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+                catch (Exception exception)
+                {
+                    throw new RebusApplicationException(exception, $@"Could not execute SQL:
+
+{commandText}");
+                }
+            }
+            
         }
 
         void VerifyDataTableSchema(string dataTableName, IDbConnection connection)
