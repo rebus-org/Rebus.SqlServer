@@ -44,7 +44,7 @@ namespace Rebus.SqlServer
         /// <summary>
         /// Gets the names of all the tables in the current database for the current schema
         /// </summary>
-        public IEnumerable<string> GetTableNames()
+        public IEnumerable<TableName> GetTableNames()
         {
             try
             {
@@ -59,12 +59,12 @@ namespace Rebus.SqlServer
         /// <summary>
         /// Gets information about the columns in the table given by <paramref name="dataTableName"/>
         /// </summary>
-        public IEnumerable<DbColumn> GetColumns(string dataTableName)
+        public IEnumerable<DbColumn> GetColumns(string schema, string dataTableName)
         {
             try
             {
                 return _connection
-                    .GetColumns(dataTableName, _currentTransaction)
+                    .GetColumns(schema, dataTableName, _currentTransaction)
                     .Select(kvp => new DbColumn(kvp.Key, kvp.Value))
                     .ToList();
             }

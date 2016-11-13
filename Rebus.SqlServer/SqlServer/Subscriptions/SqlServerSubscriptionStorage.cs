@@ -14,7 +14,7 @@ namespace Rebus.SqlServer.Subscriptions
     public class SqlServerSubscriptionStorage : ISubscriptionStorage
     {
 		readonly IDbConnectionProvider _connectionProvider;
-        readonly string _tableName;
+        readonly TableName _tableName;
         readonly ILog _log;
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace Rebus.SqlServer.Subscriptions
             IsCentralized = isCentralized;
             _log = rebusLoggerFactory.GetCurrentClassLogger();
             _connectionProvider = connectionProvider;
-            _tableName = tableName;
+            _tableName = new TableName(tableName);
         }
 
         /// <summary>
@@ -38,27 +38,33 @@ namespace Rebus.SqlServer.Subscriptions
             using (var connection = _connectionProvider.GetConnection().Result)
             {
                 var tableNames = connection.GetTableNames();
-
-                if (tableNames.Contains(_tableName, StringComparer.OrdinalIgnoreCase))
+                
+                if (tableNames.Contains(_tableName))
                 {
                     return;
                 }
 
-                _log.Info("Table '{0}' does not exist - it will be created now", _tableName);
+                _log.Info($"Table '{_tableName.QualifiedName}' does not exist - it will be created now");
 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = string.Format(@"
-CREATE TABLE [dbo].[{0}] (
-	[topic] [nvarchar](200) NOT NULL,
-	[address] [nvarchar](200) NOT NULL,
-    CONSTRAINT [PK_{0}] PRIMARY KEY CLUSTERED 
-    (
-	    [topic] ASC,
-	    [address] ASC
+                    command.CommandText = $@"
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
+	EXEC('CREATE SCHEMA {_tableName.Schema}')
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
+    CREATE TABLE {_tableName.QualifiedName} (
+	    [topic] [nvarchar](200) NOT NULL,
+	    [address] [nvarchar](200) NOT NULL,
+        CONSTRAINT [PK_{_tableName.Schema}_{_tableName.Name}] PRIMARY KEY CLUSTERED 
+        (
+	        [topic] ASC,
+	        [address] ASC
+        )
     )
-)
-", _tableName);
+";
                     command.ExecuteNonQuery();
                 }
 
@@ -75,7 +81,7 @@ CREATE TABLE [dbo].[{0}] (
             {
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = $"SELECT [address] FROM [{_tableName}] WHERE [topic] = @topic";
+                    command.CommandText = $"SELECT [address] FROM {_tableName.QualifiedName} WHERE [topic] = @topic";
                     command.Parameters.Add("topic", SqlDbType.NVarChar, 200).Value = topic;
 
                     var subscriberAddresses = new List<string>();
@@ -103,14 +109,11 @@ CREATE TABLE [dbo].[{0}] (
             {
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = string.Format(@"
-
-IF NOT EXISTS (SELECT * FROM [{0}] WHERE [topic] = @topic AND [address] = @address)
+                    command.CommandText = $@"
+IF NOT EXISTS (SELECT * FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @address)
 BEGIN
-    INSERT INTO [{0}] ([topic], [address]) VALUES (@topic, @address)
-END
-
-", _tableName);
+    INSERT INTO {_tableName.QualifiedName} ([topic], [address]) VALUES (@topic, @address)
+END";
                     command.Parameters.Add("topic", SqlDbType.NVarChar, 200).Value = topic;
                     command.Parameters.Add("address", SqlDbType.NVarChar, 200).Value = subscriberAddress;
 
@@ -132,7 +135,7 @@ END
                 {
                     command.CommandText =
                         $@"
-DELETE FROM [{_tableName}] WHERE [topic] = @topic AND [address] = @address
+DELETE FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @address
 ";
                     command.Parameters.Add("topic", SqlDbType.NVarChar, 200).Value = topic;
                     command.Parameters.Add("address", SqlDbType.NVarChar, 200).Value = subscriberAddress;

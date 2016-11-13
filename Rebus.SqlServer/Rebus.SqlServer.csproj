@@ -67,6 +67,7 @@
     <Compile Include="SqlServer\Sagas\SqlServerSagaSnapshotStorage.cs" />
     <Compile Include="SqlServer\Sagas\SqlServerSagaStorage.cs" />
     <Compile Include="SqlServer\Subscriptions\SqlServerSubscriptionStorage.cs" />
+    <Compile Include="SqlServer\TableName.cs" />
     <Compile Include="SqlServer\Timeouts\SqlServerTimeoutManager.cs" />
     <None Include="packages.config" />
     <None Include="Properties\AssemblyInfo.cs" />

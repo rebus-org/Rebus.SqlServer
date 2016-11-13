@@ -20,7 +20,7 @@ namespace Rebus.SqlServer
         /// <summary>
         /// Gets the names of all the tables in the current database for the current schema
         /// </summary>
-        IEnumerable<string> GetTableNames();
+        IEnumerable<TableName> GetTableNames();
         
         /// <summary>
         /// Marks that all work has been successfully done and the <see cref="SqlConnection"/> may have its transaction committed or whatever is natural to do at this time
@@ -28,9 +28,9 @@ namespace Rebus.SqlServer
         Task Complete();
 
         /// <summary>
-        /// Gets information about the columns in the table given by <paramref name="dataTableName"/>
+        /// Gets information about the columns in the table given by [<paramref name="schema"/>].[<paramref name="dataTableName"/>]
         /// </summary>
-        IEnumerable<DbColumn> GetColumns(string dataTableName);
+        IEnumerable<DbColumn> GetColumns(string schema, string dataTableName);
     }
 
     /// <summary>

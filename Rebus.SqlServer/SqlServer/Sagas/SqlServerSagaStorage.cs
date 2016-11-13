@@ -29,8 +29,8 @@ namespace Rebus.SqlServer.Sagas
 
         readonly ILog _log;
         readonly IDbConnectionProvider _connectionProvider;
-        readonly string _dataTableName;
-        readonly string _indexTableName;
+        readonly TableName _dataTableName;
+        readonly TableName _indexTableName;
         bool _oldFormatDataTable;
 
         /// <summary>
@@ -44,8 +44,8 @@ namespace Rebus.SqlServer.Sagas
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             _log = rebusLoggerFactory.GetCurrentClassLogger();
             _connectionProvider = connectionProvider;
-            _dataTableName = dataTableName;
-            _indexTableName = indexTableName;
+            _dataTableName = new TableName(dataTableName);
+            _indexTableName = new TableName(indexTableName);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Rebus.SqlServer.Sagas
         {
             using (var connection = _connectionProvider.GetConnection().Result)
             {
-                var columns = connection.GetColumns(_dataTableName);
+                var columns = connection.GetColumns(_dataTableName.Schema, _dataTableName.Name);
                 var datacolumn = columns.FirstOrDefault(c => string.Equals(c.Name, "data", StringComparison.InvariantCultureIgnoreCase));
 
                 // if there is no data column at this point, it has probably just not been created yet
@@ -79,9 +79,9 @@ namespace Rebus.SqlServer.Sagas
             using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames().ToList();
-
-                var hasDataTable = tableNames.Contains(_dataTableName, StringComparer.OrdinalIgnoreCase);
-                var hasIndexTable = tableNames.Contains(_indexTableName, StringComparer.OrdinalIgnoreCase);
+                
+                var hasDataTable = tableNames.Contains(_dataTableName);
+                var hasIndexTable = tableNames.Contains(_indexTableName);
 
                 if (hasDataTable && hasIndexTable)
                 {
@@ -91,29 +91,35 @@ namespace Rebus.SqlServer.Sagas
                 if (hasDataTable)
                 {
                     throw new ApplicationException(
-                        $"The saga index table '{_indexTableName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_dataTableName}', which was supposed to be created as the data table");
+                        $"The saga index table '{_indexTableName.QualifiedName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_dataTableName.QualifiedName}', which was supposed to be created as the data table");
                 }
 
                 if (hasIndexTable)
                 {
                     throw new ApplicationException(
-                        $"The saga data table '{_dataTableName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_indexTableName}', which was supposed to be created as the index table");
+                        $"The saga data table '{_dataTableName.QualifiedName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_indexTableName.QualifiedName}', which was supposed to be created as the index table");
                 }
 
-                _log.Info("Saga tables '{0}' (data) and '{1}' (index) do not exist - they will be created now", _dataTableName, _indexTableName);
+                _log.Info($"Saga tables '{_dataTableName.QualifiedName}' (data) and '{_indexTableName.QualifiedName}' (index) do not exist - they will be created now");
 
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = $@"
-CREATE TABLE [dbo].[{_dataTableName}] (
-	[id] [uniqueidentifier] NOT NULL,
-	[revision] [int] NOT NULL,
-	[data] [varbinary](max) NOT NULL,
-    CONSTRAINT [PK_{_dataTableName}] PRIMARY KEY CLUSTERED 
-    (
-	    [id] ASC
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_dataTableName.Schema}')
+	EXEC('CREATE SCHEMA {_dataTableName.Schema}')
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_dataTableName.Schema}' AND TABLE_NAME = '{_dataTableName.Name}')
+    CREATE TABLE {_dataTableName.QualifiedName} (
+	    [id] [uniqueidentifier] NOT NULL,
+	    [revision] [int] NOT NULL,
+	    [data] [varbinary](max) NOT NULL,
+        CONSTRAINT [PK_{_dataTableName.Schema}_{_dataTableName.Name}] PRIMARY KEY CLUSTERED 
+        (
+	        [id] ASC
+        )
     )
-)
 ";
 
                     await command.ExecuteNonQueryAsync();
@@ -122,23 +128,32 @@ CREATE TABLE [dbo].[{_dataTableName}] (
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = $@"
-CREATE TABLE [dbo].[{_indexTableName}] (
-	[saga_type] [nvarchar](40) NOT NULL,
-	[key] [nvarchar](200) NOT NULL,
-	[value] [nvarchar](200) NOT NULL,
-	[saga_id] [uniqueidentifier] NOT NULL,
-    CONSTRAINT [PK_{_indexTableName}] PRIMARY KEY CLUSTERED 
-    (
-	    [key] ASC,
-	    [value] ASC,
-	    [saga_type] ASC
-    )
-)
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_indexTableName.Schema}')
+	EXEC('CREATE SCHEMA {_indexTableName.Schema}')
 
-CREATE NONCLUSTERED INDEX [IX_{_indexTableName}_saga_id] ON [dbo].[{_indexTableName}]
-(
-	[saga_id] ASC
-)
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_indexTableName.Schema}' AND TABLE_NAME = '{_indexTableName.Name}')
+    CREATE TABLE {_indexTableName.QualifiedName} (
+	    [saga_type] [nvarchar](40) NOT NULL,
+	    [key] [nvarchar](200) NOT NULL,
+	    [value] [nvarchar](200) NOT NULL,
+	    [saga_id] [uniqueidentifier] NOT NULL,
+        CONSTRAINT [PK_{_indexTableName.Schema}_{_indexTableName.Name}] PRIMARY KEY CLUSTERED 
+        (
+	        [key] ASC,
+	        [value] ASC,
+	        [saga_type] ASC
+        )
+    )
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id')
+    CREATE NONCLUSTERED INDEX [IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id] ON {_indexTableName.QualifiedName}
+    (
+	    [saga_id] ASC
+    )
 ";
 
                     await command.ExecuteNonQueryAsync();
@@ -148,10 +163,10 @@ CREATE NONCLUSTERED INDEX [IX_{_indexTableName}_saga_id] ON [dbo].[{_indexTableN
                 {
                     command.CommandText =
                         $@"
-ALTER TABLE [dbo].[{_indexTableName}] WITH CHECK 
-    ADD CONSTRAINT [FK_{_dataTableName}_id] FOREIGN KEY([saga_id])
+ALTER TABLE {_indexTableName.QualifiedName} WITH CHECK 
+    ADD CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id] FOREIGN KEY([saga_id])
 
-REFERENCES [dbo].[{_dataTableName}] ([id]) ON DELETE CASCADE
+REFERENCES {_dataTableName.QualifiedName} ([id]) ON DELETE CASCADE
 ";
 
                     await command.ExecuteNonQueryAsync();
@@ -161,7 +176,7 @@ REFERENCES [dbo].[{_dataTableName}] ([id]) ON DELETE CASCADE
                 {
                     command.CommandText =
                         $@"
-ALTER TABLE [dbo].[{_indexTableName}] CHECK CONSTRAINT [FK_{_dataTableName}_id]
+ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id]
 ";
 
                     await command.ExecuteNonQueryAsync();
@@ -183,7 +198,8 @@ ALTER TABLE [dbo].[{_indexTableName}] CHECK CONSTRAINT [FK_{_dataTableName}_id]
                 {"data", SqlDbType.VarBinary },
             };
 
-            var columns = connection.GetColumns(dataTableName);
+            var tableName = new TableName(dataTableName);
+            var columns = connection.GetColumns(tableName.Schema, tableName.Name);
 
             foreach (var column in columns)
             {
@@ -224,14 +240,14 @@ Unfortunately, Rebus cannot help migrating any existing pieces of saga data :( s
                 {
                     if (propertyName.Equals(IdPropertyName, StringComparison.InvariantCultureIgnoreCase))
                     {
-                        command.CommandText = $@"SELECT TOP 1 [data] FROM [{_dataTableName}] WHERE [id] = @value";
+                        command.CommandText = $@"SELECT TOP 1 [data] FROM {_dataTableName.QualifiedName} WHERE [id] = @value";
                     }
                     else
                     {
                         command.CommandText =
                             $@"
-SELECT TOP 1 [saga].[data] AS 'data' FROM [{_dataTableName}] [saga] 
-    JOIN [{_indexTableName}] [index] ON [saga].[id] = [index].[saga_id] 
+SELECT TOP 1 [saga].[data] AS 'data' FROM {_dataTableName.QualifiedName} [saga] 
+    JOIN {_indexTableName.QualifiedName} [index] ON [saga].[id] = [index].[saga_id] 
 WHERE [index].[saga_type] = @saga_type
     AND [index].[key] = @key 
     AND [index].[value] = @value
@@ -298,7 +314,7 @@ WHERE [index].[saga_type] = @saga_type
                     command.Parameters.Add("revision", SqlDbType.Int).Value = sagaData.Revision;
                     SetData(command, data);
 
-                    command.CommandText = $@"INSERT INTO [{_dataTableName}] ([id], [revision], [data]) VALUES (@id, @revision, @data)";
+                    command.CommandText = $@"INSERT INTO {_dataTableName.QualifiedName} ([id], [revision], [data]) VALUES (@id, @revision, @data)";
                     try
                     {
                         await command.ExecuteNonQueryAsync();
@@ -340,7 +356,7 @@ WHERE [index].[saga_type] = @saga_type
                     // first, delete existing index
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = $@"DELETE FROM [{_indexTableName}] WHERE [saga_id] = @id";
+                        command.CommandText = $@"DELETE FROM {_indexTableName.QualifiedName} WHERE [saga_id] = @id";
                         command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
 
                         await command.ExecuteNonQueryAsync();
@@ -358,7 +374,7 @@ WHERE [index].[saga_type] = @saga_type
 
                         command.CommandText =
                             $@"
-UPDATE [{_dataTableName}] 
+UPDATE {_dataTableName.QualifiedName} 
     SET [data] = @data, [revision] = @next_revision 
     WHERE [id] = @id AND [revision] = @current_revision";
 
@@ -396,7 +412,7 @@ UPDATE [{_dataTableName}]
             {
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = $@"DELETE FROM [{_dataTableName}] WHERE [id] = @id AND [revision] = @current_revision;";
+                    command.CommandText = $@"DELETE FROM {_dataTableName.QualifiedName} WHERE [id] = @id AND [revision] = @current_revision;";
                     command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
                     command.Parameters.Add("current_revision", SqlDbType.Int).Value = sagaData.Revision;
 
@@ -410,7 +426,7 @@ UPDATE [{_dataTableName}]
 
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText = $@"DELETE FROM [{_indexTableName}] WHERE [saga_id] = @id";
+                    command.CommandText = $@"DELETE FROM {_indexTableName.QualifiedName} WHERE [saga_id] = @id";
                     command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
                     await command.ExecuteNonQueryAsync();
                 }
@@ -471,7 +487,7 @@ UPDATE [{_dataTableName}]
                 var inserts = parameters
                     .Select(a =>
                         $@"
-INSERT INTO [{_indexTableName}]
+INSERT INTO {_indexTableName.QualifiedName}
     ([saga_type], [key], [value], [saga_id]) 
 VALUES
     (@saga_type, @{

@@ -65,6 +65,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assumptions\TestSpWho.cs" />
+    <Compile Include="Assumptions\TestTableName.cs" />
     <Compile Include="Bugs\TestBugWhenSendingMessagesInParallel.cs" />
     <Compile Include="DataBus\SqlServerDataBusStorageFactory.cs" />
     <Compile Include="DataBus\SqlServerDataBusStorageTest.cs" />

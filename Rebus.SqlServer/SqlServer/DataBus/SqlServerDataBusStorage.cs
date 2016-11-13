@@ -23,7 +23,7 @@ namespace Rebus.SqlServer.DataBus
         static readonly Encoding TextEncoding = Encoding.UTF8;
         readonly DictionarySerializer _dictionarySerializer = new DictionarySerializer();
         readonly IDbConnectionProvider _connectionProvider;
-        readonly string _tableName;
+        readonly TableName _tableName;
         readonly bool _ensureTableIsCreated;
         readonly ILog _log;
 
@@ -36,7 +36,7 @@ namespace Rebus.SqlServer.DataBus
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             _connectionProvider = connectionProvider;
-            _tableName = tableName;
+            _tableName = new TableName(tableName);
             _ensureTableIsCreated = ensureTableIsCreated;
             _log = rebusLoggerFactory.GetCurrentClassLogger();
         }
@@ -49,7 +49,7 @@ namespace Rebus.SqlServer.DataBus
         {
             if (!_ensureTableIsCreated) return;
 
-            _log.Info("Creating data bus table [{0}]", _tableName);
+            _log.Info($"Creating data bus table {_tableName.QualifiedName}");
 
             EnsureTableIsCreated().Wait();
         }
@@ -58,19 +58,24 @@ namespace Rebus.SqlServer.DataBus
         {
             using (var connection = await _connectionProvider.GetConnection())
             {
-                if (connection.GetTableNames().Contains(_tableName, StringComparer.CurrentCultureIgnoreCase))
+                if (connection.GetTableNames().Contains(_tableName))
                     return;
 
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = $@"
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
+	EXEC('CREATE SCHEMA {_tableName.Schema}')
 
-CREATE TABLE [{_tableName}] (
-    [Id] VARCHAR(200),
-    [Meta] VARBINARY(MAX),
-    [Data] VARBINARY(MAX),
-    [LastReadTime] DATETIMEOFFSET
-);
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
+    CREATE TABLE {_tableName.QualifiedName} (
+        [Id] VARCHAR(200),
+        [Meta] VARBINARY(MAX),
+        [Data] VARBINARY(MAX),
+        [LastReadTime] DATETIMEOFFSET
+    );
 
 ";
                     const int tableAlreadyExists = 2714;
@@ -106,7 +111,7 @@ CREATE TABLE [{_tableName}] (
                 {
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = $"INSERT INTO [{_tableName}] ([Id], [Meta], [Data]) VALUES (@id, @meta, @data)";
+                        command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data]) VALUES (@id, @meta, @data)";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
                         command.Parameters.Add("meta", SqlDbType.VarBinary).Value = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
                         command.Parameters.Add("data", SqlDbType.VarBinary).Value = source;
@@ -139,7 +144,7 @@ CREATE TABLE [{_tableName}] (
                 {
                     try
                     {
-                        command.CommandText = $"SELECT TOP 1 [Data] FROM [{_tableName}] WITH (NOLOCK) WHERE [Id] = @id";
+                        command.CommandText = $"SELECT TOP 1 [Data] FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
 
                         var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
@@ -190,7 +195,7 @@ CREATE TABLE [{_tableName}] (
         {
             using (var command = connection.CreateCommand())
             {
-                command.CommandText = $"UPDATE [{_tableName}] SET [LastReadTime] = @now WHERE [Id] = @id";
+                command.CommandText = $"UPDATE {_tableName.QualifiedName} SET [LastReadTime] = @now WHERE [Id] = @id";
                 command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
                 command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
                 await command.ExecuteNonQueryAsync();
@@ -208,7 +213,7 @@ CREATE TABLE [{_tableName}] (
                 {
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = $"SELECT TOP 1 [Meta], [LastReadTime], DATALENGTH([Data]) AS 'Length' FROM [{_tableName}] WITH (NOLOCK) WHERE [Id] = @id";
+                        command.CommandText = $"SELECT TOP 1 [Meta], [LastReadTime], DATALENGTH([Data]) AS 'Length' FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
 
                         using (var reader = await command.ExecuteReaderAsync())
