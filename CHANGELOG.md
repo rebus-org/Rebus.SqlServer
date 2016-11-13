@@ -19,3 +19,11 @@
 ## 2.0.0
 
 * Release 2.0.0
+
+## 2.1.0-b01
+
+* Add support for schemas to all SQL Server-based things - thanks [cleytonb]
+
+----
+
+[cleytonb]: https://github.com/cleytonb
