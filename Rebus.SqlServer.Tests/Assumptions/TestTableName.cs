@@ -1,10 +1,48 @@
-﻿using NUnit.Framework;
+﻿using System;
+using System.Text.RegularExpressions;
+using NUnit.Framework;
 
 namespace Rebus.SqlServer.Tests.Assumptions
 {
     [TestFixture]
     public class TestTableName
     {
+        [TestCase("table].[schema")]
+        [TestCase("table] .[schema")]
+        [TestCase("table]  .[schema")]
+        [TestCase("table]. [schema")]
+        [TestCase("table].  [schema")]
+        [TestCase("table].   [schema")]
+        [TestCase("table] . [schema")]
+        public void RegexSplitter(string text)
+        {
+            var partsThingie = Regex.Split(text, @"\][ ]*\.[ ]*\[");
+
+            Console.WriteLine($"Found parts: {string.Join(", ", partsThingie)}");
+        }
+
+
+        [TestCase("table", "dbo", "table")]
+        [TestCase("[table]", "dbo", "table")]
+        [TestCase("dbo.table", "dbo", "table", Description = "Allow short-hand for this simple case to avoid having to use brackets")]
+        [TestCase("schema.table", "schema", "table")]
+        [TestCase("[schema].[table]", "schema", "table")]
+        [TestCase("[Table name with spaces in it]", "dbo", "Table name with spaces in it")]
+        [TestCase("[Table name with . in it]", "dbo", "Table name with . in it")]
+        [TestCase("[schema-qualified table name with dots in it].[Table name with . in it]", "schema-qualified table name with dots in it", "Table name with . in it")]
+        [TestCase("[Schema name with . in it].[Table name with . in it]", "Schema name with . in it", "Table name with . in it")]
+        [TestCase("[Schema name with . in it] .[Table name with . in it]", "Schema name with . in it", "Table name with . in it")]
+        [TestCase("[Schema name with . in it] . [Table name with . in it]", "Schema name with . in it", "Table name with . in it")]
+        [TestCase("[Schema name with . in it]. [Table name with . in it]", "Schema name with . in it", "Table name with . in it")]
+        public void MoreExamples(string input, string expectedSchema, string expectedTable)
+        {
+            var tableName = TableName.Parse(input);
+
+            Assert.That(tableName.Schema, Is.EqualTo(expectedSchema));
+            Assert.That(tableName.Name, Is.EqualTo(expectedTable));
+            Assert.That(tableName.QualifiedName, Is.EqualTo($"[{expectedSchema}].[{expectedTable}]"));
+        }
+
         [Test]
         public void ParsesNameWithoutSchemaAssumingDboAsDefault()
         {

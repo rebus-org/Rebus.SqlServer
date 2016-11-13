@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Rebus.SqlServer
 {
@@ -8,6 +9,8 @@ namespace Rebus.SqlServer
     /// </summary>
     public class TableName : IEquatable<TableName>
     {
+        //static readonly Regex Regex = new Regex(@"^[\p{L}_][\p{L}\p{N}@$#_]{0,127}$", RegexOptions.Compiled);
+
         /// <summary>
         /// Gets the schema name of the table
         /// </summary>
@@ -27,8 +30,14 @@ namespace Rebus.SqlServer
         {
             if (schema == null) throw new ArgumentNullException(nameof(schema));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
             Schema = StripBrackets(schema);
             Name = StripBrackets(tableName);
+
+            //if (!Regex.IsMatch(QualifiedName))
+            //{
+            //    throw new ArgumentException($"This is not match: {QualifiedName}");
+            //}
         }
 
         /// <summary>
@@ -38,7 +47,46 @@ namespace Rebus.SqlServer
         /// </summary>
         public static TableName Parse(string name)
         {
-            return new TableName(name);
+            // special case: bare table name, or schema and table name separated by . (but without any brackets)
+            if (!(name.StartsWith("[") && name.EndsWith("]")))
+            {
+                var parts = name.Split('.');
+
+                return TableNameFromParts(name, parts);
+            }
+            else
+            {
+                // name has [ and ] around it - we remove those
+                var nameWithoutOutermostBrackets = name.Substring(1, name.Length - 2);
+
+                // now the name either looks like this
+                //   'name'
+                // or like this 
+                //   'schema].[name'
+                // or even like this (because there can be spaces between the parts
+                //   'schema]    .          [name'
+                //
+                // there we split with this regex
+                var parts = Regex.Split(nameWithoutOutermostBrackets, @"\][ ]*\.[ ]*\[");
+
+                return TableNameFromParts(name, parts);
+            }
+        }
+
+        static TableName TableNameFromParts(string name, string[] parts)
+        {
+            if (parts.Length == 1)
+            {
+                return new TableName("dbo", parts[0]);
+            }
+
+            if (parts.Length == 2)
+            {
+                return new TableName(parts[0], parts[1]);
+            }
+
+            throw new ArgumentException(
+                $"The table name '{name}' cannot be used because it contained multiple '.' characters - if you intend to use '.' as part of a table name, please be sure to enclose the name in brackets, e.g. like this: '[Table name with spaces and .s]'");
         }
 
         TableName(string tableName)
