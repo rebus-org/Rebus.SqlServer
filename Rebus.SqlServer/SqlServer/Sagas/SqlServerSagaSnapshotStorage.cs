@@ -29,7 +29,7 @@ namespace Rebus.SqlServer.Sagas
         {
             _log = rebusLoggerFactory.GetCurrentClassLogger();
             _connectionProvider = connectionProvider;
-            _tableName = new TableName(tableName);
+            _tableName = TableName.Parse(tableName);
         }
 
         /// <summary>

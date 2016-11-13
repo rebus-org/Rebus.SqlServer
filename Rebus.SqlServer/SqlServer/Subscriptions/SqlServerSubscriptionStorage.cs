@@ -27,7 +27,7 @@ namespace Rebus.SqlServer.Subscriptions
             IsCentralized = isCentralized;
             _log = rebusLoggerFactory.GetCurrentClassLogger();
             _connectionProvider = connectionProvider;
-            _tableName = new TableName(tableName);
+            _tableName = TableName.Parse(tableName);
         }
 
         /// <summary>

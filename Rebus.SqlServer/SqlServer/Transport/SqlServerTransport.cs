@@ -56,7 +56,7 @@ namespace Rebus.SqlServer.Transport
         public SqlServerTransport(IDbConnectionProvider connectionProvider, string tableName, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
             _connectionProvider = connectionProvider;
-            _tableName = new TableName(tableName);
+            _tableName = TableName.Parse(tableName);
             _inputQueueName = inputQueueName;
             _log = rebusLoggerFactory.GetCurrentClassLogger();
 

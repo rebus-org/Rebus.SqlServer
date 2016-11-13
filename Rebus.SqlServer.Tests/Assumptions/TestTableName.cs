@@ -8,7 +8,7 @@ namespace Rebus.SqlServer.Tests.Assumptions
         [Test]
         public void ParsesNameWithoutSchemaAssumingDboAsDefault()
         {
-            var table = new TableName("TableName");
+            var table = TableName.Parse("TableName");
 
             Assert.AreEqual(table.Name, "TableName");
             Assert.AreEqual(table.Schema, "dbo");
@@ -18,7 +18,7 @@ namespace Rebus.SqlServer.Tests.Assumptions
         [Test]
         public void ParsesBracketsNameWithoutSchemaAssumingDboAsDefault()
         {
-            var table = new TableName("[TableName]");
+            var table = TableName.Parse("[TableName]");
 
             Assert.AreEqual(table.Name, "TableName");
             Assert.AreEqual(table.Schema, "dbo");
@@ -28,7 +28,7 @@ namespace Rebus.SqlServer.Tests.Assumptions
         [Test]
         public void ParsesNameWithSchema()
         {
-            var table = new TableName("schema.TableName");
+            var table = TableName.Parse("schema.TableName");
 
             Assert.AreEqual(table.Name, "TableName");
             Assert.AreEqual(table.Schema, "schema");
@@ -38,7 +38,7 @@ namespace Rebus.SqlServer.Tests.Assumptions
         [Test]
         public void ParsesBracketsNameWithSchema()
         {
-            var table = new TableName("[schema].[TableName]");
+            var table = TableName.Parse("[schema].[TableName]");
 
             Assert.AreEqual(table.Name, "TableName");
             Assert.AreEqual(table.Schema, "schema");

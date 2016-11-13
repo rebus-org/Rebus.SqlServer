@@ -44,8 +44,8 @@ namespace Rebus.SqlServer.Sagas
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             _log = rebusLoggerFactory.GetCurrentClassLogger();
             _connectionProvider = connectionProvider;
-            _dataTableName = new TableName(dataTableName);
-            _indexTableName = new TableName(indexTableName);
+            _dataTableName = TableName.Parse(dataTableName);
+            _indexTableName = TableName.Parse(indexTableName);
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
                 {"data", SqlDbType.VarBinary },
             };
 
-            var tableName = new TableName(dataTableName);
+            var tableName = TableName.Parse(dataTableName);
             var columns = connection.GetColumns(tableName.Schema, tableName.Name);
 
             foreach (var column in columns)

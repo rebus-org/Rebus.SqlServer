@@ -26,7 +26,7 @@ namespace Rebus.SqlServer.Timeouts
         public SqlServerTimeoutManager(IDbConnectionProvider connectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory)
         {
             _connectionProvider = connectionProvider;
-            _tableName = new TableName(tableName);
+            _tableName = TableName.Parse(tableName);
             _log = rebusLoggerFactory.GetCurrentClassLogger();
         }
 
