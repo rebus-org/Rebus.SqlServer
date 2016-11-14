@@ -24,6 +24,11 @@
 
 * Add support for schemas to all SQL Server-based things - thanks [cleytonb]
 
+## 2.1.0-b02
+
+* Topic/subscriber address length checks on subscription storage because SQL Server is crazy
+* Support custom topic/subscriber address lengths in subscription storage via simple schema reflection at startup
+
 ----
 
 [cleytonb]: https://github.com/cleytonb

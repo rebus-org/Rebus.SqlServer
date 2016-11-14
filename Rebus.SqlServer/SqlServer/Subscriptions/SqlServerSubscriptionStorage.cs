@@ -1,7 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Rebus.Bus;
+using Rebus.Exceptions;
 using Rebus.Logging;
 using Rebus.Subscriptions;
 
@@ -10,11 +13,14 @@ namespace Rebus.SqlServer.Subscriptions
     /// <summary>
     /// Implementation of <see cref="ISubscriptionStorage"/> that persists subscriptions in a table in SQL Server
     /// </summary>
-    public class SqlServerSubscriptionStorage : ISubscriptionStorage
+    public class SqlServerSubscriptionStorage : ISubscriptionStorage, IInitializable
     {
-		readonly IDbConnectionProvider _connectionProvider;
+        readonly IDbConnectionProvider _connectionProvider;
         readonly TableName _tableName;
         readonly ILog _log;
+
+        int _topicLength = 200;
+        int _addressLength = 200;
 
         /// <summary>
         /// Constructs the storage using the specified connection provider and table to store its subscriptions. If the subscription
@@ -30,6 +36,53 @@ namespace Rebus.SqlServer.Subscriptions
         }
 
         /// <summary>
+        /// Initializes the subscription storage by reading the lengths of the [topic] and [address] columns from SQL Server
+        /// </summary>
+        public void Initialize()
+        {
+            try
+            {
+                using (var connection = _connectionProvider.GetConnection().Result)
+                {
+                    _topicLength = GetColumnWidth("topic", connection);
+                    _addressLength = GetColumnWidth("address", connection);
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new RebusApplicationException(exception, "Error during schema reflection");
+            }
+        }
+
+        int GetColumnWidth(string columnName, IDbConnection connection)
+        {
+            var sql = $@"
+SELECT 
+    CHARACTER_MAXIMUM_LENGTH
+
+FROM INFORMATION_SCHEMA.COLUMNS
+
+WHERE 
+    TABLE_SCHEMA = '{_tableName.Schema}' 
+    AND TABLE_NAME = '{_tableName.Name}'
+    AND COLUMN_NAME = '{columnName}'
+";
+
+            try
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = sql;
+                    return (int) command.ExecuteScalar();
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new RebusApplicationException(exception, $"Could not get size of the [{columnName}] column from {_tableName} - executed SQL: '{sql}'");
+            }
+        }
+
+        /// <summary>
         /// Creates the subscriptions table if necessary
         /// </summary>
         public void EnsureTableIsCreated()
@@ -37,7 +90,7 @@ namespace Rebus.SqlServer.Subscriptions
             using (var connection = _connectionProvider.GetConnection().Result)
             {
                 var tableNames = connection.GetTableNames();
-                
+
                 if (tableNames.Contains(_tableName))
                 {
                     return;
@@ -55,8 +108,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
     CREATE TABLE {_tableName.QualifiedName} (
-	    [topic] [nvarchar](200) NOT NULL,
-	    [address] [nvarchar](200) NOT NULL,
+	    [topic] [nvarchar]({_topicLength}) NOT NULL,
+	    [address] [nvarchar]({_addressLength}) NOT NULL,
         CONSTRAINT [PK_{_tableName.Schema}_{_tableName.Name}] PRIMARY KEY CLUSTERED 
         (
 	        [topic] ASC,
@@ -81,7 +134,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = $"SELECT [address] FROM {_tableName.QualifiedName} WHERE [topic] = @topic";
-                    command.Parameters.Add("topic", SqlDbType.NVarChar, 200).Value = topic;
+                    command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
 
                     var subscriberAddresses = new List<string>();
 
@@ -89,13 +142,13 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     {
                         while (await reader.ReadAsync())
                         {
-                            var address = (string) reader["address"];
+                            var address = (string)reader["address"];
                             subscriberAddresses.Add(address);
                         }
                     }
 
                     return subscriberAddresses.ToArray();
-                }                
+                }
             }
         }
 
@@ -104,6 +157,8 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         /// </summary>
         public async Task RegisterSubscriber(string topic, string subscriberAddress)
         {
+            CheckLengths(topic, subscriberAddress);
+
             using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
@@ -113,8 +168,8 @@ IF NOT EXISTS (SELECT * FROM {_tableName.QualifiedName} WHERE [topic] = @topic A
 BEGIN
     INSERT INTO {_tableName.QualifiedName} ([topic], [address]) VALUES (@topic, @address)
 END";
-                    command.Parameters.Add("topic", SqlDbType.NVarChar, 200).Value = topic;
-                    command.Parameters.Add("address", SqlDbType.NVarChar, 200).Value = subscriberAddress;
+                    command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
+                    command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
 
                     await command.ExecuteNonQueryAsync();
                 }
@@ -123,11 +178,28 @@ END";
             }
         }
 
+        void CheckLengths(string topic, string subscriberAddress)
+        {
+            if (topic.Length > _topicLength)
+            {
+                throw new ArgumentException(
+                    $"Cannot register '{subscriberAddress}' as a subscriber of '{topic}' because the length of the topic is greater than {_topicLength} (which is the current MAX length allowed by the current {_tableName} schema)");
+            }
+
+            if (subscriberAddress.Length > _addressLength)
+            {
+                throw new ArgumentException(
+                    $"Cannot register '{subscriberAddress}' as a subscriber of '{topic}' because the length of the subscriber address is greater than {_addressLength} (which is the current MAX length allowed by the current {_tableName} schema)");
+            }
+        }
+
         /// <summary>
         /// Unregisters the given <paramref name="subscriberAddress"/> as a subscriber of the given <paramref name="topic"/>
         /// </summary>
         public async Task UnregisterSubscriber(string topic, string subscriberAddress)
         {
+            CheckLengths(topic, subscriberAddress);
+
             using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
@@ -136,8 +208,8 @@ END";
                         $@"
 DELETE FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @address
 ";
-                    command.Parameters.Add("topic", SqlDbType.NVarChar, 200).Value = topic;
-                    command.Parameters.Add("address", SqlDbType.NVarChar, 200).Value = subscriberAddress;
+                    command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
+                    command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
 
                     await command.ExecuteNonQueryAsync();
                 }
