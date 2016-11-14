@@ -80,6 +80,7 @@
     <Compile Include="Sagas\TestSqlSagaStorageSpeed.cs" />
     <Compile Include="Subscriptions\SqlServerSubscriptionStorageBasicSubscriptionOperations.cs" />
     <Compile Include="Subscriptions\SqlServerSubscriptionStorageFactory.cs" />
+    <Compile Include="Subscriptions\TestSqlServerSubscriptionStorage.cs" />
     <Compile Include="Timeouts\SqlServerTimeoutManagerFactory.cs" />
     <Compile Include="Integration\TestNumberOfSqlConnections.cs" />
     <Compile Include="Sagas\TestSagaCorrelationSql.cs" />
