@@ -38,7 +38,7 @@ namespace Rebus.SqlServer.DataBus
             _connectionProvider = connectionProvider;
             _tableName = TableName.Parse(tableName);
             _ensureTableIsCreated = ensureTableIsCreated;
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+            _log = rebusLoggerFactory.GetLogger<SqlServerDataBusStorage>();
         }
 
         /// <summary>

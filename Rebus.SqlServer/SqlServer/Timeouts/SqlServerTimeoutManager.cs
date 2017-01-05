@@ -25,9 +25,13 @@ namespace Rebus.SqlServer.Timeouts
         /// </summary>
         public SqlServerTimeoutManager(IDbConnectionProvider connectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory)
         {
+            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+            if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
+
             _connectionProvider = connectionProvider;
             _tableName = TableName.Parse(tableName);
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+            _log = rebusLoggerFactory.GetLogger<SqlServerTimeoutManager>();
         }
 
         /// <summary>

@@ -24,7 +24,7 @@ namespace Rebus.SqlServer
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+            _log = rebusLoggerFactory.GetLogger<DbConnectionFactoryProvider>();
 
             IsolationLevel = IsolationLevel.ReadCommitted;
 

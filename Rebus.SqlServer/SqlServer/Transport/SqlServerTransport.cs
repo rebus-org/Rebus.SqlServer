@@ -55,15 +55,19 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public SqlServerTransport(IDbConnectionProvider connectionProvider, string tableName, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
+            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+            if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
+            if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
+
             _connectionProvider = connectionProvider;
             _tableName = TableName.Parse(tableName);
             _inputQueueName = inputQueueName;
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+            _log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
 
             ExpiredMessagesCleanupInterval = DefaultExpiredMessagesCleanupInterval;
 
             _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, intervalSeconds: 60);
-
         }
 
         /// <summary>

@@ -29,6 +29,10 @@
 * Topic/subscriber address length checks on subscription storage because SQL Server is crazy
 * Support custom topic/subscriber address lengths in subscription storage via simple schema reflection at startup
 
+## 3.0.0
+
+* Update to Rebus 3
+
 ----
 
 [cleytonb]: https://github.com/cleytonb

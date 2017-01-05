@@ -42,7 +42,8 @@ namespace Rebus.SqlServer.Sagas
             if (dataTableName == null) throw new ArgumentNullException(nameof(dataTableName));
             if (indexTableName == null) throw new ArgumentNullException(nameof(indexTableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+
+            _log = rebusLoggerFactory.GetLogger<SqlServerSagaStorage>();
             _connectionProvider = connectionProvider;
             _dataTableName = TableName.Parse(dataTableName);
             _indexTableName = TableName.Parse(indexTableName);

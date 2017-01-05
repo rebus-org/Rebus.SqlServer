@@ -29,7 +29,7 @@ namespace Rebus.SqlServer
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+            _log = rebusLoggerFactory.GetLogger<DbConnectionProvider>();
 
             var connectionString = GetConnectionString(connectionStringOrConnectionStringName);
 
