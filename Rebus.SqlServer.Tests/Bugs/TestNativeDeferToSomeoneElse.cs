@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Messages;
 using Rebus.Pipeline;
@@ -86,7 +85,8 @@ namespace Rebus.SqlServer.Tests.Bugs
 
                 if (message.Headers.TryGetValue(Headers.DeferredUntil, out temp))
                 {
-                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out temp))
+                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out temp)
+                        || temp == null)
                     {
                         try
                         {
@@ -94,7 +94,7 @@ namespace Rebus.SqlServer.Tests.Bugs
                         }
                         catch (Exception exception)
                         {
-                            throw new ApplicationException($"Could not automatically set recipient for deferred message", exception);
+                            throw new ApplicationException("Could not automatically set recipient for deferred message", exception);
                         }
                     }
                 }

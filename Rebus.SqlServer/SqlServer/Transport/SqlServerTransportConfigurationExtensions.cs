@@ -80,6 +80,18 @@ namespace Rebus.SqlServer.Transport
                 return new PipelineStepRemover(pipeline)
                     .RemoveIncomingStep(s => s.GetType() == typeof(HandleDeferredMessagesStep));
             });
+
+            configurer.OtherService<Options>().Decorate(c =>
+            {
+                var options = c.Get<Options>();
+
+                if (string.IsNullOrWhiteSpace(options.ExternalTimeoutManagerAddressOrNull))
+                {
+                    options.ExternalTimeoutManagerAddressOrNull = SqlServerTransport.MagicExternalTimeoutManagerAddress;
+                }
+
+                return options;
+            });
         }
     }
 }

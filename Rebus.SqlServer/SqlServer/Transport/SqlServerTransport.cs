@@ -25,7 +25,10 @@ namespace Rebus.SqlServer.Transport
     {
         static readonly HeaderSerializer HeaderSerializer = new HeaderSerializer();
 
-        readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
+        /// <summary>
+        /// When a message is sent to this address, it will be deferred into the future!
+        /// </summary>
+        public const string MagicExternalTimeoutManagerAddress = "##### MagicExternalTimeoutManagerAddress #####";
 
         /// <summary>
         /// Special message priority header that can be used with the <see cref="SqlServerTransport"/>. The value must be an <see cref="Int32"/>
@@ -39,8 +42,8 @@ namespace Rebus.SqlServer.Transport
 
         const string CurrentConnectionKey = "sql-server-transport-current-connection";
         const int RecipientColumnSize = 200;
-        const int OperationCancelledNumber = 3980;
 
+        readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
         readonly IDbConnectionProvider _connectionProvider;
         readonly TableName _tableName;
         readonly string _inputQueueName;
@@ -213,46 +216,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         {
             var connection = await GetConnection(context);
 
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $@"
-INSERT INTO {_tableName.QualifiedName}
-(
-    [recipient],
-    [headers],
-    [body],
-    [priority],
-    [visible],
-    [expiration]
-)
-VALUES
-(
-    @recipient,
-    @headers,
-    @body,
-    @priority,
-    dateadd(ss, @visible, getdate()),
-    dateadd(ss, @ttlseconds, getdate())
-)";
+            var destinationAddressToUse = string.Equals(destinationAddress, MagicExternalTimeoutManagerAddress, StringComparison.CurrentCultureIgnoreCase)
+                ? GetDeferredRecipient(message)
+                : destinationAddress;
 
-                var headers = message.Headers.Clone();
-
-                var priority = GetMessagePriority(headers);
-                var initialVisibilityDelay = GetInitialVisibilityDelay(headers);
-                var ttlSeconds = GetTtlSeconds(headers);
-
-                // must be last because the other functions on the headers might change them
-                var serializedHeaders = HeaderSerializer.Serialize(headers);
-
-                command.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = destinationAddress;
-                command.Parameters.Add("headers", SqlDbType.VarBinary).Value = serializedHeaders;
-                command.Parameters.Add("body", SqlDbType.VarBinary).Value = message.Body;
-                command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
-                command.Parameters.Add("ttlseconds", SqlDbType.Int).Value = ttlSeconds;
-                command.Parameters.Add("visible", SqlDbType.Int).Value = initialVisibilityDelay;
-
-                await command.ExecuteNonQueryAsync();
-            }
+            await InnerSend(destinationAddressToUse, message, connection);
         }
 
         /// <summary>
@@ -314,6 +282,62 @@ VALUES
                 }
 
                 return receivedTransportMessage;
+            }
+        }
+
+        static string GetDeferredRecipient(TransportMessage message)
+        {
+            string destination;
+
+            if (message.Headers.TryGetValue(Headers.DeferredRecipient, out destination))
+            {
+                return destination;
+            }
+
+            throw new InvalidOperationException($"Attempted to defer message, but no '{Headers.DeferredRecipient}' header was on the message");
+        }
+
+        async Task InnerSend(string destinationAddress, TransportMessage message, IDbConnection connection)
+        {
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = $@"
+INSERT INTO {_tableName.QualifiedName}
+(
+    [recipient],
+    [headers],
+    [body],
+    [priority],
+    [visible],
+    [expiration]
+)
+VALUES
+(
+    @recipient,
+    @headers,
+    @body,
+    @priority,
+    dateadd(ss, @visible, getdate()),
+    dateadd(ss, @ttlseconds, getdate())
+)";
+
+                var headers = message.Headers.Clone();
+
+                var priority = GetMessagePriority(headers);
+                var initialVisibilityDelay = GetInitialVisibilityDelay(headers);
+                var ttlSeconds = GetTtlSeconds(headers);
+
+                // must be last because the other functions on the headers might change them
+                var serializedHeaders = HeaderSerializer.Serialize(headers);
+
+                command.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = destinationAddress;
+                command.Parameters.Add("headers", SqlDbType.VarBinary).Value = serializedHeaders;
+                command.Parameters.Add("body", SqlDbType.VarBinary).Value = message.Body;
+                command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
+                command.Parameters.Add("ttlseconds", SqlDbType.Int).Value = ttlSeconds;
+                command.Parameters.Add("visible", SqlDbType.Int).Value = initialVisibilityDelay;
+
+                await command.ExecuteNonQueryAsync();
             }
         }
 
