@@ -300,16 +300,16 @@ VALUES
                             if (!await reader.ReadAsync(cancellationToken)) return null;
 
                             var headers = reader["headers"];
-                            var headersDictionary = HeaderSerializer.Deserialize((byte[])headers);
-                            var body = (byte[])reader["body"];
+                            var headersDictionary = HeaderSerializer.Deserialize((byte[]) headers);
+                            var body = (byte[]) reader["body"];
 
                             receivedTransportMessage = new TransportMessage(headersDictionary, body);
                         }
                     }
-                    catch (SqlException sqlException) when (sqlException.Number == OperationCancelledNumber)
+                    catch (Exception exception) when (cancellationToken.IsCancellationRequested)
                     {
                         // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
-                        throw new TaskCanceledException("Receive operation was cancelled", sqlException);
+                        throw new TaskCanceledException("Receive operation was cancelled", exception);
                     }
                 }
 
