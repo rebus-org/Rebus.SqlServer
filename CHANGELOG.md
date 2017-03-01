@@ -33,6 +33,10 @@
 
 * Update to Rebus 3
 
+## 3.1.0
+
+* Register SQL Transport as if it was an external timeout manager, enabling message deferral from one-way clients
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
