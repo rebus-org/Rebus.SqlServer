@@ -16,17 +16,20 @@ namespace Rebus.SqlServer.Tests.Integration
     [TestFixture, Category(Categories.SqlServer)]
     public class TestSqlAllTheWay : FixtureBase
     {
-        BuiltinHandlerActivator _handlerActivator;
-        IBus _bus;
         static readonly string ConnectionString = SqlTestHelper.ConnectionString;
+
+        BuiltinHandlerActivator _activator;
+        IBus _bus;
 
         protected override void SetUp()
         {
             DropTables();
 
-            _handlerActivator = new BuiltinHandlerActivator();
+            _activator = new BuiltinHandlerActivator();
 
-            _bus = Configure.With(_handlerActivator)
+            Using(_activator);
+
+            _bus = Configure.With(_activator)
                 .Transport(x => x.UseSqlServer(ConnectionString, "RebusMessages", "test.input"))
                 .Sagas(x => x.StoreInSqlServer(ConnectionString, "Sagas", "SagaIndex"))
                 .Options(x =>
@@ -35,8 +38,6 @@ namespace Rebus.SqlServer.Tests.Integration
                     x.SetMaxParallelism(1);
                 })
                 .Start();
-
-            Using(_bus);
         }
 
         protected override void TearDown()
@@ -57,7 +58,7 @@ namespace Rebus.SqlServer.Tests.Integration
             var gotTheMessage = new ManualResetEvent(false);
             var receivedMessageCount = 0;
 
-            _handlerActivator.Handle<string>(async message =>
+            _activator.Handle<string>(async message =>
             {
                 Interlocked.Increment(ref receivedMessageCount);
                 Console.WriteLine("w00000t! Got message: {0}", message);
