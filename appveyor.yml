@@ -13,4 +13,5 @@ before_build:
   - appveyor-retry dotnet restore -v Minimal
 
 build_script:
-  - dotnet build -c Release 
+  - dotnet build Rebus.SqlServer -c Release 
+  - dotnet build Rebus.SqlServer.Tests -c Release 
