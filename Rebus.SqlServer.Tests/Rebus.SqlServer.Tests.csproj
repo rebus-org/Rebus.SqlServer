@@ -1,16 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{7EFCAF69-991E-4991-A03B-077BE4B9952A}</ProjectGuid>
+<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+ <PropertyGroup>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus.SqlServer.Tests</RootNamespace>
     <AssemblyName>Rebus.SqlServer.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <TargetFrameworks>net45;netstandard1.6</TargetFrameworks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Authors>mookid8000</Authors>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</PackageLicenseUrl>
+    <PackageProjectUrl>http://mookid.dk/oncode/rebus</PackageProjectUrl>
+    <Copyright>Copyright 2012-2016</Copyright>
+    <PackageTags>rebus queue messaging service bus sql-server sqlserver mssql sql</PackageTags>
+    <PackageIconUrl>https://github.com/mookid8000/Rebus/raw/master/artwork/little_rebusbus2_copy-200x200.png</PackageIconUrl>
+    <RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,92 +29,39 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>RELEASE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net45' ">
+    <DefineConstants>NET45</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">
+    <DefineConstants>NETSTANDARD1_6</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FluentAssertions, Version=4.13.0.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
-      <HintPath>..\packages\FluentAssertions.4.13.0\lib\net45\FluentAssertions.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FluentAssertions.Core, Version=4.13.0.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
-      <HintPath>..\packages\FluentAssertions.4.13.0\lib\net45\FluentAssertions.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="nunit.framework, Version=3.5.0.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
-      <HintPath>..\packages\NUnit.3.5.0\lib\net45\nunit.framework.dll</HintPath>
-    </Reference>
-    <Reference Include="Rebus, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Rebus.3.0.0\lib\NET45\Rebus.dll</HintPath>
-    </Reference>
-    <Reference Include="Rebus.Tests.Contracts, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Rebus.Tests.Contracts.3.0.0\lib\NET45\Rebus.Tests.Contracts.dll</HintPath>
-    </Reference>
+    <Compile Remove="Properties\AssemblyInfo.cs" />
+    <None Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="nunit" Version="3.6.1" />
+    <PackageReference Include="rebus" Version="4.0.0-b03" />
+    <PackageReference Include="rebus.tests.contracts" Version="4.0.0-b03" />
+    <ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj" />
+  </ItemGroup>
+<!--   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">
+    <PackageReference Include="System.Threading" Version="4.3.0" />
+    <PackageReference Include="System.Threading.Thread" Version="4.3.0" />
+    <PackageReference Include="System.Diagnostics.TraceSource" Version="4.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Assumptions\TestSpWho.cs" />
-    <Compile Include="Assumptions\TestTableName.cs" />
-    <Compile Include="Bugs\TestBugWhenSendingMessagesInParallel.cs" />
-    <Compile Include="Bugs\TestNativeDeferToSomeoneElse.cs" />
-    <Compile Include="DataBus\SqlServerDataBusStorageFactory.cs" />
-    <Compile Include="DataBus\SqlServerDataBusStorageTest.cs" />
-    <Compile Include="DataBus\TestSqlServerDataBusLazyRead.cs" />
-    <Compile Include="DataBus\TestSqlServerDataBusStorage.cs" />
-    <Compile Include="Integration\NativeDeferTest.cs" />
-    <Compile Include="Integration\SnapshotIsolationLevel.cs" />
-    <Compile Include="Integration\TestSqlAllTheWay.cs" />
-    <Compile Include="Sagas\SqlServerSagaSnapshotStorageTest.cs" />
-    <Compile Include="Sagas\SqlServerSagaStorageFactory.cs" />
-    <Compile Include="Sagas\SqlServerSnapshotStorageFactory.cs" />
-    <Compile Include="Sagas\TestSqlSagaStorageSpeed.cs" />
-    <Compile Include="Subscriptions\SqlServerSubscriptionStorageBasicSubscriptionOperations.cs" />
-    <Compile Include="Subscriptions\SqlServerSubscriptionStorageFactory.cs" />
-    <Compile Include="Subscriptions\TestSqlServerSubscriptionStorage.cs" />
-    <Compile Include="Timeouts\SqlServerTimeoutManagerFactory.cs" />
-    <Compile Include="Integration\TestNumberOfSqlConnections.cs" />
-    <Compile Include="Sagas\TestSagaCorrelationSql.cs" />
-    <Compile Include="Sagas\TestSqlServerSagaStorage.cs" />
-    <Compile Include="Sagas\TestSqlServerSagaStoragePerformance.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SqlServerBusFactory.cs" />
-    <Compile Include="SqlTestHelper.cs" />
-    <Compile Include="Categories.cs" />
-    <Compile Include="Transport\SqlServerTestManyMessages.cs" />
-    <Compile Include="Transport\SqlTransportTests.cs" />
-    <Compile Include="Transport\TestDbConnectionProvider.cs" />
-    <Compile Include="Transport\TestSqlServerTransport.cs" />
-    <Compile Include="Transport\TestSqlServerTransportCleanup.cs" />
-    <Compile Include="Transport\TestSqlTransportReceivePerformance.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj">
-      <Project>{FE4FDE82-15A0-4C95-B640-779E8F72E870}</Project>
-      <Name>Rebus.SqlServer</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+ -->
 </Project>

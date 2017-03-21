@@ -3,7 +3,6 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Transactions;
 using Rebus.Logging;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -42,7 +41,7 @@ namespace Rebus.SqlServer
         {
             var connectionStringSettings = connectionString.Split(new [] {";"}, StringSplitOptions.RemoveEmptyEntries)
                 .Select(kvp => kvp.Split(new [] {"="}, StringSplitOptions.RemoveEmptyEntries))
-                .ToDictionary(kvp => kvp[0], kvp => string.Join("=", kvp.Skip(1)), StringComparer.InvariantCultureIgnoreCase);
+                .ToDictionary(kvp => kvp[0], kvp => string.Join("=", kvp.Skip(1)), StringComparer.OrdinalIgnoreCase);
 
             if (!connectionStringSettings.ContainsKey("MultipleActiveResultSets"))
             {
@@ -72,13 +71,19 @@ namespace Rebus.SqlServer
 
             try
             {
-                using (new TransactionScope(TransactionScopeOption.Suppress))
+
+#if NET45
+                using (new System.Transactions.TransactionScope(System.Transactions.TransactionScopeOption.Suppress))
                 {
                     connection = new SqlConnection(_connectionString);
                     
                     // do not use Async here! it would cause the tx scope to be disposed on another thread than the one that created it
                     connection.Open();
                 }
+#else
+                connection = new SqlConnection(_connectionString);
+                connection.Open();
+#endif
 
                 var transaction = connection.BeginTransaction(IsolationLevel);
 

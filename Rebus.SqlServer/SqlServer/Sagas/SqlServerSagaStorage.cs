@@ -57,7 +57,7 @@ namespace Rebus.SqlServer.Sagas
             using (var connection = _connectionProvider.GetConnection().Result)
             {
                 var columns = connection.GetColumns(_dataTableName.Schema, _dataTableName.Name);
-                var datacolumn = columns.FirstOrDefault(c => string.Equals(c.Name, "data", StringComparison.InvariantCultureIgnoreCase));
+                var datacolumn = columns.FirstOrDefault(c => string.Equals(c.Name, "data", StringComparison.OrdinalIgnoreCase));
 
                 // if there is no data column at this point, it has probably just not been created yet
                 if (datacolumn == null) { return; }
@@ -91,13 +91,13 @@ namespace Rebus.SqlServer.Sagas
 
                 if (hasDataTable)
                 {
-                    throw new ApplicationException(
+                    throw new RebusApplicationException(
                         $"The saga index table '{_indexTableName.QualifiedName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_dataTableName.QualifiedName}', which was supposed to be created as the data table");
                 }
 
                 if (hasIndexTable)
                 {
-                    throw new ApplicationException(
+                    throw new RebusApplicationException(
                         $"The saga data table '{_dataTableName.QualifiedName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_indexTableName.QualifiedName}', which was supposed to be created as the index table");
                 }
 
@@ -281,7 +281,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
             //  [id] [uniqueidentifier] NOT NULL,
             //	[revision] [int] NOT NULL,
             //	[data] [varbinary](max) NOT NULL,
-            var expectedDataTypes = new Dictionary<string, SqlDbType>(StringComparer.InvariantCultureIgnoreCase)
+            var expectedDataTypes = new Dictionary<string, SqlDbType>(StringComparer.OrdinalIgnoreCase)
             {
                 {"id", SqlDbType.UniqueIdentifier },
                 {"revision", SqlDbType.Int },
@@ -328,7 +328,7 @@ Unfortunately, Rebus cannot help migrating any existing pieces of saga data :( s
             {
                 using (var command = connection.CreateCommand())
                 {
-                    if (propertyName.Equals(IdPropertyName, StringComparison.InvariantCultureIgnoreCase))
+                    if (propertyName.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
                     {
                         command.CommandText = $@"SELECT TOP 1 [data] FROM {_dataTableName.QualifiedName} WHERE [id] = @value";
                     }
@@ -372,7 +372,7 @@ WHERE [index].[saga_type] = @saga_type
                         }
                         catch (Exception exception)
                         {
-                            throw new ApplicationException($"An error occurred while attempting to deserialize '{value}' into a {sagaDataType}", exception);
+                            throw new RebusApplicationException(exception, $"An error occurred while attempting to deserialize '{value}' into a {sagaDataType}");
                         }
                     }
                 }

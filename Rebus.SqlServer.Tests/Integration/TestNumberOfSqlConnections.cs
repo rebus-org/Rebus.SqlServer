@@ -11,7 +11,6 @@ using Rebus.Logging;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Threading;
-using Timer = System.Timers.Timer;
 
 namespace Rebus.SqlServer.Tests.Integration
 {
@@ -35,14 +34,8 @@ namespace Rebus.SqlServer.Tests.Integration
                 }))
                 .Start();
 
-            using (var printTimer = new Timer(1000))
+            using (new Timer(_ => Console.WriteLine("Active connections: {0}", activeConnections.Count), null, 0, 1000))
             {
-                printTimer.Elapsed += delegate
-                {
-                    Console.WriteLine("Active connections: {0}", activeConnections.Count);
-                };
-                printTimer.Start();
-
                 using (bus)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(5));

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
+using Rebus.Exceptions;
 using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Routing;
@@ -94,7 +95,7 @@ namespace Rebus.SqlServer.Tests.Bugs
                         }
                         catch (Exception exception)
                         {
-                            throw new ApplicationException("Could not automatically set recipient for deferred message", exception);
+                            throw new RebusApplicationException(exception, "Could not automatically set recipient for deferred message");
                         }
                     }
                 }

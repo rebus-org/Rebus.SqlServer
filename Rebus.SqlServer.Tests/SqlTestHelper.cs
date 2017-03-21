@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using Rebus.Exceptions;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.SqlServer.Tests
@@ -69,7 +70,7 @@ namespace Rebus.SqlServer.Tests
             {
                 var indexNames = connection.GetIndexNames();
 
-                return indexNames.Contains(indexName, StringComparer.InvariantCultureIgnoreCase);
+                return indexNames.Contains(indexName, StringComparer.OrdinalIgnoreCase);
             });
         }
 
@@ -104,7 +105,7 @@ namespace Rebus.SqlServer.Tests
             {
                 DumpWho();
 
-                throw new ApplicationException($"Could not execute '{sqlCommand}'", exception);
+                throw new RebusApplicationException(exception, $"Could not execute '{sqlCommand}'");
             }
         }
 
@@ -118,7 +119,7 @@ namespace Rebus.SqlServer.Tests
 
                 var who = ExecSpWho()
                     .Where(kvp => kvp.ContainsKey("dbname"))
-                    .Where(kvp => kvp["dbname"].Equals(DatabaseName, StringComparison.InvariantCultureIgnoreCase));
+                    .Where(kvp => kvp["dbname"].Equals(DatabaseName, StringComparison.OrdinalIgnoreCase));
 
                 Console.WriteLine(string.Join(Environment.NewLine,
                     who.Select(d => string.Join(", ", d.Select(kvp => $"{kvp.Key} = {kvp.Value}")))));
@@ -172,7 +173,7 @@ namespace Rebus.SqlServer.Tests
                 {
                     connection.Open();
 
-                    if (connection.GetDatabaseNames().Contains(databaseName, StringComparer.InvariantCultureIgnoreCase)) return;
+                    if (connection.GetDatabaseNames().Contains(databaseName, StringComparer.OrdinalIgnoreCase)) return;
 
                     Console.WriteLine("Creating database {0}", databaseName);
 
@@ -188,7 +189,7 @@ namespace Rebus.SqlServer.Tests
             }
             catch (Exception exception)
             {
-                throw new ApplicationException($"Could not initialize database '{databaseName}'", exception);
+                throw new RebusApplicationException(exception, $"Could not initialize database '{databaseName}'");
             }
         }
 
