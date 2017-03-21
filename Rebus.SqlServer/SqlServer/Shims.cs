@@ -38,14 +38,7 @@ namespace System.Configuration
             /// <summary>
             /// Gets the connection string with the given <paramref name="name"/>
             /// </summary>
-            public ConnectionStringSettings this[string name]
-            {
-                get
-                {
-                    var s = "";
-                    return new ConnectionStringSettings(s);
-                }
-            }
+            public ConnectionStringSettings this[string name] => null; // no replacement for now
         }
 
         /// <summary>
