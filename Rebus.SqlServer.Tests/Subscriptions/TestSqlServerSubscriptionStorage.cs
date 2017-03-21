@@ -6,6 +6,7 @@ using Rebus.Logging;
 using Rebus.SqlServer.Subscriptions;
 using Rebus.SqlServer.Tests.Subscriptions.This.Is.Just.An.Incredibly.Long.And.Silly.Namespace.Name.That.Needs.To.Be.Even.Longer.Because.It.Just.Needs.To.Be.Long.OK.But.Soon.It.Must.Be.Long.Enough.To.Exceed.That.Silly.Limit.In.SqlServer;
 using Rebus.Tests.Contracts;
+#pragma warning disable 1998
 
 namespace Rebus.SqlServer.Tests.Subscriptions
 {
