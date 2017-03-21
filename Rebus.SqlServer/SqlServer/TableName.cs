@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace Rebus.SqlServer
@@ -9,8 +8,6 @@ namespace Rebus.SqlServer
     /// </summary>
     public class TableName : IEquatable<TableName>
     {
-        //static readonly Regex Regex = new Regex(@"^[\p{L}_][\p{L}\p{N}@$#_]{0,127}$", RegexOptions.Compiled);
-
         /// <summary>
         /// Gets the schema name of the table
         /// </summary>
@@ -33,11 +30,6 @@ namespace Rebus.SqlServer
 
             Schema = StripBrackets(schema);
             Name = StripBrackets(tableName);
-
-            //if (!Regex.IsMatch(QualifiedName))
-            //{
-            //    throw new ArgumentException($"This is not match: {QualifiedName}");
-            //}
         }
 
         /// <summary>
