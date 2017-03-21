@@ -21,10 +21,15 @@ set Version=%version%
 
 pushd %root%
 
+dotnet restore
+if %ERRORLEVEL% neq 0 (
+	popd
+ 	goto exit_fail
+)
+
 dotnet build "%root%\%project%" -c Release
 if %ERRORLEVEL% neq 0 (
 	popd
- 	echo Error calling %clean%
  	goto exit_fail
 )
 
