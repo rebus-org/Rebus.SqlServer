@@ -51,7 +51,7 @@
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.6' ">
     <Reference Include="System.Data.Common" />
-    <PackageReference Include="System.Data.SqlClient" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.1.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
     <Reference Include="Microsoft.CSharp" />
