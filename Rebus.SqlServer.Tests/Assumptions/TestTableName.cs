@@ -7,12 +7,6 @@ namespace Rebus.SqlServer.Tests.Assumptions
     [TestFixture]
     public class TestTableName
     {
-        [Test]
-        public void GreatName()
-        {
-            Console.WriteLine("Why does this not work?");
-        }
-
         [TestCase("[bimse]", "[bimse]", true)]
         [TestCase("[bimse]", "[BIMSE]", true)]
         public void CheckEquality(string name1, string name2, bool expectedToBeEqual)
