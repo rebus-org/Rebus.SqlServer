@@ -20,6 +20,10 @@ if "%version%"=="" (
 
 set Version=%version%
 
+if exist "%deploydir%" (
+	rd "%deploydir%" /s/q
+)
+
 pushd %root%
 
 dotnet restore
