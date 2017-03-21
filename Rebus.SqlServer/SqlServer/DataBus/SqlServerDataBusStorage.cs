@@ -49,7 +49,7 @@ namespace Rebus.SqlServer.DataBus
         {
             if (!_ensureTableIsCreated) return;
 
-            _log.Info($"Creating data bus table {_tableName.QualifiedName}");
+            _log.Info("Creating data bus table {tableName}", _tableName.QualifiedName);
 
             EnsureTableIsCreated().Wait();
         }

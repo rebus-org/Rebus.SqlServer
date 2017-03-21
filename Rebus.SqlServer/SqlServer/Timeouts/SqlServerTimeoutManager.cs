@@ -48,7 +48,7 @@ namespace Rebus.SqlServer.Timeouts
                     return;
                 }
 
-                _log.Info($"Table '{_tableName.QualifiedName}' does not exist - it will be created now");
+                _log.Info("Table {tableName} does not exist - it will be created now", _tableName.QualifiedName);
 
                 using (var command = connection.CreateCommand())
                 {

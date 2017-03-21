@@ -123,11 +123,11 @@ namespace Rebus.SqlServer.Transport
                 
                 if (tableNames.Contains(_tableName))
                 {
-                    _log.Info($"Database already contains a table named '{_tableName.QualifiedName}' - will not create anything");
+                    _log.Info("Database already contains a table named {tableName} - will not create anything", _tableName.QualifiedName);
                     return;
                 }
 
-                _log.Info($"Table '{_tableName.QualifiedName}' does not exist - it will be created now");
+                _log.Info("Table {tableName} does not exist - it will be created now", _tableName.QualifiedName);
 
                 var receiveIndexName = $"IDX_RECEIVE_{_tableName.Schema}_{_tableName.Name}";
                 var expirationIndexName = $"IDX_EXPIRATION_{_tableName.Schema}_{_tableName.Name}";
@@ -407,9 +407,8 @@ DELETE FROM TopCTE
 
             if (results > 0)
             {
-                _log.Info(
-                    "Performed expired messages cleanup in {0} - {1} expired messages with recipient {2} were deleted",
-                    stopwatch.Elapsed, results, _inputQueueName);
+                _log.Info("Performed expired messages cleanup in {cleanupTimeSeconds} - {expiredMessageCount} expired messages with recipient {queueName} were deleted",
+                    stopwatch.Elapsed.TotalSeconds, results, _inputQueueName);
             }
         }
 

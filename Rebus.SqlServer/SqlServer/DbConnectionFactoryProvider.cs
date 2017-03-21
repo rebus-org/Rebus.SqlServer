@@ -42,7 +42,7 @@ namespace Rebus.SqlServer
             }
             catch (Exception exception)
             {
-                _log.Warn("An error occurred when invoking the provided connection factory: {0}", exception);
+                _log.Warn("An error occurred when invoking the provided connection factory: {exception}", exception);
                 throw;
             }
         }

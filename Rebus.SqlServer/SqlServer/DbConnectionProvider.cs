@@ -89,9 +89,8 @@ namespace Rebus.SqlServer
 
                 return new DbConnectionWrapper(connection, transaction, false);
             }
-            catch (Exception exception)
+            catch (Exception)
             {
-                _log.Warn("Could not open connection and begin transaction: {0}", exception);
                 connection?.Dispose();
                 throw;
             }

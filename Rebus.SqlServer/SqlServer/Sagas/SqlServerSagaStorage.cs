@@ -101,7 +101,8 @@ namespace Rebus.SqlServer.Sagas
                         $"The saga data table '{_dataTableName.QualifiedName}' does not exist, so the automatic saga schema generation tried to run - but there was already a table named '{_indexTableName.QualifiedName}', which was supposed to be created as the index table");
                 }
 
-                _log.Info($"Saga tables '{_dataTableName.QualifiedName}' (data) and '{_indexTableName.QualifiedName}' (index) do not exist - they will be created now");
+                _log.Info("Saga tables {tableName} (data) and {tableName} (index) do not exist - they will be created now",
+                    _dataTableName.QualifiedName, _indexTableName.QualifiedName);
 
                 var sagaIdIndexName = $"IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id";
 
@@ -164,91 +165,6 @@ REFERENCES {_dataTableName.QualifiedName} ([id]) ON DELETE CASCADE
 ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id]
 
 ");
-
-
-//                using (var command = connection.CreateCommand())
-//                {
-//                    command.CommandText = $@"
-//IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_dataTableName.Schema}')
-//	EXEC('CREATE SCHEMA {_dataTableName.Schema}')
-
-//----
-
-//IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_dataTableName.Schema}' AND TABLE_NAME = '{_dataTableName.Name}')
-//    CREATE TABLE {_dataTableName.QualifiedName} (
-//	    [id] [uniqueidentifier] NOT NULL,
-//	    [revision] [int] NOT NULL,
-//	    [data] [varbinary](max) NOT NULL,
-//        CONSTRAINT [PK_{_dataTableName.Schema}_{_dataTableName.Name}] PRIMARY KEY CLUSTERED 
-//        (
-//	        [id] ASC
-//        )
-//    )
-//";
-
-//                    await command.ExecuteNonQueryAsync();
-//                }
-
-//                using (var command = connection.CreateCommand())
-//                {
-//                    var sagaIdIndexName = $"IX_{_indexTableName.Schema}_{_indexTableName.Name}_saga_id";
-
-//                    command.CommandText = $@"
-//IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_indexTableName.Schema}')
-//	EXEC('CREATE SCHEMA {_indexTableName.Schema}')
-
-//----
-
-//IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_indexTableName.Schema}' AND TABLE_NAME = '{_indexTableName.Name}')
-//    CREATE TABLE {_indexTableName.QualifiedName} (
-//	    [saga_type] [nvarchar](40) NOT NULL,
-//	    [key] [nvarchar](200) NOT NULL,
-//	    [value] [nvarchar](200) NOT NULL,
-//	    [saga_id] [uniqueidentifier] NOT NULL,
-//        CONSTRAINT [PK_{_indexTableName.Schema}_{_indexTableName.Name}] PRIMARY KEY CLUSTERED 
-//        (
-//	        [key] ASC,
-//	        [value] ASC,
-//	        [saga_type] ASC
-//        )
-//    )
-
-//----
-
-//IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{sagaIdIndexName}')
-//    CREATE NONCLUSTERED INDEX [{sagaIdIndexName}] ON {_indexTableName.QualifiedName}
-//    (
-//	    [saga_id] ASC
-//    )
-//";
-
-//                    await command.ExecuteNonQueryAsync();
-//                }
-
-//                using (var command = connection.CreateCommand())
-//                {
-//                    command.CommandText =
-//                        $@"
-
-//ALTER TABLE {_indexTableName.QualifiedName} WITH CHECK 
-//    ADD CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id] FOREIGN KEY([saga_id])
-
-//REFERENCES {_dataTableName.QualifiedName} ([id]) ON DELETE CASCADE
-
-//";
-
-//                    await command.ExecuteNonQueryAsync();
-//                }
-
-//                using (var command = connection.CreateCommand())
-//                {
-//                    command.CommandText =
-//                        $@"
-//ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id]
-//";
-
-//                    await command.ExecuteNonQueryAsync();
-//                }
 
                 await connection.Complete();
             }
@@ -413,7 +329,7 @@ WHERE [index].[saga_type] = @saga_type
                     {
                         if (sqlException.Number == SqlServerMagic.PrimaryKeyViolationNumber)
                         {
-                            throw new ConcurrencyException("An exception occurred while attempting to insert saga data with ID {0}", sagaData.Id);
+                            throw new ConcurrencyException($"An exception occurred while attempting to insert saga data with ID {sagaData.Id}");
                         }
 
                         throw;
@@ -472,7 +388,7 @@ UPDATE {_dataTableName.QualifiedName}
 
                         if (rows == 0)
                         {
-                            throw new ConcurrencyException("Update of saga with ID {0} did not succeed because someone else beat us to it", sagaData.Id);
+                            throw new ConcurrencyException($"Update of saga with ID {sagaData.Id} did not succeed because someone else beat us to it");
                         }
                     }
 
@@ -510,7 +426,7 @@ UPDATE {_dataTableName.QualifiedName}
 
                     if (rows == 0)
                     {
-                        throw new ConcurrencyException("Delete of saga with ID {0} did not succeed because someone else beat us to it", sagaData.Id);
+                        throw new ConcurrencyException($"Delete of saga with ID {sagaData.Id} did not succeed because someone else beat us to it");
                     }
                 }
 
@@ -606,8 +522,7 @@ VALUES
                 {
                     if (sqlException.Number == SqlServerMagic.PrimaryKeyViolationNumber)
                     {
-                        throw new ConcurrencyException("Could not update index for saga with ID {0} because of a PK violation - there must already exist a saga instance that uses one of the following correlation properties: {1}", sagaData.Id,
-                            string.Join(", ", propertiesToIndexList.Select(p => $"{p.Key}='{p.Value}'")));
+                        throw new ConcurrencyException($"Could not update index for saga with ID {sagaData.Id} because of a PK violation - there must already exist a saga instance that uses one of the following correlation properties: {string.Join(", ", propertiesToIndexList.Select(p => $"{p.Key}='{p.Value}'"))}");
                     }
 
                     throw;
