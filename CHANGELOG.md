@@ -37,7 +37,7 @@
 
 * Register SQL Transport as if it was an external timeout manager, enabling message deferral from one-way clients
 
-## 4.0.0-b01
+## 4.0.0-b02
 
 * Update to Rebus 4
 * Add .NET Core support (netstandard1.6)
