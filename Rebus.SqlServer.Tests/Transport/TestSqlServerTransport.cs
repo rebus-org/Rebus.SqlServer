@@ -43,18 +43,18 @@ namespace Rebus.SqlServer.Tests.Transport
         [Test]
         public async Task ReceivesSentMessageWhenTransactionIsCommitted()
         {
-            using (var context = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
-                await _transport.Send(QueueName, RecognizableMessage(), AmbientTransactionContext.Current);
+                await _transport.Send(QueueName, RecognizableMessage(), scope.TransactionContext);
 
-                await context.Complete();
+                await scope.CompleteAsync();
             }
 
-            using (var context = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
-                var transportMessage = await _transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var transportMessage = await _transport.Receive(scope.TransactionContext, _cancellationToken);
 
-                await context.Complete();
+                await scope.CompleteAsync();
 
                 AssertMessageIsRecognized(transportMessage);
             }
@@ -63,16 +63,16 @@ namespace Rebus.SqlServer.Tests.Transport
         [Test]
         public async Task DoesNotReceiveSentMessageWhenTransactionIsNotCommitted()
         {
-            using (var context = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
-                await _transport.Send(QueueName, RecognizableMessage(), AmbientTransactionContext.Current);
+                await _transport.Send(QueueName, RecognizableMessage(), scope.TransactionContext);
 
                 //await context.Complete();
             }
 
-            using (var context = new DefaultTransactionContextScope())
+            using (var scope = new RebusTransactionScope())
             {
-                var transportMessage = await _transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
+                var transportMessage = await _transport.Receive(scope.TransactionContext, _cancellationToken);
 
                 Assert.That(transportMessage, Is.Null);
             }
@@ -89,10 +89,10 @@ namespace Rebus.SqlServer.Tests.Transport
             await Task.WhenAll(Enumerable.Range(0, numberOfMessages)
                 .Select(async i =>
                 {
-                    using (var context = new DefaultTransactionContextScope())
+                    using (var scope = new RebusTransactionScope())
                     {
-                        await _transport.Send(QueueName, RecognizableMessage(i), AmbientTransactionContext.Current);
-                        await context.Complete();
+                        await _transport.Send(QueueName, RecognizableMessage(i), scope.TransactionContext);
+                        await scope.CompleteAsync();
 
                         messageIds[i] = 0;
                     }
@@ -106,10 +106,10 @@ namespace Rebus.SqlServer.Tests.Transport
                 await Task.WhenAll(Enumerable.Range(0, numberOfMessages)
                     .Select(async i =>
                     {
-                        using (var context = new DefaultTransactionContextScope())
+                        using (var scope = new RebusTransactionScope())
                         {
-                            var msg = await _transport.Receive(AmbientTransactionContext.Current, _cancellationToken);
-                            await context.Complete();
+                            var msg = await _transport.Receive(scope.TransactionContext, _cancellationToken);
+                            await scope.CompleteAsync();
 
                             Interlocked.Increment(ref receivedMessages);
 
