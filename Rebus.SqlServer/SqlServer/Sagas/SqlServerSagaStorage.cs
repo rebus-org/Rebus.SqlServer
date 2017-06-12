@@ -523,6 +523,8 @@ UPDATE {_dataTableName.QualifiedName}
 
                 await connection.Complete();
             }
+
+            sagaData.Revision++;
         }
 
         void SetData(SqlCommand command, string data)

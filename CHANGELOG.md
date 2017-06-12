@@ -37,6 +37,10 @@
 
 * Register SQL Transport as if it was an external timeout manager, enabling message deferral from one-way clients
 
+## 3.1.1
+
+* Fix unspecified saga revision after delete (fixes clash with SQL Server saga auditing assumption that revision be incremented also on delete...)
+
 ----
 
 [cleytonb]: https://github.com/cleytonb

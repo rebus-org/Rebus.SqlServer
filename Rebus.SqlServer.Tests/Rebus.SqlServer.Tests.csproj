@@ -45,11 +45,11 @@
     <Reference Include="nunit.framework, Version=3.5.0.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
       <HintPath>..\packages\NUnit.3.5.0\lib\net45\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="Rebus, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Rebus.3.0.0\lib\NET45\Rebus.dll</HintPath>
+    <Reference Include="Rebus, Version=3.1.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Rebus.3.1.5\lib\NET45\Rebus.dll</HintPath>
     </Reference>
-    <Reference Include="Rebus.Tests.Contracts, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Rebus.Tests.Contracts.3.0.0\lib\NET45\Rebus.Tests.Contracts.dll</HintPath>
+    <Reference Include="Rebus.Tests.Contracts, Version=3.1.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Rebus.Tests.Contracts.3.1.5\lib\NET45\Rebus.Tests.Contracts.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -63,12 +63,14 @@
   <ItemGroup>
     <Compile Include="Assumptions\TestSpWho.cs" />
     <Compile Include="Assumptions\TestTableName.cs" />
+    <Compile Include="Bugs\TestBugWhenFinishingSagaAndAuditingIsEnabled.cs" />
     <Compile Include="Bugs\TestBugWhenSendingMessagesInParallel.cs" />
     <Compile Include="Bugs\TestNativeDeferToSomeoneElse.cs" />
     <Compile Include="DataBus\SqlServerDataBusStorageFactory.cs" />
     <Compile Include="DataBus\SqlServerDataBusStorageTest.cs" />
     <Compile Include="DataBus\TestSqlServerDataBusLazyRead.cs" />
     <Compile Include="DataBus\TestSqlServerDataBusStorage.cs" />
+    <Compile Include="Extensions\ConnectionExtensions.cs" />
     <Compile Include="Integration\NativeDeferTest.cs" />
     <Compile Include="Integration\SnapshotIsolationLevel.cs" />
     <Compile Include="Integration\TestSqlAllTheWay.cs" />
