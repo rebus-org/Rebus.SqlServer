@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
+using Rebus.SqlServer.Tests.Extensions;
 using Rebus.Exceptions;
 using Rebus.Tests.Contracts;
 
@@ -129,6 +130,19 @@ namespace Rebus.SqlServer.Tests
             catch (Exception exception)
             {
                 Console.WriteLine("Could not execute sp_who: {0}", exception);
+            }
+        }
+
+        public static IEnumerable<T> Query<T>(string query)
+        {
+            using (var connection = new SqlConnection(ConnectionString))
+            {
+                connection.Open();
+
+                foreach (var result in connection.Query<T>(query))
+                {
+                    yield return result;
+                }
             }
         }
 
