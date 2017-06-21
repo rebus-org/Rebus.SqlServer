@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
+using Rebus.SqlServer;
+using Rebus.SqlServer.Transport;
 using Rebus.Threading;
 using Rebus.Timeouts;
 using Rebus.Transport;
 
-namespace Rebus.SqlServer.Transport
+namespace Rebus.Config
 {
     /// <summary>
     /// Configuration extensions for the SQL transport
