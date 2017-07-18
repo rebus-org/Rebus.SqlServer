@@ -41,11 +41,12 @@
 
 * Fix unspecified saga revision after delete (fixes clash with SQL Server saga auditing assumption that revision be incremented also on delete...)
 
-## 4.0.0-b07
+## 4.0.0-b08
 
 * Update to Rebus 4
 * Add .NET Core support (netstandard1.6)
-* Update deps to b12
+* Update deps to b16
+* Made `CurrentConnectionKey` of `SqlTransport` public
 
 ----
 

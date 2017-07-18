@@ -36,11 +36,16 @@ namespace Rebus.SqlServer.Transport
         public const string MessagePriorityHeaderKey = "rbs2-msg-priority";
 
         /// <summary>
+        /// Key of the transport's currently used database connection. Can be retrieved from the context and used e.g.
+        /// in a connection provider which is then in turn used in repositories and such. This way, "exactly once delivery" can actually be had.
+        /// </summary>
+        public const string CurrentConnectionKey = "sql-server-transport-current-connection";
+
+        /// <summary>
         /// Default interval that will be used for <see cref="ExpiredMessagesCleanupInterval"/> unless it is explicitly set to something else
         /// </summary>
         public static readonly TimeSpan DefaultExpiredMessagesCleanupInterval = TimeSpan.FromSeconds(20);
 
-        const string CurrentConnectionKey = "sql-server-transport-current-connection";
         const int RecipientColumnSize = 200;
 
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
