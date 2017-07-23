@@ -42,7 +42,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj" />
-    <PackageReference Include="nunit" Version="3.6.1" />
+    <PackageReference Include="nunit" Version="3.7.1" />
     <PackageReference Include="rebus" Version="4.0.0-b16" />
     <PackageReference Include="rebus.tests.contracts" Version="4.0.0-b16" />
   </ItemGroup>
