@@ -6,6 +6,7 @@ using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Messages;
+using Rebus.Routing.TypeBased;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
@@ -31,6 +32,7 @@ namespace Rebus.SqlServer.Tests.Integration
 
             _bus = Configure.With(_activator)
                 .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, "Messages", QueueName))
+                .Routing(r => r.TypeBased().Map<TimedMessage>(QueueName))
                 .Options(o =>
                 {
                     o.LogPipeline();
