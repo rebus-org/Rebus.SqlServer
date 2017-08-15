@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Auditing.Sagas;
 using Rebus.Config;
+using Rebus.Persistence.InMem;
 using Rebus.Sagas;
 using Rebus.Tests.Contracts;
 using Rebus.Transport.InMem;
@@ -25,6 +26,7 @@ namespace Rebus.SqlServer.Tests.Bugs
 
             Configure.With(_activator)
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "auditing-buggerino"))
+                .Sagas(s => s.StoreInMemory())
                 .Options(o =>
                 {
                     o.EnableSagaAuditing().StoreInSqlServer(SqlTestHelper.ConnectionString, TableName);
