@@ -46,10 +46,24 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public static readonly TimeSpan DefaultExpiredMessagesCleanupInterval = TimeSpan.FromSeconds(20);
 
+		/// <summary>
+		/// Size, in the database, of the recipient column
+		/// </summary>
 	    protected const int RecipientColumnSize = 200;
 
+		/// <summary>
+		/// Connection provider for obtaining a database connection
+		/// </summary>
 		protected readonly IDbConnectionProvider ConnectionProvider;
+
+		/// <summary>
+		/// Name of the queue being processed by this transport
+		/// </summary>
 	    protected readonly string InputQueueName;
+
+		/// <summary>
+		/// Name of the table this transport is using for storage
+		/// </summary>
 	    protected readonly TableName TableName;
 		
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
@@ -304,6 +318,10 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 		    return receivedTransportMessage;
 	    }
 
+		/// <summary>
+		/// Maps a <seealso cref="SqlDataReader"/> that's read a result from the message table into a <seealso cref="TransportMessage"/>
+		/// </summary>
+		/// <returns>A <seealso cref="TransportMessage"/> representing the row or <c>null</c> if no row was available</returns>
 	    protected static async Task<TransportMessage> ExtractTransportMessageFromReader(SqlDataReader reader, CancellationToken cancellationToken) {
 			if (await reader.ReadAsync(cancellationToken) == false) {
 				return null;
