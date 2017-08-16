@@ -142,7 +142,19 @@ OUTPUT	inserted.*";
 			return transportMessage;
 	    }
 
-		/// <summary>
+	    /// <summary>
+	    /// Provides an oppurtunity for derived implementations to also update the schema
+	    /// </summary>
+	    protected override string AdditionalSchenaModifications(IDbConnection connection) {
+			return $@"
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leaseduntil')
+BEGIN
+	ALTER TABLE {TableName.QualifiedName} ADD leaseduntil datetime2 null
+END
+";
+		}
+
+	    /// <summary>
 		/// Responsible for releasing the lease on message failure and removing the message on transaction commit
 		/// </summary>
 		/// <param name="context">Transaction context of the message processing</param>

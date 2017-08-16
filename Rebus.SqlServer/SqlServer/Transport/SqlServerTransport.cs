@@ -123,6 +123,14 @@ namespace Rebus.SqlServer.Transport
             }
         }
 
+		/// <summary>
+		/// Provides an oppurtunity for derived implementations to also update the schema
+		/// </summary>
+		protected virtual string AdditionalSchenaModifications(IDbConnection connection)
+		{
+			return string.Empty;
+		}
+
         void CreateSchema()
         {
             using (var connection = ConnectionProvider.GetConnection().Result)
@@ -132,6 +140,10 @@ namespace Rebus.SqlServer.Transport
                 if (tableNames.Contains(TableName))
                 {
                     _log.Info("Database already contains a table named {tableName} - will not create anything", TableName.QualifiedName);
+					string additional = AdditionalSchenaModifications(connection);
+					ExecuteCommands(connection, additional);
+
+					connection.Complete().Wait();
                     return;
                 }
 
@@ -185,6 +197,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
     )
 
 ");
+
+				AdditionalSchenaModifications(connection);
 
                 connection.Complete().Wait();
             }
