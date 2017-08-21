@@ -150,11 +150,12 @@ namespace Rebus.SqlServer.Transport
             using (var connection = ConnectionProvider.GetConnection().Result)
             {
                 var tableNames = connection.GetTableNames();
-                
-                if (tableNames.Contains(TableName))
+				string additional = null;
+				
+				if (tableNames.Contains(TableName))
                 {
                     _log.Info("Database already contains a table named {tableName} - will not create anything", TableName.QualifiedName);
-					string additional = AdditionalSchenaModifications(connection);
+					additional = AdditionalSchenaModifications(connection);
 					ExecuteCommands(connection, additional);
 
 					connection.Complete().Wait();
@@ -212,9 +213,10 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
 ");
 
-				AdditionalSchenaModifications(connection);
+	            additional = AdditionalSchenaModifications(connection);
+	            ExecuteCommands(connection, additional);
 
-                connection.Complete().Wait();
+				connection.Complete().Wait();
             }
         }
 
