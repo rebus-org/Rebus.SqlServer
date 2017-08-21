@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using NUnit.Framework;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.SqlServer.Transport;
@@ -9,15 +8,9 @@ using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Transport;
 
-namespace Rebus.SqlServer.Tests.Transport
+namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 {
-    [TestFixture, Category(Categories.SqlServer)]
-    public class SqlServerTransportBasicSendReceive : BasicSendReceive<SqlTransportFactory> { }
-
-    [TestFixture, Category(Categories.SqlServer)]
-    public class SqlServerTransportMessageExpiration : MessageExpiration<SqlTransportFactory> { }
-
-    public class SqlTransportFactory : ITransportFactory
+    public class SqlLeaseTransportFactory : ITransportFactory
     {
         readonly HashSet<string> _tablesToDrop = new HashSet<string>();
         readonly List<IDisposable> _disposables = new List<IDisposable>();
@@ -26,12 +19,16 @@ namespace Rebus.SqlServer.Tests.Transport
         {
             var tableName = ("RebusMessages_" + TestConfig.Suffix).TrimEnd('_');
 
+            SqlTestHelper.DropTable(tableName);
+
             _tablesToDrop.Add(tableName);
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, tableName, null, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new SqlServerLeaseTransport(connectionProvider, tableName, null, consoleLoggerFactory,
+                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2));
+            //var transport = new SqlServerTransport(connectionProvider, tableName, null, consoleLoggerFactory, asyncTaskFactory);
 
             _disposables.Add(transport);
 
@@ -45,12 +42,16 @@ namespace Rebus.SqlServer.Tests.Transport
         {
             var tableName = ("RebusMessages_" + TestConfig.Suffix).TrimEnd('_');
 
+            SqlTestHelper.DropTable(tableName);
+
             _tablesToDrop.Add(tableName);
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new SqlServerLeaseTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory,
+                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2));
+//            var transport = new SqlServerTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
             
             _disposables.Add(transport);
             

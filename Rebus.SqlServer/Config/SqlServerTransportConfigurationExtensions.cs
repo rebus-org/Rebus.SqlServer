@@ -98,7 +98,7 @@ namespace Rebus.Config
 			ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), tableName, inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
 		}
 
-		private delegate SqlServerTransport TransportFactoryDelegate(IResolutionContext context, IDbConnectionProvider connectionProvider, string tableName, string inputQueueName);
+		delegate SqlServerTransport TransportFactoryDelegate(IResolutionContext context, IDbConnectionProvider connectionProvider, string tableName, string inputQueueName);
 
 		/// <summary>
 		/// Configures everything for a standard <seealso cref="SqlServerTransport"/>
