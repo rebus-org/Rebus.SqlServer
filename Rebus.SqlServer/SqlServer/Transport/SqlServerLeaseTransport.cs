@@ -250,7 +250,7 @@ SET		leaseduntil =	CASE
 WHERE	id = @id
 ";
 					command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
-					command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.BigInt).Value = leaseIntervalMilliseconds;
+					command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.BigInt).Value = (object)leaseIntervalMilliseconds ?? DBNull.Value;
 					await command.ExecuteNonQueryAsync();
 				}
 
