@@ -37,10 +37,10 @@ namespace Rebus.SqlServer.Transport
 		/// </summary>
 		public static readonly TimeSpan DefaultLeaseAutomaticRenewal = TimeSpan.FromSeconds(150);
 
-	    private readonly long _leaseIntervalMilliseconds;
-	    private readonly long _leaseToleranceMilliseconds;
-	    private readonly bool _automaticLeaseRenewal;
-	    private readonly long _automaticLeaseRenewalIntervalMilliseconds;
+	    readonly long _leaseIntervalMilliseconds;
+	    readonly long _leaseToleranceMilliseconds;
+	    readonly bool _automaticLeaseRenewal;
+	    readonly long _automaticLeaseRenewalIntervalMilliseconds;
 
 		/// <summary>
 		/// Constructor
