@@ -27,7 +27,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var transport = new SqlServerLeaseTransport(connectionProvider, tableName, null, consoleLoggerFactory,
-                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2));
+                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
             //var transport = new SqlServerTransport(connectionProvider, tableName, null, consoleLoggerFactory, asyncTaskFactory);
 
             _disposables.Add(transport);
@@ -50,7 +50,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var transport = new SqlServerLeaseTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory,
-                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2));
+                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
 //            var transport = new SqlServerTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
             
             _disposables.Add(transport);
