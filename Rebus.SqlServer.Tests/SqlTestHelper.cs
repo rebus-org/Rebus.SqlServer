@@ -210,7 +210,7 @@ namespace Rebus.SqlServer.Tests
         static string GetConnectionStringForDatabase(string databaseName)
         {
             return Environment.GetEnvironmentVariable("REBUS_SQLSERVER")
-                   ?? $"server=.\\SqlExpress; database={databaseName}; trusted_connection=true;";
+                   ?? $"server=.; database={databaseName}; trusted_connection=true;";
         }
     }
 }
