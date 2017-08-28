@@ -116,6 +116,7 @@ namespace Rebus.SqlServer.Transport
 			[id],
 			[headers],
 			[body],
+			[leasedat],
 			[leaseduntil],
 			[leasedby]
 	FROM	{TableName.QualifiedName} M WITH (ROWLOCK, READPAST)
@@ -132,8 +133,9 @@ namespace Rebus.SqlServer.Transport
 			[id] ASC
 )
 UPDATE	TopCTE WITH (ROWLOCK)
-SET		leaseduntil = DATEADD(ms, @leasemilliseconds, getdate()),
-		leasedby = @leasedby
+SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, getdate()),
+		[leasedat] = getdate(),
+		[leasedby] = @leasedby
 OUTPUT	inserted.*";
 					selectCommand.Parameters.Add("@recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
 					selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.BigInt).Value = _leaseIntervalMilliseconds;
@@ -178,6 +180,15 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{T
 BEGIN
 	ALTER TABLE {TableName.QualifiedName} ADD leasedby nvarchar({LeasedByColumnSize}) null
 END
+
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leasedat')
+BEGIN
+	ALTER TABLE {TableName.QualifiedName} ADD leasedat datetime2 null
+END
+
 ";
 		}
 
@@ -276,6 +287,10 @@ SET		leaseduntil =	CASE
 		leasedby	=	CASE
 							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
 							ELSE leasedby
+						END,
+		leasedat	=	CASE
+							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
+							ELSE leasedat
 						END
 WHERE	id = @id
 ";
