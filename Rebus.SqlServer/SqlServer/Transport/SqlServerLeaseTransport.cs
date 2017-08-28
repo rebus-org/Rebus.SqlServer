@@ -165,7 +165,7 @@ OUTPUT	inserted.*";
 	    /// <summary>
 	    /// Provides an oppurtunity for derived implementations to also update the schema
 	    /// </summary>
-	    protected override string AdditionalSchenaModifications(IDbConnection connection) {
+	    protected override string AdditionalSchemaModifications(IDbConnection connection) {
 			return $@"
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leaseduntil')
 BEGIN
