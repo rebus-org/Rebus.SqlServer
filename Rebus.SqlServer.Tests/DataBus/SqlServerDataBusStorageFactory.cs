@@ -16,7 +16,7 @@ namespace Rebus.SqlServer.Tests.DataBus
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
-            var sqlServerDataBusStorage = new SqlServerDataBusStorage(connectionProvider, "databus", true, consoleLoggerFactory);
+            var sqlServerDataBusStorage = new SqlServerDataBusStorage(connectionProvider, "databus", true, consoleLoggerFactory, 240);
             sqlServerDataBusStorage.Initialize();
             return sqlServerDataBusStorage;
         }

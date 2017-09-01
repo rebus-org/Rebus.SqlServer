@@ -26,18 +26,19 @@ namespace Rebus.SqlServer.DataBus
         readonly TableName _tableName;
         readonly bool _ensureTableIsCreated;
         readonly ILog _log;
+        readonly int _commandTimeout ;
 
         /// <summary>
         /// Creates the data storage
         /// </summary>
-        public SqlServerDataBusStorage(IDbConnectionProvider connectionProvider, string tableName, bool ensureTableIsCreated, IRebusLoggerFactory rebusLoggerFactory)
+        public SqlServerDataBusStorage(IDbConnectionProvider connectionProvider, string tableName, bool ensureTableIsCreated, IRebusLoggerFactory rebusLoggerFactory, int commandTimeout)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
-            _connectionProvider = connectionProvider;
+            _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             _tableName = TableName.Parse(tableName);
             _ensureTableIsCreated = ensureTableIsCreated;
+            _commandTimeout = commandTimeout;
             _log = rebusLoggerFactory.GetLogger<SqlServerDataBusStorage>();
         }
 
@@ -132,6 +133,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 {
                     using (var command = connection.CreateCommand())
                     {
+                        command.CommandTimeout = _commandTimeout;
                         command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data], [CreationTime]) VALUES (@id, @meta, @data, @now)";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
                         command.Parameters.Add("meta", SqlDbType.VarBinary).Value = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
@@ -166,6 +168,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 {
                     try
                     {
+                        command.CommandTimeout = _commandTimeout;
                         command.CommandText = $"SELECT TOP 1 [Data] FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
 

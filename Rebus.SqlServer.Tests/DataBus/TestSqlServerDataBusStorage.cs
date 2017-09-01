@@ -27,7 +27,7 @@ namespace Rebus.SqlServer.Tests.DataBus
 
             SqlTestHelper.DropTable(tableName);
 
-            _storage = new SqlServerDataBusStorage(connectionProvider, tableName, true, loggerFactory);
+            _storage = new SqlServerDataBusStorage(connectionProvider, tableName, true, loggerFactory, 240);
             _storage.Initialize();
         }
 
