@@ -58,8 +58,28 @@ namespace Rebus.SqlServer.DataBus
         {
             using (var connection = await _connectionProvider.GetConnection())
             {
+
                 if (connection.GetTableNames().Contains(_tableName))
+                {
+                    var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
+                    if (!columns.Any(x => x.Name == "CreationTime"))
+                    {
+                        using (var command = connection.CreateCommand())
+                        {
+                            command.CommandText = $@"
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'CreationTime' AND Object_ID = Object_ID(N'{_tableName.QualifiedName}'))
+BEGIN
+    ALTER TABLE {_tableName.QualifiedName} ADD [CreationTime] DATETIMEOFFSET
+END
+";
+                            command.ExecuteNonQuery();
+                        }
+
+                        await connection.Complete();
+                    }
+
                     return;
+                }
 
                 using (var command = connection.CreateCommand())
                 {
@@ -74,6 +94,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         [Id] VARCHAR(200),
         [Meta] VARBINARY(MAX),
         [Data] VARBINARY(MAX),
+        [CreationTime] DATETIMEOFFSET,
         [LastReadTime] DATETIMEOFFSET
     );
 
@@ -111,10 +132,11 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 {
                     using (var command = connection.CreateCommand())
                     {
-                        command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data]) VALUES (@id, @meta, @data)";
+                        command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data], [CreationTime]) VALUES (@id, @meta, @data, @now)";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
                         command.Parameters.Add("meta", SqlDbType.VarBinary).Value = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
                         command.Parameters.Add("data", SqlDbType.VarBinary).Value = source;
+                        command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
 
                         await command.ExecuteNonQueryAsync();
                     }
