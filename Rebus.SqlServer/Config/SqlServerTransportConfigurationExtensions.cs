@@ -75,7 +75,8 @@ namespace Rebus.Config
 		/// <param name="leaseTolerance">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTolerance"/>. Workers will wait for this amount of time to elapse, beyond the lease time, before they pick up an already leased message.</param>
 		/// <param name="automaticallyRenewLeases">If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <paramref name="leaseAutoRenewInterval"/></param>
 		/// <param name="leaseAutoRenewInterval">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal"/>. Specifies how frequently a lease will be renewed whilst the worker is processing a message. Lower values decrease the chance of other workers processing the same message but increase DB communication. A value 50% of <paramref name="leaseInterval"/> should be appropriate</param>
-		public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null)
+		/// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
+		public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
 		{
 			ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory), tableName, inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
 		}
@@ -93,7 +94,8 @@ namespace Rebus.Config
 		/// <param name="leaseTolerance">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTolerance"/>. Workers will wait for this amount of time to elapse, beyond the lease time, before they pick up an already leased message.</param>
 		/// <param name="automaticallyRenewLeases">If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <paramref name="leaseAutoRenewInterval"/></param>
 		/// <param name="leaseAutoRenewInterval">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal"/>. Specifies how frequently a lease will be renewed whilst the worker is processing a message. Lower values decrease the chance of other workers processing the same message but increase DB communication. A value 50% of <paramref name="leaseInterval"/> should be appropriate</param>
-		public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null)
+		/// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
+		public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
 		{
 			ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), tableName, inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
 		}
@@ -111,9 +113,13 @@ namespace Rebus.Config
 		/// <summary>
 		/// Configures everything for a leased <seealso cref="SqlServerLeaseTransport"/>
 		/// </summary>	
-		static void ConfigureInLeaseMode(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null)
+		static void ConfigureInLeaseMode(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
 		{
-			Configure(configurer, connectionProviderFactory, tableName, inputQueueName, (context, provider, name, queueName) => new SqlServerLeaseTransport(provider, name, inputQueueName, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), leaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime, leaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance, automaticallyRenewLeases ? (TimeSpan?)null : leaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal));
+			if (leasedByFactory == null) {
+				leasedByFactory = () => Environment.MachineName;
+			}
+
+			Configure(configurer, connectionProviderFactory, tableName, inputQueueName, (context, provider, name, queueName) => new SqlServerLeaseTransport(provider, name, inputQueueName, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), leaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime, leaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance, leasedByFactory, automaticallyRenewLeases ? (TimeSpan?)null : leaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal));
 		}
 
 		static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string tableName, string inputQueueName, TransportFactoryDelegate transportFactory)

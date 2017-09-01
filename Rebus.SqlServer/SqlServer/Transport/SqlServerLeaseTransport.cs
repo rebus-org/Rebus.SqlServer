@@ -17,10 +17,15 @@ namespace Rebus.SqlServer.Transport
 	/// </summary>
     public class SqlServerLeaseTransport : SqlServerTransport
     {
-		/// <summary>
+	    /// <summary>
 		/// Key for storing the outbound message buffer when performing <seealso cref="Send"/>
 		/// </summary>
 	    public const string OutboundMessageBufferKey = "sql-server-transport-leased-outbound-message-buffer";
+
+		/// <summary>
+		/// Size of the leasedby column
+		/// </summary>
+	    public const int LeasedByColumnSize = 200;
 
 		/// <summary>
 		/// If not specified the default time messages are leased for
@@ -37,15 +42,25 @@ namespace Rebus.SqlServer.Transport
 		/// </summary>
 		public static readonly TimeSpan DefaultLeaseAutomaticRenewal = TimeSpan.FromSeconds(150);
 
-	    readonly long _leaseIntervalMilliseconds;
-	    readonly long _leaseToleranceMilliseconds;
-	    readonly bool _automaticLeaseRenewal;
-	    readonly long _automaticLeaseRenewalIntervalMilliseconds;
+		readonly long _leaseIntervalMilliseconds;
+		readonly long _leaseToleranceMilliseconds;
+		readonly bool _automaticLeaseRenewal;
+		readonly long _automaticLeaseRenewalIntervalMilliseconds;
+		readonly Func<string> _leasedByFactory;
 
 		/// <summary>
 		/// Constructor
 		/// </summary>
-	    public SqlServerLeaseTransport(
+		/// <param name="connectionProvider">A <see cref="IDbConnection"/> to obtain a database connection</param>
+		/// <param name="tableName">Name of the table to store messages in</param>
+		/// <param name="inputQueueName">Name of the queue this transport is servicing</param>
+		/// <param name="rebusLoggerFactory">A <seealso cref="IRebusLoggerFactory"/> for building loggers</param>
+		/// <param name="asyncTaskFactory">A <seealso cref="IAsyncTaskFactory"/> for creating periodic tasks</param>
+		/// <param name="leaseInterval">Interval of time messages are leased for</param>
+		/// <param name="leaseTolerance">Buffer to allow lease overruns by</param>
+		/// <param name="leasedByFactory">Factory for generating a string which identifies who has leased a message (eg. A hostname)</param>
+		/// <param name="automaticLeaseRenewalInterval">If non-<c>null</c> messages will be automatically re-leased after this time period has elapsed</param>
+		public SqlServerLeaseTransport(
 			IDbConnectionProvider connectionProvider, 
 			string tableName, 
 			string inputQueueName, 
@@ -53,9 +68,11 @@ namespace Rebus.SqlServer.Transport
 			IAsyncTaskFactory asyncTaskFactory,
 			TimeSpan leaseInterval, 
 			TimeSpan? leaseTolerance,
+			Func<string> leasedByFactory,
 			TimeSpan? automaticLeaseRenewalInterval = null
 			) : base(connectionProvider, tableName, inputQueueName, rebusLoggerFactory, asyncTaskFactory)
 		{
+			_leasedByFactory = leasedByFactory;
 			_leaseIntervalMilliseconds = (long)Math.Ceiling(leaseInterval.TotalMilliseconds);
 			_leaseToleranceMilliseconds = (long)Math.Ceiling((leaseTolerance ?? TimeSpan.FromSeconds(15)).TotalMilliseconds);
 			if (automaticLeaseRenewalInterval.HasValue == false) {
@@ -99,7 +116,9 @@ namespace Rebus.SqlServer.Transport
 			[id],
 			[headers],
 			[body],
-			[leaseduntil]
+			[leasedat],
+			[leaseduntil],
+			[leasedby]
 	FROM	{TableName.QualifiedName} M WITH (ROWLOCK, READPAST)
 	WHERE	M.[recipient] = @recipient
 	AND		M.[visible] < getdate()
@@ -114,11 +133,14 @@ namespace Rebus.SqlServer.Transport
 			[id] ASC
 )
 UPDATE	TopCTE WITH (ROWLOCK)
-SET		leaseduntil = DATEADD(ms, @leasemilliseconds, getdate())
+SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, getdate()),
+		[leasedat] = getdate(),
+		[leasedby] = @leasedby
 OUTPUT	inserted.*";
 					selectCommand.Parameters.Add("@recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
 					selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.BigInt).Value = _leaseIntervalMilliseconds;
 					selectCommand.Parameters.Add("@leasetolerancemilliseconds", SqlDbType.BigInt).Value = _leaseToleranceMilliseconds;
+					selectCommand.Parameters.Add("@leasedby", SqlDbType.VarChar, LeasedByColumnSize).Value = _leasedByFactory();
 
 					try {
 						using (SqlDataReader reader = await selectCommand.ExecuteReaderAsync(cancellationToken)) {
@@ -145,12 +167,28 @@ OUTPUT	inserted.*";
 	    /// <summary>
 	    /// Provides an oppurtunity for derived implementations to also update the schema
 	    /// </summary>
-	    protected override string AdditionalSchenaModifications(IDbConnection connection) {
+	    protected override string AdditionalSchemaModifications(IDbConnection connection) {
 			return $@"
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leaseduntil')
 BEGIN
 	ALTER TABLE {TableName.QualifiedName} ADD leaseduntil datetime2 null
 END
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leasedby')
+BEGIN
+	ALTER TABLE {TableName.QualifiedName} ADD leasedby nvarchar({LeasedByColumnSize}) null
+END
+
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leasedat')
+BEGIN
+	ALTER TABLE {TableName.QualifiedName} ADD leasedat datetime2 null
+END
+
 ";
 		}
 
@@ -235,7 +273,6 @@ WHERE	id = @id
 		/// <param name="tableName">Name of the table the messages are stored in</param>
 		/// <param name="messageId">Identifier of the message whose lease is being updated</param>
 		/// <param name="leaseIntervalMilliseconds">New lease interval in milliseconds. If <c>null</c> the lease will be released</param>
-		/// <returns></returns>
 		private static async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, long? leaseIntervalMilliseconds)
 		{
 			using (IDbConnection connection = await connectionProvider.GetConnection()) {
@@ -244,8 +281,16 @@ WHERE	id = @id
 					command.CommandText = $@"
 UPDATE	{tableName} WITH (ROWLOCK)
 SET		leaseduntil =	CASE
-							WHEN @leaseintervalmilliseconds IS NULL then NULL
+							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
 							ELSE dateadd(ms, @leaseintervalmilliseconds, getdate())
+						END,
+		leasedby	=	CASE
+							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
+							ELSE leasedby
+						END,
+		leasedat	=	CASE
+							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
+							ELSE leasedat
 						END
 WHERE	id = @id
 ";

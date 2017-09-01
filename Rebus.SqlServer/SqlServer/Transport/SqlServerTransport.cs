@@ -140,7 +140,7 @@ namespace Rebus.SqlServer.Transport
 		/// <summary>
 		/// Provides an oppurtunity for derived implementations to also update the schema
 		/// </summary>
-		protected virtual string AdditionalSchenaModifications(IDbConnection connection)
+		protected virtual string AdditionalSchemaModifications(IDbConnection connection)
 		{
 			return string.Empty;
 		}
@@ -155,7 +155,7 @@ namespace Rebus.SqlServer.Transport
 				if (tableNames.Contains(TableName))
                 {
                     _log.Info("Database already contains a table named {tableName} - will not create anything", TableName.QualifiedName);
-					additional = AdditionalSchenaModifications(connection);
+					additional = AdditionalSchemaModifications(connection);
 					ExecuteCommands(connection, additional);
 
 					connection.Complete().Wait();
@@ -213,7 +213,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
 ");
 
-	            additional = AdditionalSchenaModifications(connection);
+	            additional = AdditionalSchemaModifications(connection);
 	            ExecuteCommands(connection, additional);
 
 				connection.Complete().Wait();
