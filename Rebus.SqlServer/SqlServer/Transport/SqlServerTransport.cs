@@ -46,29 +46,29 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public static readonly TimeSpan DefaultExpiredMessagesCleanupInterval = TimeSpan.FromSeconds(20);
 
-		/// <summary>
-		/// Size, in the database, of the recipient column
-		/// </summary>
-	    protected const int RecipientColumnSize = 200;
+        /// <summary>
+        /// Size, in the database, of the recipient column
+        /// </summary>
+        protected const int RecipientColumnSize = 200;
 
-		/// <summary>
-		/// Connection provider for obtaining a database connection
-		/// </summary>
-		protected readonly IDbConnectionProvider ConnectionProvider;
+        /// <summary>
+        /// Connection provider for obtaining a database connection
+        /// </summary>
+        protected readonly IDbConnectionProvider ConnectionProvider;
 
-		/// <summary>
-		/// Name of the queue being processed by this transport
-		/// </summary>
-	    protected readonly string InputQueueName;
+        /// <summary>
+        /// Name of the queue being processed by this transport
+        /// </summary>
+        protected readonly string InputQueueName;
 
-		/// <summary>
-		/// Name of the table this transport is using for storage
-		/// </summary>
-	    protected readonly TableName TableName;
-		
+        /// <summary>
+        /// Name of the table this transport is using for storage
+        /// </summary>
+        protected readonly TableName TableName;
+
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
-        
-        
+
+
         readonly ILog _log;
 
         readonly IAsyncTask _expiredMessagesCleanupTask;
@@ -127,38 +127,31 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public void EnsureTableIsCreated()
         {
-            try
-            {
-                CreateSchema();
-            }
-            catch (SqlException exception)
-            {
-                throw new RebusApplicationException(exception, $"Error attempting to initialize SQL transport schema with mesages table {TableName.QualifiedName}");
-            }
+            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
         }
 
-		/// <summary>
-		/// Provides an oppurtunity for derived implementations to also update the schema
-		/// </summary>
-		protected virtual string AdditionalSchemaModifications(IDbConnection connection)
-		{
-			return string.Empty;
-		}
-
-        void CreateSchema()
+        /// <summary>
+        /// Provides an oppurtunity for derived implementations to also update the schema
+        /// </summary>
+        protected virtual string AdditionalSchemaModifications(IDbConnection connection)
         {
-            using (var connection = ConnectionProvider.GetConnection().Result)
+            return string.Empty;
+        }
+
+        async Task EnsureTableIsCreatedAsync()
+        {
+            using (var connection = await ConnectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
-				string additional = null;
-				
-				if (tableNames.Contains(TableName))
+                string additional = null;
+
+                if (tableNames.Contains(TableName))
                 {
                     _log.Info("Database already contains a table named {tableName} - will not create anything", TableName.QualifiedName);
-					additional = AdditionalSchemaModifications(connection);
-					ExecuteCommands(connection, additional);
+                    additional = AdditionalSchemaModifications(connection);
+                    ExecuteCommands(connection, additional);
 
-					connection.Complete().Wait();
+                    await connection.Complete();
                     return;
                 }
 
@@ -213,16 +206,16 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
 ");
 
-	            additional = AdditionalSchemaModifications(connection);
-	            ExecuteCommands(connection, additional);
+                additional = AdditionalSchemaModifications(connection);
+                ExecuteCommands(connection, additional);
 
-				connection.Complete().Wait();
+                await connection.Complete();
             }
         }
 
         static void ExecuteCommands(IDbConnection connection, string sqlCommands)
         {
-            foreach (var sqlCommand in sqlCommands.Split(new[] {"----"}, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var sqlCommand in sqlCommands.Split(new[] { "----" }, StringSplitOptions.RemoveEmptyEntries))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -259,29 +252,32 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
             await InnerSend(destinationAddressToUse, message, connection);
         }
 
-	    /// <summary>
+        /// <summary>
         /// Receives the next message by querying the messages table for a message with a recipient matching this transport's <see cref="Address"/>
         /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
-            using (await _bottleneck.Enter(cancellationToken)) {
-	            return await ReceiveInternal(context, cancellationToken);
+            using (await _bottleneck.Enter(cancellationToken))
+            {
+                return await ReceiveInternal(context, cancellationToken);
             }
         }
 
-		/// <summary>
-		/// Handle retrieving a message from the queue, decoding it, and performing any transaction maintenance.
-		/// </summary>
-		/// <param name="context">Tranasction context the receive is operating on</param>
-		/// <param name="cancellationToken">Token to abort processing</param>
-		/// <returns>A <seealso cref="TransportMessage"/> or <c>null</c> if no message can be dequeued</returns>
-	    protected virtual async Task<TransportMessage> ReceiveInternal(ITransactionContext context, CancellationToken cancellationToken) {
-		    var connection = await GetConnection(context);
+        /// <summary>
+        /// Handle retrieving a message from the queue, decoding it, and performing any transaction maintenance.
+        /// </summary>
+        /// <param name="context">Tranasction context the receive is operating on</param>
+        /// <param name="cancellationToken">Token to abort processing</param>
+        /// <returns>A <seealso cref="TransportMessage"/> or <c>null</c> if no message can be dequeued</returns>
+        protected virtual async Task<TransportMessage> ReceiveInternal(ITransactionContext context, CancellationToken cancellationToken)
+        {
+            var connection = await GetConnection(context);
 
-		    TransportMessage receivedTransportMessage;
+            TransportMessage receivedTransportMessage;
 
-		    using (var selectCommand = connection.CreateCommand()) {
-			    selectCommand.CommandText = $@"
+            using (var selectCommand = connection.CreateCommand())
+            {
+                selectCommand.CommandText = $@"
 	SET NOCOUNT ON
 
 	;WITH TopCTE AS (
@@ -304,50 +300,55 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 						
 						";
 
-			    selectCommand.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
+                selectCommand.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
 
-			    try {
-				    using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken)) {
-						receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken);
-				    }
-			    }
-			    catch (Exception exception) when (cancellationToken.IsCancellationRequested) {
-				    // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
-				    throw new TaskCanceledException("Receive operation was cancelled", exception);
-			    }
-		    }
+                try
+                {
+                    using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken))
+                    {
+                        receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken);
+                    }
+                }
+                catch (Exception exception) when (cancellationToken.IsCancellationRequested)
+                {
+                    // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
+                    throw new TaskCanceledException("Receive operation was cancelled", exception);
+                }
+            }
 
-		    return receivedTransportMessage;
-	    }
+            return receivedTransportMessage;
+        }
 
-		/// <summary>
-		/// Maps a <seealso cref="SqlDataReader"/> that's read a result from the message table into a <seealso cref="TransportMessage"/>
-		/// </summary>
-		/// <returns>A <seealso cref="TransportMessage"/> representing the row or <c>null</c> if no row was available</returns>
-	    protected static async Task<TransportMessage> ExtractTransportMessageFromReader(SqlDataReader reader, CancellationToken cancellationToken) {
-			if (await reader.ReadAsync(cancellationToken) == false) {
-				return null;
-			}
+        /// <summary>
+        /// Maps a <seealso cref="SqlDataReader"/> that's read a result from the message table into a <seealso cref="TransportMessage"/>
+        /// </summary>
+        /// <returns>A <seealso cref="TransportMessage"/> representing the row or <c>null</c> if no row was available</returns>
+        protected static async Task<TransportMessage> ExtractTransportMessageFromReader(SqlDataReader reader, CancellationToken cancellationToken)
+        {
+            if (await reader.ReadAsync(cancellationToken) == false)
+            {
+                return null;
+            }
 
-		    var headers = reader["headers"];
-		    var headersDictionary = HeaderSerializer.Deserialize((byte[]) headers);
-		    var body = (byte[]) reader["body"];
+            var headers = reader["headers"];
+            var headersDictionary = HeaderSerializer.Deserialize((byte[])headers);
+            var body = (byte[])reader["body"];
 
-		    return new TransportMessage(headersDictionary, body);
-	    }
+            return new TransportMessage(headersDictionary, body);
+        }
 
 
-		/// <summary>
-		/// Gets the address a message will actually be sent to. Handles deferred messsages.
-		/// </summary>
-	    protected static string GetDestinationAddressToUse(string destinationAddress, TransportMessage message)
-		{
-			return string.Equals(destinationAddress, MagicExternalTimeoutManagerAddress, StringComparison.CurrentCultureIgnoreCase)
-				? GetDeferredRecipient(message)
-				: destinationAddress;
-		}
+        /// <summary>
+        /// Gets the address a message will actually be sent to. Handles deferred messsages.
+        /// </summary>
+        protected static string GetDestinationAddressToUse(string destinationAddress, TransportMessage message)
+        {
+            return string.Equals(destinationAddress, MagicExternalTimeoutManagerAddress, StringComparison.CurrentCultureIgnoreCase)
+                ? GetDeferredRecipient(message)
+                : destinationAddress;
+        }
 
-		static string GetDeferredRecipient(TransportMessage message)
+        static string GetDeferredRecipient(TransportMessage message)
         {
             string destination;
 
@@ -359,12 +360,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
             throw new InvalidOperationException($"Attempted to defer message, but no '{Headers.DeferredRecipient}' header was on the message");
         }
 
-		/// <summary>
-		/// Performs persistence of a message to the underlying table
-		/// </summary>
-		/// <param name="destinationAddress">Address the message will be sent to</param>
-		/// <param name="message">Message to be sent</param>
-		/// <param name="connection">Connection to use for writing to the database</param>
+        /// <summary>
+        /// Performs persistence of a message to the underlying table
+        /// </summary>
+        /// <param name="destinationAddress">Address the message will be sent to</param>
+        /// <param name="message">Message to be sent</param>
+        /// <param name="connection">Connection to use for writing to the database</param>
         protected async Task InnerSend(string destinationAddress, TransportMessage message, IDbConnection connection)
         {
             using (var command = connection.CreateCommand())

@@ -52,10 +52,10 @@ namespace Rebus.SqlServer.DataBus
 
             _log.Info("Creating data bus table {tableName}", _tableName.QualifiedName);
 
-            EnsureTableIsCreated().Wait();
+            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
         }
 
-        async Task EnsureTableIsCreated()
+        async Task EnsureTableIsCreatedAsync()
         {
             using (var connection = await _connectionProvider.GetConnection())
             {

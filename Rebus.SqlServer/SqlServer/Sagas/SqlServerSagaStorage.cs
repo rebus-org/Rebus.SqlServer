@@ -72,7 +72,7 @@ namespace Rebus.SqlServer.Sagas
         /// </summary>
         public void EnsureTablesAreCreated()
         {
-            EnsureTablesAreCreatedAsync().Wait();
+            AsyncHelpers.RunSync(EnsureTablesAreCreatedAsync);
         }
 
         async Task EnsureTablesAreCreatedAsync()

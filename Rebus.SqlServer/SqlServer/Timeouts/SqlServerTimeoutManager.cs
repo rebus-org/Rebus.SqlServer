@@ -39,10 +39,15 @@ namespace Rebus.SqlServer.Timeouts
         /// </summary>
         public void EnsureTableIsCreated()
         {
-            using (var connection = _connectionProvider.GetConnection().Result)
+            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+        }
+
+        async Task EnsureTableIsCreatedAsync()
+        {
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
-                
+
                 if (tableNames.Contains(_tableName))
                 {
                     return;
@@ -58,7 +63,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{
+                            _tableName.Name
+                        }')
     CREATE TABLE {_tableName.QualifiedName} (
         [id] [int] IDENTITY(1,1) NOT NULL,
 	    [due_time] [datetime2](7) NOT NULL,
@@ -85,7 +92,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
                     command.ExecuteNonQuery();
                 }
 
-                connection.Complete();
+                await connection.Complete();
             }
         }
 
