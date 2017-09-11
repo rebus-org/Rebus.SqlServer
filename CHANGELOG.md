@@ -47,7 +47,7 @@
 * Add .NET Core support (netstandard1.6)
 * Made `CurrentConnectionKey` of `SqlTransport` public
 
-## 5.0.0-b1
+## 5.0.0-b2
 
 * Add lease-based transport - thanks [MrMDavidson]
 * Add creation time column to data bus storage - thanks [IsaacSee]
