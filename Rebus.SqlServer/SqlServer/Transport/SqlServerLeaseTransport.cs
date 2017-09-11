@@ -220,10 +220,11 @@ END
             }
 
             context.OnAborted(
-                async () =>
+                () =>
                 {
                     renewal?.Dispose();
-                    await UpdateLease(ConnectionProvider, TableName.QualifiedName, messageId, null);
+
+                    AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, TableName.QualifiedName, messageId, null));
                 }
             );
 
