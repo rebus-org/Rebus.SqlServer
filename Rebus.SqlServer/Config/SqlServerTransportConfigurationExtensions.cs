@@ -95,20 +95,19 @@ namespace Rebus.Config
         /// <summary>
         /// Configures everything for a leased <seealso cref="SqlServerLeaseTransport"/>
         /// </summary>	
-        static void ConfigureInLeaseMode(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string tableName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
+        static void ConfigureInLeaseMode(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName, string outputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
         {
             if (leasedByFactory == null)
             {
                 leasedByFactory = () => Environment.MachineName;
             }
 
-            Configure(configurer, connectionProviderFactory, tableName, inputQueueName, (context, provider, name, queueName) =>
+            Configure(configurer, connectionProviderFactory, inputQueueName, (context, provider, inputQueue) =>
             {
                 var rebusLoggerFactory = context.Get<IRebusLoggerFactory>();
                 var asyncTaskFactory = context.Get<IAsyncTaskFactory>();
                 return new SqlServerLeaseTransport(
                     provider,
-                    name,
                     inputQueueName,
                     rebusLoggerFactory,
                     asyncTaskFactory,
@@ -126,9 +125,9 @@ namespace Rebus.Config
         /// The table specified by <paramref name="tableName"/> will be used to store messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
-        public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string tableName)
+        public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory)
         {
-			Configure(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), tableName, null);
+			Configure(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), null);
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
@@ -138,9 +137,9 @@ namespace Rebus.Config
         /// The table specified by <paramref name="tableName"/> will be used to store messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
-        public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string tableName)
+        public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string outputQueueName)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory), tableName, null);
+            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory), outputQueueName, null);
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
@@ -150,9 +149,9 @@ namespace Rebus.Config
         /// store messages, and the "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
-        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string tableName, string inputQueueName)
+        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string inputQueueName)
         {
-            Configure(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), tableName, inputQueueName);
+            Configure(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), inputQueueName);
         }
 
         /// <summary>
@@ -160,30 +159,33 @@ namespace Rebus.Config
         /// store messages, and the "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
-        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string tableName, string inputQueueName)
+        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string inputQueueName)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory), tableName, inputQueueName);
+            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory), inputQueueName);
         }
 
 
-		delegate SqlServerTransport TransportFactoryDelegate(IResolutionContext context, IDbConnectionProvider connectionProvider, string tableName, string inputQueueName);
+		delegate SqlServerTransport TransportFactoryDelegate(IResolutionContext context, IDbConnectionProvider connectionProvider, string inputQueueName);
 
 		/// <summary>
 		/// Configures everything for a standard <seealso cref="SqlServerTransport"/>
 		/// </summary>
-		static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string tableName, string inputQueueName)
+		static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName)
 		{
-			Configure(configurer, connectionProviderFactory, tableName, inputQueueName, (context, provider, name, queueName) => new SqlServerTransport(provider, name, queueName, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
+			Configure(configurer, connectionProviderFactory, inputQueueName, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
 		}
 
-		static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string tableName, string inputQueueName, TransportFactoryDelegate transportFactory)
+		static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName, TransportFactoryDelegate transportFactory)
         {
             configurer.Register(context =>
             {
                 var rebusLoggerFactory = context.Get<IRebusLoggerFactory>();
                 var connectionProvider = connectionProviderFactory(rebusLoggerFactory);
-				var transport = transportFactory(context, connectionProvider, tableName, inputQueueName);
-                transport.EnsureTableIsCreated();
+				var transport = transportFactory(context, connectionProvider, inputQueueName);
+                if (inputQueueName != null)
+                {
+                    transport.EnsureTableIsCreated();
+                }
                 return transport;
             });
 

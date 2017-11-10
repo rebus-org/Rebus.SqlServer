@@ -64,7 +64,6 @@ namespace Rebus.SqlServer.Transport
 		/// <param name="automaticLeaseRenewalInterval">If non-<c>null</c> messages will be automatically re-leased after this time period has elapsed</param>
 		public SqlServerLeaseTransport(
             IDbConnectionProvider connectionProvider,
-            string tableName,
             string inputQueueName,
             IRebusLoggerFactory rebusLoggerFactory,
             IAsyncTaskFactory asyncTaskFactory,
@@ -72,7 +71,7 @@ namespace Rebus.SqlServer.Transport
             TimeSpan? leaseTolerance,
             Func<string> leasedByFactory,
             TimeSpan? automaticLeaseRenewalInterval = null
-            ) : base(connectionProvider, tableName, inputQueueName, rebusLoggerFactory, asyncTaskFactory)
+            ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory)
         {
             _leasedByFactory = leasedByFactory;
             _leaseIntervalMilliseconds = (long)Math.Ceiling(leaseInterval.TotalMilliseconds);
@@ -130,9 +129,8 @@ namespace Rebus.SqlServer.Transport
 			[leasedat],
 			[leaseduntil],
 			[leasedby]
-	FROM	{TableName.QualifiedName} M WITH (ROWLOCK, READPAST)
-	WHERE	M.[recipient] = @recipient
-	AND		M.[visible] < getdate()
+	FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST)
+	WHERE	M.[visible] < getdate()
 	AND		M.[expiration] > getdate()
 	AND		1 = CASE
 					WHEN M.[leaseduntil] is null then 1
@@ -148,7 +146,6 @@ SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, getdate()),
 		[leasedat] = getdate(),
 		[leasedby] = @leasedby
 OUTPUT	inserted.*";
-                    selectCommand.Parameters.Add("@recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
                     selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.BigInt).Value = _leaseIntervalMilliseconds;
                     selectCommand.Parameters.Add("@leasetolerancemilliseconds", SqlDbType.BigInt).Value = _leaseToleranceMilliseconds;
                     selectCommand.Parameters.Add("@leasedby", SqlDbType.VarChar, LeasedByColumnSize).Value = _leasedByFactory();
@@ -183,24 +180,24 @@ OUTPUT	inserted.*";
         protected override string AdditionalSchemaModifications(IDbConnection connection)
         {
             return $@"
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leaseduntil')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}' AND COLUMN_NAME = 'leaseduntil')
 BEGIN
-	ALTER TABLE {TableName.QualifiedName} ADD leaseduntil datetime2 null
+	ALTER TABLE {ReceiveTableName.QualifiedName} ADD leaseduntil datetime2 null
 END
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leasedby')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}' AND COLUMN_NAME = 'leasedby')
 BEGIN
-	ALTER TABLE {TableName.QualifiedName} ADD leasedby nvarchar({LeasedByColumnSize}) null
+	ALTER TABLE {ReceiveTableName.QualifiedName} ADD leasedby nvarchar({LeasedByColumnSize}) null
 END
 
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}' AND COLUMN_NAME = 'leasedat')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}' AND COLUMN_NAME = 'leasedat')
 BEGIN
-	ALTER TABLE {TableName.QualifiedName} ADD leasedat datetime2 null
+	ALTER TABLE {ReceiveTableName.QualifiedName} ADD leasedat datetime2 null
 END
 
 ";
@@ -216,7 +213,7 @@ END
             AutomaticLeaseRenewer renewal = null;
             if (_automaticLeaseRenewal == true)
             {
-                renewal = new AutomaticLeaseRenewer(TableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalIntervalMilliseconds, _leaseIntervalMilliseconds);
+                renewal = new AutomaticLeaseRenewer(ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalIntervalMilliseconds, _leaseIntervalMilliseconds);
             }
 
             context.OnAborted(
@@ -224,7 +221,7 @@ END
                 {
                     renewal?.Dispose();
 
-                    AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, TableName.QualifiedName, messageId, null));
+                    AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName, messageId, null));
                 }
             );
 
@@ -241,7 +238,7 @@ END
                             deleteCommand.CommandType = CommandType.Text;
                             deleteCommand.CommandText = $@"
 DELETE
-FROM	{TableName.QualifiedName} WITH (ROWLOCK)
+FROM	{ReceiveTableName.QualifiedName} WITH (ROWLOCK)
 WHERE	id = @id
 ";
                             deleteCommand.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;

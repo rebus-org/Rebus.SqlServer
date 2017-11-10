@@ -64,7 +64,8 @@ namespace Rebus.SqlServer.Transport
         /// <summary>
         /// Name of the table this transport is using for storage
         /// </summary>
-        protected readonly TableName TableName;
+        protected readonly TableName ReceiveTableName;
+
 
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
 
@@ -78,16 +79,15 @@ namespace Rebus.SqlServer.Transport
         /// Constructs the transport with the given <see cref="IDbConnectionProvider"/>, using the specified <paramref name="tableName"/> to send/receive messages,
         /// querying for messages with recipient = <paramref name="inputQueueName"/>
         /// </summary>
-        public SqlServerTransport(IDbConnectionProvider connectionProvider, string tableName, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
+        public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
             if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
-            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
 
             ConnectionProvider = connectionProvider;
-            TableName = TableName.Parse(tableName);
-            InputQueueName = inputQueueName;
+            ReceiveTableName = inputQueueName != null ? TableName.Parse(inputQueueName) : null;
+
             _log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
 
             ExpiredMessagesCleanupInterval = DefaultExpiredMessagesCleanupInterval;
@@ -100,7 +100,7 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public void Initialize()
         {
-            if (InputQueueName == null) return;
+            if (ReceiveTableName == null) return;
 
             _expiredMessagesCleanupTask.Start();
         }
@@ -113,7 +113,7 @@ namespace Rebus.SqlServer.Transport
         /// <summary>
         /// Gets the name that this SQL transport will use to query by when checking the messages table
         /// </summary>
-        public string Address => InputQueueName;
+        public string Address => ReceiveTableName?.QualifiedName;
 
         /// <summary>
         /// The SQL transport doesn't really have queues, so this function does nothing
@@ -145,9 +145,9 @@ namespace Rebus.SqlServer.Transport
                 var tableNames = connection.GetTableNames();
                 string additional = null;
 
-                if (tableNames.Contains(TableName))
+                if (tableNames.Contains(ReceiveTableName))
                 {
-                    _log.Info("Database already contains a table named {tableName} - will not create anything", TableName.QualifiedName);
+                    _log.Info("Database already contains a table named {tableName} - will not create anything", ReceiveTableName.QualifiedName);
                     additional = AdditionalSchemaModifications(connection);
                     ExecuteCommands(connection, additional);
 
@@ -155,30 +155,28 @@ namespace Rebus.SqlServer.Transport
                     return;
                 }
 
-                _log.Info("Table {tableName} does not exist - it will be created now", TableName.QualifiedName);
+                _log.Info("Table {tableName} does not exist - it will be created now", ReceiveTableName.QualifiedName);
 
-                var receiveIndexName = $"IDX_RECEIVE_{TableName.Schema}_{TableName.Name}";
-                var expirationIndexName = $"IDX_EXPIRATION_{TableName.Schema}_{TableName.Name}";
+                var receiveIndexName = $"IDX_RECEIVE_{ReceiveTableName.Schema}_{ReceiveTableName.Name}";
+                var expirationIndexName = $"IDX_EXPIRATION_{ReceiveTableName.Schema}_{ReceiveTableName.Name}";
 
                 ExecuteCommands(connection, $@"
-IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{TableName.Schema}')
-	EXEC('CREATE SCHEMA [{TableName.Schema}]')
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{ReceiveTableName.Schema}')
+	EXEC('CREATE SCHEMA [{ReceiveTableName.Schema}]')
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{TableName.Schema}' AND TABLE_NAME = '{TableName.Name}')
-    CREATE TABLE {TableName.QualifiedName}
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}')
+    CREATE TABLE {ReceiveTableName.QualifiedName}
     (
 	    [id] [bigint] IDENTITY(1,1) NOT NULL,
-	    [recipient] [nvarchar](200) NOT NULL,
 	    [priority] [int] NOT NULL,
         [expiration] [datetime2] NOT NULL,
         [visible] [datetime2] NOT NULL,
 	    [headers] [varbinary](max) NOT NULL,
 	    [body] [varbinary](max) NOT NULL,
-        CONSTRAINT [PK_{TableName.Schema}_{TableName.Name}] PRIMARY KEY CLUSTERED 
+        CONSTRAINT [PK_{ReceiveTableName.Schema}_{ReceiveTableName.Name}] PRIMARY KEY CLUSTERED 
         (
-	        [recipient] ASC,
 	        [priority] ASC,
 	        [id] ASC
         )
@@ -187,9 +185,8 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{Ta
 ----
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
-    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {TableName.QualifiedName}
+    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {ReceiveTableName.QualifiedName}
     (
-	    [recipient] ASC,
 	    [priority] ASC,
         [visible] ASC,
         [expiration] ASC,
@@ -199,7 +196,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
 ----
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
-    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON {TableName.QualifiedName}
+    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON {ReceiveTableName.QualifiedName}
     (
         [expiration] ASC
     )
@@ -249,7 +246,14 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
             var destinationAddressToUse = GetDestinationAddressToUse(destinationAddress, message);
 
-            await InnerSend(destinationAddressToUse, message, connection);
+            try
+            {
+                await InnerSend(destinationAddressToUse, message, connection);
+            }
+            catch (Exception e)
+            {
+                throw new RebusApplicationException(e, $"Unable to send to destination {destinationAddress}");
+            }
         }
 
         /// <summary>
@@ -285,9 +289,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 				[id],
 				[headers],
 				[body]
-		FROM	{TableName.QualifiedName} M WITH (ROWLOCK, READPAST)
-		WHERE	M.[recipient] = @recipient
-		AND		M.[visible] < getdate()
+		FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST)
+		WHERE	
+                M.[visible] < getdate()
 		AND		M.[expiration] > getdate()
 		ORDER
 		BY		[priority] ASC,
@@ -299,8 +303,6 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 			deleted.[body] as [body]
 						
 						";
-
-                selectCommand.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
 
                 try
                 {
@@ -368,12 +370,13 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         /// <param name="connection">Connection to use for writing to the database</param>
         protected async Task InnerSend(string destinationAddress, TransportMessage message, IDbConnection connection)
         {
+            var sendTable = TableName.Parse(destinationAddress);
+            
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = $@"
-INSERT INTO {TableName.QualifiedName}
+INSERT INTO {sendTable.QualifiedName}
 (
-    [recipient],
     [headers],
     [body],
     [priority],
@@ -382,7 +385,6 @@ INSERT INTO {TableName.QualifiedName}
 )
 VALUES
 (
-    @recipient,
     @headers,
     @body,
     @priority,
@@ -399,7 +401,6 @@ VALUES
                 // must be last because the other functions on the headers might change them
                 var serializedHeaders = HeaderSerializer.Serialize(headers);
 
-                command.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = destinationAddress;
                 command.Parameters.Add("headers", SqlDbType.VarBinary).Value = serializedHeaders;
                 command.Parameters.Add("body", SqlDbType.VarBinary).Value = message.Body;
                 command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
@@ -455,13 +456,12 @@ VALUES
                         command.CommandText =
                             $@"
 ;with TopCTE as (
-	SELECT TOP 1 [id] FROM {TableName.QualifiedName} WITH (ROWLOCK, READPAST)
-				WHERE [recipient] = @recipient 
-					AND [expiration] < getdate()
+	SELECT TOP 1 [id] FROM {ReceiveTableName.QualifiedName} WITH (ROWLOCK, READPAST)
+				WHERE 
+                    [expiration] < getdate()
 )
 DELETE FROM TopCTE
 ";
-                        command.Parameters.Add("recipient", SqlDbType.NVarChar, RecipientColumnSize).Value = InputQueueName;
 
                         affectedRows = await command.ExecuteNonQueryAsync();
                     }
@@ -477,7 +477,7 @@ DELETE FROM TopCTE
             if (results > 0)
             {
                 _log.Info("Performed expired messages cleanup in {cleanupTimeSeconds} - {expiredMessageCount} expired messages with recipient {queueName} were deleted",
-                    stopwatch.Elapsed.TotalSeconds, results, InputQueueName);
+                    stopwatch.Elapsed.TotalSeconds, results, ReceiveTableName.QualifiedName);
             }
         }
 
