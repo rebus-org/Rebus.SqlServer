@@ -166,8 +166,8 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{ta
     (
 	    [id] [bigint] IDENTITY(1,1) NOT NULL,
 	    [priority] [int] NOT NULL,
-        [expiration] [datetime2] NOT NULL,
-        [visible] [datetime2] NOT NULL,
+        [expiration] [datetimeoffset] NOT NULL,
+        [visible] [datetimeoffset] NOT NULL,
 	    [headers] [varbinary](max) NOT NULL,
 	    [body] [varbinary](max) NOT NULL,
         CONSTRAINT [PK_{tableName.Schema}_{tableName.Name}] PRIMARY KEY CLUSTERED 

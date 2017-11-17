@@ -68,7 +68,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                         }')
     CREATE TABLE {_tableName.QualifiedName} (
         [id] [int] IDENTITY(1,1) NOT NULL,
-	    [due_time] [datetime2](7) NOT NULL,
+	    [due_time] [datetimeoffset](7) NOT NULL,
 	    [headers] [nvarchar](MAX) NOT NULL,
 	    [body] [varbinary](MAX) NOT NULL,
         CONSTRAINT [PK_{_tableName.Schema}_{_tableName.Name}] PRIMARY KEY NONCLUSTERED 

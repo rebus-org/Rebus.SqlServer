@@ -53,6 +53,7 @@
 * Add creation time column to data bus storage - thanks [IsaacSee]
 * Shift transports to use table-per-queue layout to improve overall performance and avoid having a long queue bring everything to a halt - thanks [magnus-tretton37]
 * Change meaning of the secret and pretty un-documented `rbs2-msg-priority` header to work like it seems most people expect it to: Higher number means higher priority
+* Change all `datetime2` column types to be `datetimeoffset` instead to make data less tied to the SQL Server instance (probably "server time of ...") that created it
 
 ----
 
