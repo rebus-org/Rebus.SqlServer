@@ -54,7 +54,6 @@ namespace Rebus.SqlServer.Transport
 		/// Constructor
 		/// </summary>
 		/// <param name="connectionProvider">A <see cref="IDbConnection"/> to obtain a database connection</param>
-		/// <param name="tableName">Name of the table to store messages in</param>
 		/// <param name="inputQueueName">Name of the queue this transport is servicing</param>
 		/// <param name="rebusLoggerFactory">A <seealso cref="IRebusLoggerFactory"/> for building loggers</param>
 		/// <param name="asyncTaskFactory">A <seealso cref="IAsyncTaskFactory"/> for creating periodic tasks</param>

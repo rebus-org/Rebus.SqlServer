@@ -67,8 +67,7 @@ namespace Rebus.SqlServer.Transport
         bool _disposed;
 
         /// <summary>
-        /// Constructs the transport with the given <see cref="IDbConnectionProvider"/>, using the specified <paramref name="tableName"/> to send/receive messages,
-        /// querying for messages with recipient = <paramref name="inputQueueName"/>
+        /// Constructs the transport with the given <see cref="IDbConnectionProvider"/>
         /// </summary>
         public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
