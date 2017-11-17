@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,17 +20,17 @@ namespace Rebus.SqlServer.Tests.Transport
     public class TestSqlServerTransport : FixtureBase
     {
         const string QueueName = "input";
-        readonly string _tableName = "messages" + TestConfig.Suffix;
         SqlServerTransport _transport;
         CancellationToken _cancellationToken;
 
         protected override void SetUp()
         {
-            SqlTestHelper.DropTable(_tableName);
+            SqlTestHelper.DropAllTables();
 
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
+
             _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory);
             _transport.EnsureTableIsCreated();
 
@@ -67,6 +68,7 @@ namespace Rebus.SqlServer.Tests.Transport
             {
                 await _transport.Send(QueueName, RecognizableMessage(), scope.TransactionContext);
 
+                // deliberately skip this:
                 //await context.Complete();
             }
 
@@ -81,7 +83,7 @@ namespace Rebus.SqlServer.Tests.Transport
         [TestCase(1000)]
         public async Task LotsOfAsyncStuffGoingDown(int numberOfMessages)
         {
-            var receivedMessages = 0;
+            var receivedMessages = 0L;
             var messageIds = new ConcurrentDictionary<int, int>();
 
             Console.WriteLine("Sending {0} messages", numberOfMessages);
@@ -93,7 +95,6 @@ namespace Rebus.SqlServer.Tests.Transport
                     {
                         await _transport.Send(QueueName, RecognizableMessage(i), scope.TransactionContext);
                         await scope.CompleteAsync();
-
                         messageIds[i] = 0;
                     }
                 }));
@@ -102,24 +103,28 @@ namespace Rebus.SqlServer.Tests.Transport
 
             using (new Timer(_ => Console.WriteLine("Received: {0} msgs", receivedMessages), null, 0, 1000))
             {
+                var stopwatch = Stopwatch.StartNew();
 
-                await Task.WhenAll(Enumerable.Range(0, numberOfMessages)
-                    .Select(async i =>
+                while (Interlocked.Read(ref receivedMessages) < numberOfMessages && stopwatch.Elapsed < TimeSpan.FromMinutes(2))
+                {
+                    await Task.WhenAll(Enumerable.Range(0, 10).Select(async __ =>
                     {
                         using (var scope = new RebusTransactionScope())
                         {
                             var msg = await _transport.Receive(scope.TransactionContext, _cancellationToken);
                             await scope.CompleteAsync();
 
-                            Interlocked.Increment(ref receivedMessages);
-
-                            var id = int.Parse(msg.Headers["id"]);
-
-                            messageIds.AddOrUpdate(id, 1, (_, existing) => existing + 1);
+                            if (msg != null)
+                            {
+                                Interlocked.Increment(ref receivedMessages);
+                                var id = int.Parse(msg.Headers["id"]);
+                                messageIds.AddOrUpdate(id, 1, (_, existing) => existing + 1);
+                            }
                         }
                     }));
+                }
 
-                await Task.Delay(1000);
+                await Task.Delay(3000);
             }
 
             Assert.That(messageIds.Keys.OrderBy(k => k).ToArray(), Is.EqualTo(Enumerable.Range(0, numberOfMessages).ToArray()));

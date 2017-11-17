@@ -106,10 +106,13 @@ namespace Rebus.SqlServer.Transport
         public string Address => ReceiveTableName?.QualifiedName;
 
         /// <summary>
-        /// The SQL transport doesn't really have queues, so this function does nothing
+        /// Creates the table named after the given <paramref name="address"/>
         /// </summary>
         public void CreateQueue(string address)
         {
+            if (address == null) return;
+
+            AsyncHelpers.RunSync(() => EnsureTableIsCreatedAsync(TableName.Parse(address)));
         }
 
         /// <summary>
@@ -117,47 +120,49 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public void EnsureTableIsCreated()
         {
-            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            AsyncHelpers.RunSync(() => EnsureTableIsCreatedAsync(ReceiveTableName));
         }
 
-        /// <summary>
-        /// Provides an oppurtunity for derived implementations to also update the schema
-        /// </summary>
-        protected virtual string AdditionalSchemaModifications(IDbConnection connection)
+        async Task EnsureTableIsCreatedAsync(TableName tableName)
         {
-            return string.Empty;
+            try
+            {
+                await InnerEnsureTableIsCreatedAsync(tableName);
+            }
+            catch (Exception)
+            {
+                // if it fails the first time, and if it's because of some kind of conflict,
+                // we should run it again and see if the situation has stabilized
+                await InnerEnsureTableIsCreatedAsync(tableName);
+            }
         }
 
-        async Task EnsureTableIsCreatedAsync()
+        async Task InnerEnsureTableIsCreatedAsync(TableName tableName)
         {
             using (var connection = await ConnectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
-                string additional = null;
 
-                if (tableNames.Contains(ReceiveTableName))
+                if (tableNames.Contains(tableName))
                 {
-                    _log.Info("Database already contains a table named {tableName} - will not create anything", ReceiveTableName.QualifiedName);
-                    additional = AdditionalSchemaModifications(connection);
-                    ExecuteCommands(connection, additional);
-
+                    _log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
                     await connection.Complete();
                     return;
                 }
 
-                _log.Info("Table {tableName} does not exist - it will be created now", ReceiveTableName.QualifiedName);
+                _log.Info("Table {tableName} does not exist - it will be created now", tableName.QualifiedName);
 
-                var receiveIndexName = $"IDX_RECEIVE_{ReceiveTableName.Schema}_{ReceiveTableName.Name}";
-                var expirationIndexName = $"IDX_EXPIRATION_{ReceiveTableName.Schema}_{ReceiveTableName.Name}";
+                var receiveIndexName = $"IDX_RECEIVE_{tableName.Schema}_{tableName.Name}";
+                var expirationIndexName = $"IDX_EXPIRATION_{tableName.Schema}_{tableName.Name}";
 
                 ExecuteCommands(connection, $@"
-IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{ReceiveTableName.Schema}')
-	EXEC('CREATE SCHEMA [{ReceiveTableName.Schema}]')
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{tableName.Schema}')
+	EXEC('CREATE SCHEMA [{tableName.Schema}]')
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}')
-    CREATE TABLE {ReceiveTableName.QualifiedName}
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}')
+    CREATE TABLE {tableName.QualifiedName}
     (
 	    [id] [bigint] IDENTITY(1,1) NOT NULL,
 	    [priority] [int] NOT NULL,
@@ -165,7 +170,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{Re
         [visible] [datetime2] NOT NULL,
 	    [headers] [varbinary](max) NOT NULL,
 	    [body] [varbinary](max) NOT NULL,
-        CONSTRAINT [PK_{ReceiveTableName.Schema}_{ReceiveTableName.Name}] PRIMARY KEY CLUSTERED 
+        CONSTRAINT [PK_{tableName.Schema}_{tableName.Name}] PRIMARY KEY CLUSTERED 
         (
 	        [priority] ASC,
 	        [id] ASC
@@ -175,7 +180,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{Re
 ----
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
-    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {ReceiveTableName.QualifiedName}
+    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {tableName.QualifiedName}
     (
 	    [priority] ASC,
         [visible] ASC,
@@ -186,18 +191,25 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
 ----
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
-    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON {ReceiveTableName.QualifiedName}
+    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON {tableName.QualifiedName}
     (
         [expiration] ASC
     )
 
 ");
 
-                additional = AdditionalSchemaModifications(connection);
+                var additional = AdditionalSchemaModifications();
                 ExecuteCommands(connection, additional);
-
                 await connection.Complete();
             }
+        }
+
+        /// <summary>
+        /// Provides an oppurtunity for derived implementations to also update the schema
+        /// </summary>
+        protected virtual string AdditionalSchemaModifications()
+        {
+            return string.Empty;
         }
 
         static void ExecuteCommands(IDbConnection connection, string sqlCommands)
