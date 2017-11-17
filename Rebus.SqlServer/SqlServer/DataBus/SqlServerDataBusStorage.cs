@@ -50,9 +50,16 @@ namespace Rebus.SqlServer.DataBus
         {
             if (!_ensureTableIsCreated) return;
 
-            _log.Info("Creating data bus table {tableName}", _tableName.QualifiedName);
+            try
+            {
+                AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            }
+            catch
+            {
+                // if it failed because of a collision between another thread doing the same thing, just try again once:
+                AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            }
 
-            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
         }
 
         async Task EnsureTableIsCreatedAsync()
@@ -65,6 +72,8 @@ namespace Rebus.SqlServer.DataBus
                     var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
                     if (!columns.Any(x => x.Name == "CreationTime"))
                     {
+                        _log.Info("Adding CreationTime column to data bus table {tableName}", _tableName.QualifiedName);
+
                         using (var command = connection.CreateCommand())
                         {
                             command.CommandText = $@"
@@ -81,6 +90,8 @@ END
 
                     return;
                 }
+
+                _log.Info("Creating data bus table {tableName}", _tableName.QualifiedName);
 
                 using (var command = connection.CreateCommand())
                 {

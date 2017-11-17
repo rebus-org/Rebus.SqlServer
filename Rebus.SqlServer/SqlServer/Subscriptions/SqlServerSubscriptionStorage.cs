@@ -92,7 +92,15 @@ WHERE
         /// </summary>
         public void EnsureTableIsCreated()
         {
-            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            try
+            {
+                AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            }
+            catch
+            {
+                // if it failed because of a collision between another thread doing the same thing, just try again once:
+                AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            }
         }
 
         async Task EnsureTableIsCreatedAsync()
@@ -116,9 +124,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{
-                            _tableName.Name
-                        }')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
     CREATE TABLE {_tableName.QualifiedName} (
 	    [topic] [nvarchar]({_topicLength}) NOT NULL,
 	    [address] [nvarchar]({_addressLength}) NOT NULL,

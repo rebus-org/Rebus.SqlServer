@@ -41,7 +41,15 @@ namespace Rebus.SqlServer.Sagas
         /// </summary>
         public void EnsureTableIsCreated()
         {
-            AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            try
+            {
+                AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            }
+            catch
+            {
+                // if it failed because of a collision between another thread doing the same thing, just try again once:
+                AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
+            }
         }
 
         async Task EnsureTableIsCreatedAsync()

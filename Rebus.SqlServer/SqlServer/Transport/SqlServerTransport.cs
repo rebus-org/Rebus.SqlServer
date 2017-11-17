@@ -120,7 +120,15 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public void EnsureTableIsCreated()
         {
-            AsyncHelpers.RunSync(() => EnsureTableIsCreatedAsync(ReceiveTableName));
+            try
+            {
+                AsyncHelpers.RunSync(() => EnsureTableIsCreatedAsync(ReceiveTableName));
+            }
+            catch
+            {
+                // if it failed because of a collision between another thread doing the same thing, just try again once:
+                AsyncHelpers.RunSync(() => EnsureTableIsCreatedAsync(ReceiveTableName));
+            }
         }
 
         async Task EnsureTableIsCreatedAsync(TableName tableName)
