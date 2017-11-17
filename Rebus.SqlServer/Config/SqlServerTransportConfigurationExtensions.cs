@@ -33,6 +33,8 @@ namespace Rebus.Config
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
         {
             ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
+
+            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
 
         /// <summary>
@@ -48,6 +50,8 @@ namespace Rebus.Config
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
         {
             ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
+
+            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
 
         /// <summary>
