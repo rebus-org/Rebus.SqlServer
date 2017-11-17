@@ -228,7 +228,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         }
 
         /// <summary>
-        /// Sends the given transport message to the specified logical destination address by adding it to the messages table.
+        /// Sends the given transport message to the specified destination queue address by adding it to the queue's table.
         /// </summary>
         public virtual async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
@@ -247,7 +247,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         }
 
         /// <summary>
-        /// Receives the next message by querying the messages table for a message with a recipient matching this transport's <see cref="Address"/>
+        /// Receives the next message by querying the input queue table for a message with a recipient matching this transport's <see cref="Address"/>
         /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {

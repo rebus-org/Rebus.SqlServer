@@ -62,7 +62,7 @@ namespace Rebus.Config
         /// </summary>
         /// <param name="configurer">Static to extend</param>
         /// <param name="connectionStringOrConnectionStringName">Connection string or the named connection</param>
-        /// <param name="inputQueueName">Name of the queue being services</param>
+        /// <param name="inputQueueName">Name of the queue, which must be a valid table table in SQL Server</param>
         /// <param name="leaseInterval">If <c>null</c> will default to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTime"/>. Specifies how long a worker will request to keep a message. Higher values require less database communication but increase latency of a message being processed if a worker dies</param>
         /// <param name="leaseTolerance">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTolerance"/>. Workers will wait for this amount of time to elapse, beyond the lease time, before they pick up an already leased message.</param>
         /// <param name="automaticallyRenewLeases">If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <paramref name="leaseAutoRenewInterval"/></param>
@@ -79,7 +79,7 @@ namespace Rebus.Config
         /// </summary>
         /// <param name="configurer">Static to extend</param>
         /// <param name="connectionFactory">Factory to provide a new connection</param>
-        /// <param name="inputQueueName">Name of the queue being services</param>
+        /// <param name="inputQueueName">Name of the queue, which must be a valid table table in SQL Server</param>
         /// <param name="leaseInterval">If <c>null</c> will default to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTime"/>. Specifies how long a worker will request to keep a message. Higher values require less database communication but increase latency of a message being processed if a worker dies</param>
         /// <param name="leaseTolerance">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTolerance"/>. Workers will wait for this amount of time to elapse, beyond the lease time, before they pick up an already leased message.</param>
         /// <param name="automaticallyRenewLeases">If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <paramref name="leaseAutoRenewInterval"/></param>
