@@ -285,7 +285,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
                 M.[visible] < getdate()
 		AND		M.[expiration] > getdate()
 		ORDER
-		BY		[priority] ASC,
+		BY		[priority] DESC,
 				[id] ASC
 	)
 	DELETE	FROM TopCTE

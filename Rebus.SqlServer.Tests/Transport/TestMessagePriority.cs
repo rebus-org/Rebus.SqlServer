@@ -86,7 +86,7 @@ namespace Rebus.SqlServer.Tests.Transport
             await Task.Delay(TimeSpan.FromSeconds(1));
 
             Assert.That(receivedMessagePriorities.Count, Is.EqualTo(messageCount));
-            Assert.That(receivedMessagePriorities.ToArray(), Is.EqualTo(Enumerable.Range(0, messageCount).ToArray()));
+            Assert.That(receivedMessagePriorities.ToArray(), Is.EqualTo(Enumerable.Range(0, messageCount).Reverse().ToArray()));
         }
 
         static Task SendPriMsg(IBus clientBus, int priority) => clientBus.Send($"prioritet {priority}", new Dictionary<string, string>
