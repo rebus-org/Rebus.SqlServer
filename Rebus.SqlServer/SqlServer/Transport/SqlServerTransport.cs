@@ -57,21 +57,12 @@ namespace Rebus.SqlServer.Transport
         protected readonly IDbConnectionProvider ConnectionProvider;
 
         /// <summary>
-        /// Name of the queue being processed by this transport
-        /// </summary>
-        protected readonly string InputQueueName;
-
-        /// <summary>
         /// Name of the table this transport is using for storage
         /// </summary>
         protected readonly TableName ReceiveTableName;
 
-
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
-
-
         readonly ILog _log;
-
         readonly IAsyncTask _expiredMessagesCleanupTask;
         bool _disposed;
 

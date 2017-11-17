@@ -30,7 +30,7 @@ namespace Rebus.SqlServer.Tests.Integration
             Using(_activator);
 
             _bus = Configure.With(_activator)
-                .Transport(x => x.UseSqlServer(ConnectionString, "RebusMessages", "test.input"))
+                .Transport(x => x.UseSqlServer(ConnectionString, "test.input"))
                 .Sagas(x => x.StoreInSqlServer(ConnectionString, "Sagas", "SagaIndex"))
                 .Options(x =>
                 {

@@ -32,11 +32,11 @@ namespace Rebus.SqlServer.Tests.Bugs
             Using(receiver);
 
             Configure.With(receiver)
-                .Transport(t => t.UseSqlServer(ConnectionString, "RebusMessages", "receiver"))
+                .Transport(t => t.UseSqlServer(ConnectionString, "receiver"))
                 .Start();
 
             var senderBus = Configure.With(new BuiltinHandlerActivator())
-                .Transport(x => x.UseSqlServerAsOneWayClient(ConnectionString, "RebusMessages"))
+                .Transport(x => x.UseSqlServerAsOneWayClient(ConnectionString))
                 .Routing(r => r.TypeBased().Map<string>("receiver"))
                 .Options(o =>
                 {

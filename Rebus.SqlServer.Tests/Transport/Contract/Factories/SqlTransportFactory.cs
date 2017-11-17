@@ -15,22 +15,20 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
         readonly HashSet<string> _tablesToDrop = new HashSet<string>();
         readonly List<IDisposable> _disposables = new List<IDisposable>();
 
+        public SqlTransportFactory()
+        {
+            SqlTestHelper.DropAllTables();
+        }
+
         public ITransport CreateOneWayClient()
         {
-            var tableName = ("RebusMessages_" + TestConfig.Suffix).TrimEnd('_');
-
-            SqlTestHelper.DropTable(tableName);
-
-            _tablesToDrop.Add(tableName);
-
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, tableName, null, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new SqlServerTransport(connectionProvider, null, consoleLoggerFactory, asyncTaskFactory);
 
             _disposables.Add(transport);
 
-            transport.EnsureTableIsCreated();
             transport.Initialize();
 
             return transport;
@@ -47,7 +45,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new SqlServerTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
             
             _disposables.Add(transport);
             

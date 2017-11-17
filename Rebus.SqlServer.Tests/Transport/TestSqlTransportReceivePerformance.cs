@@ -20,12 +20,12 @@ namespace Rebus.SqlServer.Tests.Transport
 
         const string QueueName = "perftest";
 
-        static readonly string TableName = TestConfig.GetName("Messages");
+        static readonly string TableName = TestConfig.GetName("perftest");
 
         static readonly string IndexCreationScriptToCheck = $@"
 CREATE INDEX IX_{TableName.ToUpperInvariant()}_ID
     ON [dbo].[{TableName}] ([id]) 
-    INCLUDE ([recipient], [priority])
+    INCLUDE ([priority])
 ";
 
         protected override void SetUp()
@@ -36,7 +36,7 @@ CREATE INDEX IX_{TableName.ToUpperInvariant()}_ID
 
             Configure.With(_adapter)
                 .Logging(l => l.ColoredConsole(LogLevel.Warn))
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, TableName, QueueName))
+                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, QueueName))
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(0);

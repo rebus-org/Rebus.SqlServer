@@ -31,7 +31,7 @@ namespace Rebus.SqlServer.Tests.Integration
             Using(_activator);
 
             _bus = Configure.With(_activator)
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, "Messages", QueueName))
+                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, QueueName))
                 .Routing(r => r.TypeBased().Map<TimedMessage>(QueueName))
                 .Options(o =>
                 {

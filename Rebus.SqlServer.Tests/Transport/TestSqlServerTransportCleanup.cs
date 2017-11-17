@@ -31,7 +31,7 @@ namespace Rebus.SqlServer.Tests.Transport
 
             Configure.With(_activator)
                 .Logging(l => l.Use(_loggerFactory))
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, "Messages", queueName))
+                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, queueName))
                 .Start();
         }
 

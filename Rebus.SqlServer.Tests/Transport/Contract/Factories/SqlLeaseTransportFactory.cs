@@ -15,6 +15,11 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
         readonly HashSet<string> _tablesToDrop = new HashSet<string>();
         readonly List<IDisposable> _disposables = new List<IDisposable>();
 
+        public SqlLeaseTransportFactory()
+        {
+            SqlTestHelper.DropAllTables();
+        }
+
         public ITransport CreateOneWayClient()
         {
             var tableName = ("RebusMessages_" + TestConfig.Suffix).TrimEnd('_');
@@ -26,13 +31,12 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerLeaseTransport(connectionProvider, tableName, null, consoleLoggerFactory,
+            var transport = new SqlServerLeaseTransport(connectionProvider, null, consoleLoggerFactory,
                 asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
             //var transport = new SqlServerTransport(connectionProvider, tableName, null, consoleLoggerFactory, asyncTaskFactory);
 
             _disposables.Add(transport);
 
-            transport.EnsureTableIsCreated();
             transport.Initialize();
 
             return transport;
@@ -49,7 +53,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerLeaseTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory,
+            var transport = new SqlServerLeaseTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory,
                 asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
 //            var transport = new SqlServerTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
             

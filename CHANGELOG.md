@@ -47,13 +47,15 @@
 * Add .NET Core support (netstandard1.6)
 * Made `CurrentConnectionKey` of `SqlTransport` public
 
-## 5.0.0-b2
+## 5.0.0-b3
 
 * Add lease-based transport - thanks [MrMDavidson]
 * Add creation time column to data bus storage - thanks [IsaacSee]
+* Shift transports to use table-per-queue layout to improve overall performance and avoid having a long queue bring everything to a halt - thanks [magnus-tretton37]
 
 ----
 
 [cleytonb]: https://github.com/cleytonb
 [IsaacSee]: https://github.com/IsaacSee
+[magnus-tretton37]: https://github.com/magnus-tretton37
 [MrMDavidson]: https://github.com/MrMDavidson

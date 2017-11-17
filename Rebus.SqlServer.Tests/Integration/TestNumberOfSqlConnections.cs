@@ -26,7 +26,7 @@ namespace Rebus.SqlServer.Tests.Integration
                 .Transport(t => t.Register(c =>
                 {
                     var connectionProvider = new TestConnectionProvider(SqlTestHelper.ConnectionString, activeConnections);
-                    var transport = new SqlServerTransport(connectionProvider, "RebusMessages", "bimse", c.Get<IRebusLoggerFactory>(), c.Get<IAsyncTaskFactory>());
+                    var transport = new SqlServerTransport(connectionProvider, "bimse", c.Get<IRebusLoggerFactory>(), c.Get<IAsyncTaskFactory>());
 
                     transport.EnsureTableIsCreated();
 

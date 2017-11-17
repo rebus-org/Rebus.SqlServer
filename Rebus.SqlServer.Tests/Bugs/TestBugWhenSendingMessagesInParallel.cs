@@ -50,7 +50,7 @@ namespace Rebus.SqlServer.Tests.Bugs
 
             var bus = Configure.With(activator)
                 .Logging(l => l.ColoredConsole(minLevel: LogLevel.Info))
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, _messagesTableName, inputQueueName))
+                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, inputQueueName))
                 .Subscriptions(s => s.StoreInSqlServer(SqlTestHelper.ConnectionString, _subscriptionsTableName, isCentralized: true))
                 .Start();
 

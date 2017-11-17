@@ -30,7 +30,7 @@ namespace Rebus.SqlServer.Tests.Transport
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            _transport = new SqlServerTransport(connectionProvider, _tableName, QueueName, consoleLoggerFactory, asyncTaskFactory);
+            _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory);
             _transport.EnsureTableIsCreated();
 
             Using(_transport);

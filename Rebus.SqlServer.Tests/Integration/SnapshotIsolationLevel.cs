@@ -77,7 +77,7 @@ CREATE TABLE [dbo].[Messages](
                         await sqlConnection.OpenAsync();
                         var transaction = sqlConnection.BeginTransaction(IsolationLevel.Snapshot);
                         return new DbConnectionWrapper(sqlConnection, transaction, false);
-                    }, TableName, "snapperino");
+                    }, "snapperino");
                 })
                 .Start();
 

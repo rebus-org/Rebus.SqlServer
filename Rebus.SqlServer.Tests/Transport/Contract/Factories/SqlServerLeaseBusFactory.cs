@@ -13,6 +13,11 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
     {
         readonly List<IDisposable> _stuffToDispose = new List<IDisposable>();
 
+        public SqlServerLeaseBusFactory()
+        {
+            SqlTestHelper.DropAllTables();
+        }
+
         public IBus GetBus<TMessage>(string inputQueueAddress, Func<TMessage, Task> handler)
         {
             var builtinHandlerActivator = new BuiltinHandlerActivator();
@@ -24,7 +29,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             SqlTestHelper.DropTable(tableName);
 
             var bus = Configure.With(builtinHandlerActivator)
-                .Transport(t => t.UseSqlServerInLeaseMode(SqlTestHelper.ConnectionString, tableName, inputQueueAddress))
+                .Transport(t => t.UseSqlServerInLeaseMode(SqlTestHelper.ConnectionString, inputQueueAddress))
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(10);
