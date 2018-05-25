@@ -10,7 +10,7 @@
     <Authors>mookid8000</Authors>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</PackageLicenseUrl>
     <PackageProjectUrl>http://mookid.dk/oncode/rebus</PackageProjectUrl>
-    <Copyright>Copyright 2012-2016</Copyright>
+    <Copyright>Copyright 2012-2018</Copyright>
     <PackageTags>rebus queue messaging service bus sql-server sqlserver mssql sql</PackageTags>
     <PackageIconUrl>https://github.com/mookid8000/Rebus/raw/master/artwork/little_rebusbus2_copy-200x200.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
@@ -53,7 +53,7 @@
     <Reference Include="System.Data.Common" />
     <PackageReference Include="System.Data.SqlClient" Version="4.1.0" />
   </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net45'">
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
     <Reference Include="System.Configuration" />
