@@ -10,6 +10,9 @@ using Rebus.Threading;
 using Rebus.Timeouts;
 using Rebus.Transport;
 
+// multi-platform stuff is hard for XML doc comments...
+#pragma warning disable 1572
+
 namespace Rebus.Config
 {
     /// <summary>
@@ -241,3 +244,4 @@ namespace Rebus.Config
         }
     }
 }
+#pragma warning restore 1591
