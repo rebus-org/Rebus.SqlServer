@@ -55,11 +55,12 @@
 * Change meaning of the secret and pretty un-documented `rbs2-msg-priority` header to work like it seems most people expect it to: Higher number means higher priority
 * Change all `datetime2` column types to be `datetimeoffset` instead to make data less tied to the SQL Server instance (probably "server time of ...") that created it
 * Retry schema generation if it fails, most likely because of race condition between checking for the existence of a table and trying to create it
-
+* Add ambient transaction support, so 2PC can be enabled if one desires - thanks [larsw]
 
 ----
 
 [cleytonb]: https://github.com/cleytonb
 [IsaacSee]: https://github.com/IsaacSee
+[larsw]: https://github.com/larsw
 [magnus-tretton37]: https://github.com/magnus-tretton37
 [MrMDavidson]: https://github.com/MrMDavidson
