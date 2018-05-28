@@ -46,4 +46,7 @@
     <PackageReference Include="rebus" Version="4.0.1" />
     <PackageReference Include="rebus.tests.contracts" Version="4.0.1" />
   </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net45' ">
+    <Reference Include="System.Transactions" />
+  </ItemGroup>
 </Project>

@@ -16,7 +16,11 @@ namespace Rebus.Config
         /// Configures Rebus to store saga snapshots in SQL Server
         /// </summary>
         public static void StoreInSqlServer(this StandardConfigurer<ISagaSnapshotStorage> configurer,
-            string connectionStringOrConnectionStringName, string tableName, bool automaticallyCreateTables = true)
+            string connectionStringOrConnectionStringName, string tableName, bool automaticallyCreateTables = true
+#if NET45
+            , bool enlistInAmbientTransaction = false
+#endif
+            )
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
             if (connectionStringOrConnectionStringName == null) throw new ArgumentNullException(nameof(connectionStringOrConnectionStringName));
@@ -25,7 +29,11 @@ namespace Rebus.Config
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory);
+                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory
+#if NET45
+                    , enlistInAmbientTransaction
+#endif
+                    );
                 var snapshotStorage = new SqlServerSagaSnapshotStorage(connectionProvider, tableName, rebusLoggerFactory);
 
                 if (automaticallyCreateTables)

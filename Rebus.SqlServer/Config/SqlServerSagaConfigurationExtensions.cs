@@ -17,7 +17,11 @@ namespace Rebus.Config
         /// </summary>
         public static void StoreInSqlServer(this StandardConfigurer<ISagaStorage> configurer,
             string connectionStringOrConnectionStringName, string dataTableName, string indexTableName,
-            bool automaticallyCreateTables = true)
+            bool automaticallyCreateTables = true
+#if NET45
+            ,bool enlistInAmbientTransaction = false
+#endif
+    )
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
             if (connectionStringOrConnectionStringName == null) throw new ArgumentNullException(nameof(connectionStringOrConnectionStringName));
@@ -27,7 +31,11 @@ namespace Rebus.Config
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory);
+                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory
+#if NET45
+                    , enlistInAmbientTransaction
+#endif
+    );
                 var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory);
 
                 if (automaticallyCreateTables)

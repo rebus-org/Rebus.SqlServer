@@ -3,6 +3,8 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+
+//using System.Transactions;
 using Rebus.Logging;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -16,6 +18,9 @@ namespace Rebus.SqlServer
     /// </summary>
     public class DbConnectionProvider : IDbConnectionProvider
     {
+#if NET45
+        private readonly bool _enlistInAmbientTransaction;
+#endif
         readonly string _connectionString;
         readonly ILog _log;
 
@@ -24,7 +29,11 @@ namespace Rebus.SqlServer
         /// a connection string to use. Will use <see cref="System.Data.IsolationLevel.ReadCommitted"/> by default on transactions,
         /// unless another isolation level is set with the <see cref="IsolationLevel"/> property
         /// </summary>
-        public DbConnectionProvider(string connectionStringOrConnectionStringName, IRebusLoggerFactory rebusLoggerFactory)
+        public DbConnectionProvider(string connectionStringOrConnectionStringName, IRebusLoggerFactory rebusLoggerFactory
+#if NET45
+            , bool enlistInAmbientTransaction = false
+#endif
+            )
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
@@ -33,7 +42,9 @@ namespace Rebus.SqlServer
             var connectionString = GetConnectionString(connectionStringOrConnectionStringName);
 
             _connectionString = EnsureMarsIsEnabled(connectionString);
-
+#if NET45
+            _enlistInAmbientTransaction = enlistInAmbientTransaction;
+#endif
             IsolationLevel = IsolationLevel.ReadCommitted;
         }
 
@@ -68,24 +79,26 @@ namespace Rebus.SqlServer
         public async Task<IDbConnection> GetConnection()
         {
             SqlConnection connection = null;
-
+            SqlTransaction transaction = null;
             try
             {
 
 #if NET45
-                using (new System.Transactions.TransactionScope(System.Transactions.TransactionScopeOption.Suppress))
+                if (_enlistInAmbientTransaction == false)
                 {
-                    connection = new SqlConnection(_connectionString);
-                    
-                    // do not use Async here! it would cause the tx scope to be disposed on another thread than the one that created it
-                    connection.Open();
+                    connection = CreateSqlConnectionSuppressingAPossibleAmbientTransaction();
+                    transaction = connection.BeginTransaction(IsolationLevel);
+                }
+                else
+                {
+                    connection = CreateSqlConnectionInAPossiblyAmbientTransaction();
                 }
 #else
                 connection = new SqlConnection(_connectionString);
                 connection.Open();
+                transaction = connection.BeginTransaction(IsolationLevel);
 #endif
 
-                var transaction = connection.BeginTransaction(IsolationLevel);
 
                 return new DbConnectionWrapper(connection, transaction, false);
             }
@@ -95,6 +108,34 @@ namespace Rebus.SqlServer
                 throw;
             }
         }
+
+#if NET45
+        private SqlConnection CreateSqlConnectionInAPossiblyAmbientTransaction()
+        {
+            var connection = new SqlConnection(_connectionString);
+            
+            var transaction = System.Transactions.Transaction.Current;
+            if (transaction != null)
+            {
+                connection.EnlistTransaction(transaction);
+            }
+            
+            return connection;
+        }
+        private SqlConnection CreateSqlConnectionSuppressingAPossibleAmbientTransaction()
+        {
+            SqlConnection connection;
+            using (new System.Transactions.TransactionScope(System.Transactions.TransactionScopeOption.Suppress))
+            {
+                connection = new SqlConnection(_connectionString);
+
+                // do not use Async here! it would cause the tx scope to be disposed on another thread than the one that created it
+                connection.Open();
+            }
+
+            return connection;
+        }
+#endif
 
         /// <summary>
         /// Gets/sets the isolation level used for transactions
