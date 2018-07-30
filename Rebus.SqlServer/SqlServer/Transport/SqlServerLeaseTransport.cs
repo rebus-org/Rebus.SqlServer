@@ -333,7 +333,7 @@ WHERE	id = @id
             readonly long _messageId;
             readonly IDbConnectionProvider _connectionProvider;
             readonly long _leaseIntervalMilliseconds;
-            readonly Timer _renewTimer;
+            Timer _renewTimer;
 
             public AutomaticLeaseRenewer(string tableName, long messageId, IDbConnectionProvider connectionProvider, long renewIntervalMilliseconds, long leaseIntervalMilliseconds)
             {
@@ -349,6 +349,7 @@ WHERE	id = @id
             {
                 _renewTimer?.Change(TimeSpan.FromMilliseconds(-1), TimeSpan.FromMilliseconds(-1));
                 _renewTimer?.Dispose();
+	            _renewTimer = null;
             }
 
             async void RenewLease(object state)
