@@ -47,7 +47,7 @@
 * Add .NET Core support (netstandard1.6)
 * Made `CurrentConnectionKey` of `SqlTransport` public
 
-## 5.0.0-b7
+## 5.0.0-b8
 
 * Add lease-based transport - thanks [MrMDavidson]
 * Add creation time column to data bus storage - thanks [IsaacSee]
@@ -58,6 +58,7 @@
 * Add ambient transaction support, so 2PC can be enabled if one desires - thanks [larsw]
 * Fix double-disposal of renew timer - thanks [MrMDavidson]
 * `ConfigureAwait(false)` everywhere
+* Change receive ordering such that the visiblity time takes precedence over insertion time. This way, messages deferred at different times into the future will arrive in the scheduled order and not risk being received out-of-order because they happen to have been inserted that way
 
 ----
 

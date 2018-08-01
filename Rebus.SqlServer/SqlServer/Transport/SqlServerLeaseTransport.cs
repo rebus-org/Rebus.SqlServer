@@ -137,6 +137,7 @@ namespace Rebus.SqlServer.Transport
 				END
 	ORDER
 	BY		[priority] DESC,
+			[visible] ASC,
 			[id] ASC
 )
 UPDATE	TopCTE WITH (ROWLOCK)
