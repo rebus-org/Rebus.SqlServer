@@ -38,7 +38,7 @@ namespace Rebus.SqlServer
         {
             try
             {
-                return await _connectionFactory();
+                return await _connectionFactory().ConfigureAwait(false);
             }
             catch (Exception exception)
             {

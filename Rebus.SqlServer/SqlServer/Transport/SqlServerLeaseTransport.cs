@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Threading;
@@ -114,7 +113,7 @@ namespace Rebus.SqlServer.Transport
         {
             TransportMessage transportMessage = null;
 
-            using (var connection = await ConnectionProvider.GetConnection())
+            using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var selectCommand = connection.CreateCommand())
                 {
@@ -151,9 +150,9 @@ OUTPUT	inserted.*";
 
                     try
                     {
-                        using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken))
+                        using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
                         {
-                            transportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken);
+                            transportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
                             if (transportMessage == null) return null;
 
                             var messageId = (long)reader["id"];
@@ -167,7 +166,7 @@ OUTPUT	inserted.*";
                     }
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
 
             return transportMessage;
@@ -230,7 +229,7 @@ END
                     renewal?.Dispose();
 
                     // Delete the message
-                    using (var deleteConnection = await ConnectionProvider.GetConnection())
+                    using (var deleteConnection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
                     {
                         using (var deleteCommand = deleteConnection.CreateCommand())
                         {
@@ -244,7 +243,7 @@ WHERE	id = @id
                             deleteCommand.ExecuteNonQuery();
                         }
 
-                        await deleteConnection.Complete();
+                        await deleteConnection.Complete().ConfigureAwait(false);
                     }
                 }
             );
@@ -254,35 +253,35 @@ WHERE	id = @id
         /// Gets the outbound message buffer for sending of messages
         /// </summary>
         /// <param name="context">Transaction context containing the message bufffer</param>
-        private ConcurrentQueue<AddressedTransportMessage> GetOutboundMessageBuffer(ITransactionContext context)
+        ConcurrentQueue<AddressedTransportMessage> GetOutboundMessageBuffer(ITransactionContext context)
         {
-            return context.Items.GetOrAdd(OutboundMessageBufferKey, key =>
-            {
-                context.OnCommitted(
-                    async () =>
-                    {
-                        var messageBuffer = context.Items
-                            .GetOrThrow<ConcurrentQueue<AddressedTransportMessage>>(OutboundMessageBufferKey);
+            return context.GetOrAdd(OutboundMessageBufferKey, () =>
+                {
+                    var outgoingMessages = new ConcurrentQueue<AddressedTransportMessage>();
 
-                        using (var connection = await ConnectionProvider.GetConnection())
+                    async Task SendOutgoingMessages()
+                    {
+                        using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
                         {
-                            while (messageBuffer.IsEmpty == false)
+                            while (outgoingMessages.IsEmpty == false)
                             {
-                                if (messageBuffer.TryDequeue(out var addressed) == false)
+                                if (outgoingMessages.TryDequeue(out var addressed) == false)
                                 {
                                     break;
                                 }
 
-                                await InnerSend(addressed.DestinationAddress, addressed.Message, connection);
+                                await InnerSend(addressed.DestinationAddress, addressed.Message, connection).ConfigureAwait(false);
                             }
 
-                            await connection.Complete();
+                            await connection.Complete().ConfigureAwait(false);
                         }
                     }
-                );
-                return new ConcurrentQueue<AddressedTransportMessage>();
-            }
-            ) as ConcurrentQueue<AddressedTransportMessage>;
+
+                    context.OnCommitted(SendOutgoingMessages);
+
+                    return outgoingMessages;
+                }
+            );
         }
 
         /// <summary>
@@ -294,7 +293,7 @@ WHERE	id = @id
         /// <param name="leaseIntervalMilliseconds">New lease interval in milliseconds. If <c>null</c> the lease will be released</param>
         static async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, long? leaseIntervalMilliseconds)
         {
-            using (var connection = await connectionProvider.GetConnection())
+            using (var connection = await connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -317,10 +316,10 @@ WHERE	id = @id
 ";
                     command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
                     command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.BigInt).Value = (object)leaseIntervalMilliseconds ?? DBNull.Value;
-                    await command.ExecuteNonQueryAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -349,12 +348,12 @@ WHERE	id = @id
             {
                 _renewTimer?.Change(TimeSpan.FromMilliseconds(-1), TimeSpan.FromMilliseconds(-1));
                 _renewTimer?.Dispose();
-	            _renewTimer = null;
+                _renewTimer = null;
             }
 
             async void RenewLease(object state)
             {
-                await UpdateLease(_connectionProvider, _tableName, _messageId, _leaseIntervalMilliseconds);
+                await UpdateLease(_connectionProvider, _tableName, _messageId, _leaseIntervalMilliseconds).ConfigureAwait(false);
             }
         }
 

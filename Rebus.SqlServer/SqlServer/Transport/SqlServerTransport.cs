@@ -71,11 +71,10 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
 
-            ConnectionProvider = connectionProvider;
+            ConnectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             ReceiveTableName = inputQueueName != null ? TableName.Parse(inputQueueName) : null;
 
             _log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
@@ -135,26 +134,26 @@ namespace Rebus.SqlServer.Transport
         {
             try
             {
-                await InnerEnsureTableIsCreatedAsync(tableName);
+                await InnerEnsureTableIsCreatedAsync(tableName).ConfigureAwait(false);
             }
             catch (Exception)
             {
                 // if it fails the first time, and if it's because of some kind of conflict,
                 // we should run it again and see if the situation has stabilized
-                await InnerEnsureTableIsCreatedAsync(tableName);
+                await InnerEnsureTableIsCreatedAsync(tableName).ConfigureAwait(false);
             }
         }
 
         async Task InnerEnsureTableIsCreatedAsync(TableName tableName)
         {
-            using (var connection = await ConnectionProvider.GetConnection())
+            using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
             {
                 var tableNames = connection.GetTableNames();
 
                 if (tableNames.Contains(tableName))
                 {
                     _log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
-                    await connection.Complete();
+                    await connection.Complete().ConfigureAwait(false);
                     return;
                 }
 
@@ -208,7 +207,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
                 var additional = AdditionalSchemaModifications();
                 ExecuteCommands(connection, additional);
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -252,13 +251,13 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         /// </summary>
         public virtual async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
-            var connection = await GetConnection(context);
+            var connection = await GetConnection(context).ConfigureAwait(false);
 
             var destinationAddressToUse = GetDestinationAddressToUse(destinationAddress, message);
 
             try
             {
-                await InnerSend(destinationAddressToUse, message, connection);
+                await InnerSend(destinationAddressToUse, message, connection).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -271,9 +270,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         /// </summary>
         public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
-            using (await _bottleneck.Enter(cancellationToken))
+            using (await _bottleneck.Enter(cancellationToken).ConfigureAwait(false))
             {
-                return await ReceiveInternal(context, cancellationToken);
+                return await ReceiveInternal(context, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -285,7 +284,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         /// <returns>A <seealso cref="TransportMessage"/> or <c>null</c> if no message can be dequeued</returns>
         protected virtual async Task<TransportMessage> ReceiveInternal(ITransactionContext context, CancellationToken cancellationToken)
         {
-            var connection = await GetConnection(context);
+            var connection = await GetConnection(context).ConfigureAwait(false);
 
             TransportMessage receivedTransportMessage;
 
@@ -316,9 +315,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
                 try
                 {
-                    using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken))
+                    using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken);
+                        receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
                     }
                 }
                 catch (Exception exception) when (cancellationToken.IsCancellationRequested)
@@ -337,7 +336,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         /// <returns>A <seealso cref="TransportMessage"/> representing the row or <c>null</c> if no row was available</returns>
         protected static async Task<TransportMessage> ExtractTransportMessageFromReader(SqlDataReader reader, CancellationToken cancellationToken)
         {
-            if (await reader.ReadAsync(cancellationToken) == false)
+            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false) == false)
             {
                 return null;
             }
@@ -362,9 +361,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
         static string GetDeferredRecipient(TransportMessage message)
         {
-            string destination;
-
-            if (message.Headers.TryGetValue(Headers.DeferredRecipient, out destination))
+            if (message.Headers.TryGetValue(Headers.DeferredRecipient, out var destination))
             {
                 return destination;
             }
@@ -417,15 +414,13 @@ VALUES
                 command.Parameters.Add("ttlseconds", SqlDbType.Int).Value = ttlSeconds;
                 command.Parameters.Add("visible", SqlDbType.Int).Value = initialVisibilityDelay;
 
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
         }
 
         static int GetInitialVisibilityDelay(IDictionary<string, string> headers)
         {
-            string deferredUntilDateTimeOffsetString;
-
-            if (!headers.TryGetValue(Headers.DeferredUntil, out deferredUntilDateTimeOffsetString))
+            if (!headers.TryGetValue(Headers.DeferredUntil, out var deferredUntilDateTimeOffsetString))
             {
                 return 0;
             }
@@ -457,7 +452,7 @@ VALUES
 
             while (true)
             {
-                using (var connection = await ConnectionProvider.GetConnection())
+                using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
                 {
                     int affectedRows;
 
@@ -473,12 +468,12 @@ VALUES
 DELETE FROM TopCTE
 ";
 
-                        affectedRows = await command.ExecuteNonQueryAsync();
+                        affectedRows = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
 
                     results += affectedRows;
 
-                    await connection.Complete();
+                    await connection.Complete().ConfigureAwait(false);
 
                     if (affectedRows == 0) break;
                 }
@@ -512,8 +507,8 @@ DELETE FROM TopCTE
                 .GetOrAdd(CurrentConnectionKey,
                     async () =>
                     {
-                        var dbConnection = await ConnectionProvider.GetConnection();
-                        context.OnCommitted(async () => await dbConnection.Complete());
+                        var dbConnection = await ConnectionProvider.GetConnection().ConfigureAwait(false);
+                        context.OnCommitted(async () => await dbConnection.Complete().ConfigureAwait(false));
                         context.OnDisposed(() =>
                         {
                             dbConnection.Dispose();

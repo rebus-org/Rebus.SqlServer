@@ -52,7 +52,7 @@ namespace Rebus.SqlServer.Timeouts
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 var tableNames = connection.GetTableNames();
 
@@ -100,7 +100,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
                     command.ExecuteNonQuery();
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -112,7 +112,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
         {
             var headersString = HeaderSerializer.SerializeToString(headers);
 
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -123,10 +123,10 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
                     command.Parameters.Add("headers", SqlDbType.NVarChar).Value = headersString;
                     command.Parameters.Add("body", SqlDbType.VarBinary).Value = body;
 
-                    await command.ExecuteNonQueryAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -135,7 +135,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
         /// </summary>
         public async Task<DueMessagesResult> GetDueMessages()
         {
-            var connection = await _connectionProvider.GetConnection();
+            var connection = await _connectionProvider.GetConnection().ConfigureAwait(false);
             try
             {
                 var dueMessages = new List<DueMessage>();
@@ -172,7 +172,7 @@ ORDER BY [due_time] ASC
                                 {
                                     deleteCommand.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [id] = @id";
                                     deleteCommand.Parameters.Add("id", SqlDbType.Int).Value = id;
-                                    await deleteCommand.ExecuteNonQueryAsync();
+                                    await deleteCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
                                 }
                             });
 
@@ -186,7 +186,7 @@ ORDER BY [due_time] ASC
                     {
                         using (connection)
                         {
-                            await connection.Complete();
+                            await connection.Complete().ConfigureAwait(false);
                         }
                     });
                 }

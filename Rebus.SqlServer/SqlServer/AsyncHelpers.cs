@@ -62,7 +62,7 @@ namespace Rebus.SqlServer
                 {
                     try
                     {
-                        await _task();
+                        await _task().ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {

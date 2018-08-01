@@ -105,7 +105,7 @@ WHERE
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 var tableNames = connection.GetTableNames();
 
@@ -138,7 +138,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     command.ExecuteNonQuery();
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -147,7 +147,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         /// </summary>
         public async Task<string[]> GetSubscriberAddresses(string topic)
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -156,9 +156,9 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
                     var subscriberAddresses = new List<string>();
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                     {
-                        while (await reader.ReadAsync())
+                        while (await reader.ReadAsync().ConfigureAwait(false))
                         {
                             var address = (string)reader["address"];
                             subscriberAddresses.Add(address);
@@ -177,7 +177,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         {
             CheckLengths(topic, subscriberAddress);
 
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -189,10 +189,10 @@ END";
                     command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
                     command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
 
-                    await command.ExecuteNonQueryAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -218,7 +218,7 @@ END";
         {
             CheckLengths(topic, subscriberAddress);
 
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -229,10 +229,10 @@ DELETE FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @a
                     command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
                     command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
 
-                    await command.ExecuteNonQueryAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 

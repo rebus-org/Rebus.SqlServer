@@ -77,7 +77,7 @@ namespace Rebus.SqlServer.Sagas
 
         async Task EnsureTablesAreCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 var tableNames = connection.GetTableNames().ToList();
                 
@@ -164,13 +164,13 @@ REFERENCES {_dataTableName.QualifiedName} ([id]) ON DELETE CASCADE
 
 ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName.Schema}_{_dataTableName.Name}_id]
 
-");
+").ConfigureAwait(false);
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
-        async Task ExecuteCommands(IDbConnection connection, string sqlCommands)
+        static async Task ExecuteCommands(IDbConnection connection, string sqlCommands)
         {
             foreach (var commandText in sqlCommands.Split(new[] {"----"}, StringSplitOptions.RemoveEmptyEntries))
             {
@@ -179,7 +179,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
                     using (var command = connection.CreateCommand())
                     {
                         command.CommandText = commandText;
-                        await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
                 }
                 catch (Exception exception)
@@ -240,7 +240,7 @@ Unfortunately, Rebus cannot help migrating any existing pieces of saga data :( s
             if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
             if (propertyValue == null) throw new ArgumentNullException(nameof(propertyValue));
 
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -269,9 +269,9 @@ WHERE [index].[saga_type] = @saga_type
 
                     command.Parameters.Add("value", SqlDbType.NVarChar, correlationPropertyValue.Length).Value = correlationPropertyValue;
 
-                    using (var reader = await command.ExecuteReaderAsync())
+                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                     {
-                        if (!await reader.ReadAsync()) return null;
+                        if (!await reader.ReadAsync().ConfigureAwait(false)) return null;
 
                         var value = GetData(reader);
 
@@ -310,7 +310,7 @@ WHERE [index].[saga_type] = @saga_type
                 throw new InvalidOperationException($"Attempted to insert saga data with ID {sagaData.Id} and revision {sagaData.Revision}, but revision must be 0 on first insert!");
             }
 
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -323,7 +323,7 @@ WHERE [index].[saga_type] = @saga_type
                     command.CommandText = $@"INSERT INTO {_dataTableName.QualifiedName} ([id], [revision], [data]) VALUES (@id, @revision, @data)";
                     try
                     {
-                        await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
                     catch (SqlException sqlException)
                     {
@@ -340,10 +340,10 @@ WHERE [index].[saga_type] = @saga_type
 
                 if (propertiesToIndex.Any())
                 {
-                    await CreateIndex(connection, sagaData, propertiesToIndex);
+                    await CreateIndex(connection, sagaData, propertiesToIndex).ConfigureAwait(false);
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -352,7 +352,7 @@ WHERE [index].[saga_type] = @saga_type
         /// </summary>
         public async Task Update(ISagaData sagaData, IEnumerable<ISagaCorrelationProperty> correlationProperties)
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 var revisionToUpdate = sagaData.Revision;
                 sagaData.Revision++;
@@ -365,7 +365,7 @@ WHERE [index].[saga_type] = @saga_type
                         command.CommandText = $@"DELETE FROM {_indexTableName.QualifiedName} WHERE [saga_id] = @id";
                         command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
 
-                        await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
 
                     // next, update or insert the saga
@@ -384,7 +384,7 @@ UPDATE {_dataTableName.QualifiedName}
     SET [data] = @data, [revision] = @next_revision 
     WHERE [id] = @id AND [revision] = @current_revision";
 
-                        var rows = await command.ExecuteNonQueryAsync();
+                        var rows = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                         if (rows == 0)
                         {
@@ -396,10 +396,10 @@ UPDATE {_dataTableName.QualifiedName}
 
                     if (propertiesToIndex.Any())
                     {
-                        await CreateIndex(connection, sagaData, propertiesToIndex);
+                        await CreateIndex(connection, sagaData, propertiesToIndex).ConfigureAwait(false);
                     }
 
-                    await connection.Complete();
+                    await connection.Complete().ConfigureAwait(false);
                 }
                 catch
                 {
@@ -414,7 +414,7 @@ UPDATE {_dataTableName.QualifiedName}
         /// </summary>
         public async Task Delete(ISagaData sagaData)
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -422,7 +422,7 @@ UPDATE {_dataTableName.QualifiedName}
                     command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
                     command.Parameters.Add("current_revision", SqlDbType.Int).Value = sagaData.Revision;
 
-                    var rows = await command.ExecuteNonQueryAsync();
+                    var rows = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                     if (rows == 0)
                     {
@@ -434,10 +434,10 @@ UPDATE {_dataTableName.QualifiedName}
                 {
                     command.CommandText = $@"DELETE FROM {_indexTableName.QualifiedName} WHERE [saga_id] = @id";
                     command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
-                    await command.ExecuteNonQueryAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
 
             sagaData.Revision++;
@@ -518,7 +518,7 @@ VALUES
 
                 try
                 {
-                    await command.ExecuteNonQueryAsync();
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
                 catch (SqlException sqlException)
                 {

@@ -12,6 +12,7 @@ using Rebus.Exceptions;
 using Rebus.Logging;
 using Rebus.Serialization;
 using Rebus.Time;
+// ReSharper disable SimplifyLinqExpression
 
 namespace Rebus.SqlServer.DataBus
 {
@@ -64,12 +65,13 @@ namespace Rebus.SqlServer.DataBus
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
 
                 if (connection.GetTableNames().Contains(_tableName))
                 {
                     var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
+                    
                     if (!columns.Any(x => x.Name == "CreationTime"))
                     {
                         _log.Info("Adding CreationTime column to data bus table {tableName}", _tableName.QualifiedName);
@@ -85,7 +87,7 @@ END
                             command.ExecuteNonQuery();
                         }
 
-                        await connection.Complete();
+                        await connection.Complete().ConfigureAwait(false);
                     }
 
                     return;
@@ -124,7 +126,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     }
                 }
 
-                await connection.Complete();
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -140,7 +142,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
             try
             {
-                using (var connection = await _connectionProvider.GetConnection())
+                using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
                 {
                     using (var command = connection.CreateCommand())
                     {
@@ -151,10 +153,10 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                         command.Parameters.Add("data", SqlDbType.VarBinary).Value = source;
                         command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
 
-                        await command.ExecuteNonQueryAsync();
+                        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
 
-                    await connection.Complete();
+                    await connection.Complete().ConfigureAwait(false);
                 }
             }
             catch (Exception exception)
@@ -171,9 +173,9 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
             try
             {
                 // update last read time quickly
-                await UpdateLastReadTime(id);
+                await UpdateLastReadTime(id).ConfigureAwait(false);
 
-                var connection = await _connectionProvider.GetConnection();
+                var connection = await _connectionProvider.GetConnection().ConfigureAwait(false);
 
                 using (var command = connection.CreateCommand())
                 {
@@ -183,9 +185,9 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                         command.CommandText = $"SELECT TOP 1 [Data] FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
 
-                        var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+                        var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess).ConfigureAwait(false);
 
-                        if (!await reader.ReadAsync())
+                        if (!await reader.ReadAsync().ConfigureAwait(false))
                         {
                             throw new ArgumentException($"Row with ID {id} not found");
                         }
@@ -220,10 +222,10 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
         async Task UpdateLastReadTime(string id)
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
             {
-                await UpdateLastReadTime(id, connection);
-                await connection.Complete();
+                await UpdateLastReadTime(id, connection).ConfigureAwait(false);
+                await connection.Complete().ConfigureAwait(false);
             }
         }
 
@@ -234,7 +236,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 command.CommandText = $"UPDATE {_tableName.QualifiedName} SET [LastReadTime] = @now WHERE [Id] = @id";
                 command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
                 command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
         }
 
@@ -245,16 +247,16 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         {
             try
             {
-                using (var connection = await _connectionProvider.GetConnection())
+                using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
                 {
                     using (var command = connection.CreateCommand())
                     {
                         command.CommandText = $"SELECT TOP 1 [Meta], [LastReadTime], DATALENGTH([Data]) AS 'Length' FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
 
-                        using (var reader = await command.ExecuteReaderAsync())
+                        using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                         {
-                            if (!await reader.ReadAsync())
+                            if (!await reader.ReadAsync().ConfigureAwait(false))
                             {
                                 throw new ArgumentException($"Row with ID {id} not found");
                             }
