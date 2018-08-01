@@ -47,7 +47,7 @@
 * Add .NET Core support (netstandard1.6)
 * Made `CurrentConnectionKey` of `SqlTransport` public
 
-## 5.0.0-b6
+## 5.0.0-b7
 
 * Add lease-based transport - thanks [MrMDavidson]
 * Add creation time column to data bus storage - thanks [IsaacSee]
@@ -57,6 +57,7 @@
 * Retry schema generation if it fails, most likely because of race condition between checking for the existence of a table and trying to create it
 * Add ambient transaction support, so 2PC can be enabled if one desires - thanks [larsw]
 * Fix double-disposal of renew timer - thanks [MrMDavidson]
+* `ConfigureAwait(false)` everywhere
 
 ----
 
