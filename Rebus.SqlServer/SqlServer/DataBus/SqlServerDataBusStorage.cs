@@ -65,7 +65,7 @@ namespace Rebus.SqlServer.DataBus
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
 
                 if (connection.GetTableNames().Contains(_tableName))
@@ -87,7 +87,7 @@ END
                             command.ExecuteNonQuery();
                         }
 
-                        await connection.Complete().ConfigureAwait(false);
+                        await connection.Complete();
                     }
 
                     return;
@@ -126,7 +126,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     }
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -142,7 +142,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
             try
             {
-                using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+                using (var connection = await _connectionProvider.GetConnection())
                 {
                     using (var command = connection.CreateCommand())
                     {
@@ -156,7 +156,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
 
-                    await connection.Complete().ConfigureAwait(false);
+                    await connection.Complete();
                 }
             }
             catch (Exception exception)
@@ -173,9 +173,9 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
             try
             {
                 // update last read time quickly
-                await UpdateLastReadTime(id).ConfigureAwait(false);
+                await UpdateLastReadTime(id);
 
-                var connection = await _connectionProvider.GetConnection().ConfigureAwait(false);
+                var connection = await _connectionProvider.GetConnection();
 
                 using (var command = connection.CreateCommand())
                 {
@@ -222,10 +222,10 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
         async Task UpdateLastReadTime(string id)
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 await UpdateLastReadTime(id, connection).ConfigureAwait(false);
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -247,7 +247,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         {
             try
             {
-                using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+                using (var connection = await _connectionProvider.GetConnection())
                 {
                     using (var command = connection.CreateCommand())
                     {

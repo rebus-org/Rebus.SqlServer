@@ -146,14 +146,14 @@ namespace Rebus.SqlServer.Transport
 
         async Task InnerEnsureTableIsCreatedAsync(TableName tableName)
         {
-            using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await ConnectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
 
                 if (tableNames.Contains(tableName))
                 {
                     _log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
-                    await connection.Complete().ConfigureAwait(false);
+                    await connection.Complete();
                     return;
                 }
 
@@ -207,7 +207,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
                 var additional = AdditionalSchemaModifications();
                 ExecuteCommands(connection, additional);
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -453,7 +453,7 @@ VALUES
 
             while (true)
             {
-                using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
+                using (var connection = await ConnectionProvider.GetConnection())
                 {
                     int affectedRows;
 
@@ -474,7 +474,7 @@ DELETE FROM TopCTE
 
                     results += affectedRows;
 
-                    await connection.Complete().ConfigureAwait(false);
+                    await connection.Complete();
 
                     if (affectedRows == 0) break;
                 }
@@ -508,8 +508,8 @@ DELETE FROM TopCTE
                 .GetOrAdd(CurrentConnectionKey,
                     async () =>
                     {
-                        var dbConnection = await ConnectionProvider.GetConnection().ConfigureAwait(false);
-                        context.OnCommitted(async () => await dbConnection.Complete().ConfigureAwait(false));
+                        var dbConnection = await ConnectionProvider.GetConnection();
+                        context.OnCommitted(async () => await dbConnection.Complete());
                         context.OnDisposed(() =>
                         {
                             dbConnection.Dispose();

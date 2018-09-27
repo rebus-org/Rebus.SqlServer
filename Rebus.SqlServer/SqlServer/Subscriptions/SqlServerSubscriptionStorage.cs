@@ -45,18 +45,21 @@ namespace Rebus.SqlServer.Subscriptions
         /// </summary>
         public void Initialize()
         {
-            try
+            AsyncHelpers.RunSync(async () =>
             {
-                using (var connection = _connectionProvider.GetConnection().Result)
+                try
                 {
-                    _topicLength = GetColumnWidth("topic", connection);
-                    _addressLength = GetColumnWidth("address", connection);
+                    using (var connection = await _connectionProvider.GetConnection())
+                    {
+                        _topicLength = GetColumnWidth("topic", connection);
+                        _addressLength = GetColumnWidth("address", connection);
+                    }
                 }
-            }
-            catch (Exception exception)
-            {
-                throw new RebusApplicationException(exception, "Error during schema reflection");
-            }
+                catch (Exception exception)
+                {
+                    throw new RebusApplicationException(exception, "Error during schema reflection");
+                }
+            });
         }
 
         int GetColumnWidth(string columnName, IDbConnection connection)
@@ -78,7 +81,7 @@ WHERE
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = sql;
-                    return (int) command.ExecuteScalar();
+                    return (int)command.ExecuteScalar();
                 }
             }
             catch (Exception exception)
@@ -105,7 +108,7 @@ WHERE
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
 
@@ -138,7 +141,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     command.ExecuteNonQuery();
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -147,7 +150,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         /// </summary>
         public async Task<string[]> GetSubscriberAddresses(string topic)
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -177,7 +180,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         {
             CheckLengths(topic, subscriberAddress);
 
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -192,7 +195,7 @@ END";
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -218,7 +221,7 @@ END";
         {
             CheckLengths(topic, subscriberAddress);
 
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -232,7 +235,7 @@ DELETE FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @a
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 

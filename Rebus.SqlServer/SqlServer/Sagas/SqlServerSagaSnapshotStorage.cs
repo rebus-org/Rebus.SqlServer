@@ -54,7 +54,7 @@ namespace Rebus.SqlServer.Sagas
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
 
@@ -92,7 +92,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     command.ExecuteNonQuery();
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -101,7 +101,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         /// </summary>
         public async Task Save(ISagaData sagaData, Dictionary<string, string> sagaAuditMetadata)
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -130,7 +130,7 @@ INSERT INTO {_tableName.QualifiedName} (
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
     }

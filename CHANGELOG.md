@@ -57,7 +57,7 @@
 * Retry schema generation if it fails, most likely because of race condition between checking for the existence of a table and trying to create it
 * Add ambient transaction support, so 2PC can be enabled if one desires - thanks [larsw]
 * Fix double-disposal of renew timer - thanks [MrMDavidson]
-* `ConfigureAwait(false)` everywhere
+* `ConfigureAwait(false)` in places that cannot result in callbacks to Rebus extensibility points
 * Change receive ordering such that the visiblity time takes precedence over insertion time. This way, messages deferred at different times into the future will arrive in the scheduled order and not risk being received out-of-order because they happen to have been inserted that way
 
 ----

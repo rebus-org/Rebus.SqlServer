@@ -113,7 +113,7 @@ namespace Rebus.SqlServer.Transport
         {
             TransportMessage transportMessage = null;
 
-            using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await ConnectionProvider.GetConnection())
             {
                 using (var selectCommand = connection.CreateCommand())
                 {
@@ -167,7 +167,7 @@ OUTPUT	inserted.*";
                     }
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
 
             return transportMessage;
@@ -230,7 +230,7 @@ END
                     renewal?.Dispose();
 
                     // Delete the message
-                    using (var deleteConnection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
+                    using (var deleteConnection = await ConnectionProvider.GetConnection())
                     {
                         using (var deleteCommand = deleteConnection.CreateCommand())
                         {
@@ -244,7 +244,7 @@ WHERE	id = @id
                             deleteCommand.ExecuteNonQuery();
                         }
 
-                        await deleteConnection.Complete().ConfigureAwait(false);
+                        await deleteConnection.Complete();
                     }
                 }
             );
@@ -262,7 +262,7 @@ WHERE	id = @id
 
                     async Task SendOutgoingMessages()
                     {
-                        using (var connection = await ConnectionProvider.GetConnection().ConfigureAwait(false))
+                        using (var connection = await ConnectionProvider.GetConnection())
                         {
                             while (outgoingMessages.IsEmpty == false)
                             {
@@ -271,10 +271,10 @@ WHERE	id = @id
                                     break;
                                 }
 
-                                await InnerSend(addressed.DestinationAddress, addressed.Message, connection).ConfigureAwait(false);
+                                await InnerSend(addressed.DestinationAddress, addressed.Message, connection);
                             }
 
-                            await connection.Complete().ConfigureAwait(false);
+                            await connection.Complete();
                         }
                     }
 
@@ -294,7 +294,7 @@ WHERE	id = @id
         /// <param name="leaseIntervalMilliseconds">New lease interval in milliseconds. If <c>null</c> the lease will be released</param>
         static async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, long? leaseIntervalMilliseconds)
         {
-            using (var connection = await connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -320,7 +320,7 @@ WHERE	id = @id
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 

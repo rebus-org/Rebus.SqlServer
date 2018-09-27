@@ -54,17 +54,20 @@ namespace Rebus.SqlServer.Sagas
         /// </summary>
         public void Initialize()
         {
-            using (var connection = _connectionProvider.GetConnection().Result)
+            AsyncHelpers.RunSync(async () =>
             {
-                var columns = connection.GetColumns(_dataTableName.Schema, _dataTableName.Name);
-                var datacolumn = columns.FirstOrDefault(c => string.Equals(c.Name, "data", StringComparison.OrdinalIgnoreCase));
+                using (var connection = await _connectionProvider.GetConnection())
+                {
+                    var columns = connection.GetColumns(_dataTableName.Schema, _dataTableName.Name);
+                    var datacolumn = columns.FirstOrDefault(c => string.Equals(c.Name, "data", StringComparison.OrdinalIgnoreCase));
 
-                // if there is no data column at this point, it has probably just not been created yet
-                if (datacolumn == null) { return; }
+                    // if there is no data column at this point, it has probably just not been created yet
+                    if (datacolumn == null) { return; }
 
-                // remember to use "old format" if the data column is NVarChar
-                _oldFormatDataTable = datacolumn.Type == SqlDbType.NVarChar;
-            }
+                    // remember to use "old format" if the data column is NVarChar
+                    _oldFormatDataTable = datacolumn.Type == SqlDbType.NVarChar;
+                }
+            });
         }
 
         /// <summary>
@@ -77,7 +80,7 @@ namespace Rebus.SqlServer.Sagas
 
         async Task EnsureTablesAreCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames().ToList();
                 
@@ -166,7 +169,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 
 ").ConfigureAwait(false);
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -240,7 +243,7 @@ Unfortunately, Rebus cannot help migrating any existing pieces of saga data :( s
             if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
             if (propertyValue == null) throw new ArgumentNullException(nameof(propertyValue));
 
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -310,7 +313,7 @@ WHERE [index].[saga_type] = @saga_type
                 throw new InvalidOperationException($"Attempted to insert saga data with ID {sagaData.Id} and revision {sagaData.Revision}, but revision must be 0 on first insert!");
             }
 
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -343,7 +346,7 @@ WHERE [index].[saga_type] = @saga_type
                     await CreateIndex(connection, sagaData, propertiesToIndex).ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -352,7 +355,7 @@ WHERE [index].[saga_type] = @saga_type
         /// </summary>
         public async Task Update(ISagaData sagaData, IEnumerable<ISagaCorrelationProperty> correlationProperties)
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 var revisionToUpdate = sagaData.Revision;
                 sagaData.Revision++;
@@ -399,7 +402,7 @@ UPDATE {_dataTableName.QualifiedName}
                         await CreateIndex(connection, sagaData, propertiesToIndex).ConfigureAwait(false);
                     }
 
-                    await connection.Complete().ConfigureAwait(false);
+                    await connection.Complete();
                 }
                 catch
                 {
@@ -414,7 +417,7 @@ UPDATE {_dataTableName.QualifiedName}
         /// </summary>
         public async Task Delete(ISagaData sagaData)
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -437,7 +440,7 @@ UPDATE {_dataTableName.QualifiedName}
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
 
             sagaData.Revision++;

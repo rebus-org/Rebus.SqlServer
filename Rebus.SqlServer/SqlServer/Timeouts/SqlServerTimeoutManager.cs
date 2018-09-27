@@ -52,7 +52,7 @@ namespace Rebus.SqlServer.Timeouts
 
         async Task EnsureTableIsCreatedAsync()
         {
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames();
 
@@ -100,7 +100,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
                     command.ExecuteNonQuery();
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -112,7 +112,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
         {
             var headersString = HeaderSerializer.SerializeToString(headers);
 
-            using (var connection = await _connectionProvider.GetConnection().ConfigureAwait(false))
+            using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
@@ -126,7 +126,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
-                await connection.Complete().ConfigureAwait(false);
+                await connection.Complete();
             }
         }
 
@@ -135,7 +135,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
         /// </summary>
         public async Task<DueMessagesResult> GetDueMessages()
         {
-            var connection = await _connectionProvider.GetConnection().ConfigureAwait(false);
+            var connection = await _connectionProvider.GetConnection();
             try
             {
                 var dueMessages = new List<DueMessage>();
@@ -186,7 +186,7 @@ ORDER BY [due_time] ASC
                     {
                         using (connection)
                         {
-                            await connection.Complete().ConfigureAwait(false);
+                            await connection.Complete();
                         }
                     });
                 }
