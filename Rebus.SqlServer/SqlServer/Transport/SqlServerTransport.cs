@@ -298,7 +298,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 				[id],
 				[headers],
 				[body]
-		FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST)
+		FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST, READCOMMITTEDLOCK)
 		WHERE	
                 M.[visible] < getdate()
 		AND		M.[expiration] > getdate()

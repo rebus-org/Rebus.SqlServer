@@ -5,7 +5,6 @@ using System.Linq;
 using Rebus.SqlServer.Tests.Extensions;
 using Rebus.Exceptions;
 using Rebus.Tests.Contracts;
-using Rebus.Tests.Contracts.Extensions;
 
 namespace Rebus.SqlServer.Tests
 {
@@ -47,10 +46,23 @@ namespace Rebus.SqlServer.Tests
             {
                 connection.Open();
 
+                Console.Write($"SQL => {sql}        -- ");
+
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandText = sql;
-                    command.ExecuteNonQuery();
+
+                    try
+                    {
+                        command.ExecuteNonQuery();
+                        
+                        Console.WriteLine("OK");
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Fail");
+                        throw;
+                    }
                 }
             }
         }

@@ -47,7 +47,7 @@
 * Add .NET Core support (netstandard1.6)
 * Made `CurrentConnectionKey` of `SqlTransport` public
 
-## 5.0.0-b8
+## 5.0.0-b9
 
 * Add lease-based transport - thanks [MrMDavidson]
 * Add creation time column to data bus storage - thanks [IsaacSee]
@@ -59,6 +59,7 @@
 * Fix double-disposal of renew timer - thanks [MrMDavidson]
 * `ConfigureAwait(false)` in places that cannot result in callbacks to Rebus extensibility points
 * Change receive ordering such that the visiblity time takes precedence over insertion time. This way, messages deferred at different times into the future will arrive in the scheduled order and not risk being received out-of-order because they happen to have been inserted that way
+* Add `READCOMMITTEDLOCK` hint such that receive locks work properly also when running the database with snapshot isolation enabled
 
 ----
 
