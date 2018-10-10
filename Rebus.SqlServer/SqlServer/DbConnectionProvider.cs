@@ -18,7 +18,7 @@ namespace Rebus.SqlServer
     /// </summary>
     public class DbConnectionProvider : IDbConnectionProvider
     {
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
         private readonly bool _enlistInAmbientTransaction;
 #endif
         readonly string _connectionString;
@@ -29,8 +29,8 @@ namespace Rebus.SqlServer
         /// a connection string to use. Will use <see cref="System.Data.IsolationLevel.ReadCommitted"/> by default on transactions,
         /// unless another isolation level is set with the <see cref="IsolationLevel"/> property
         /// </summary>
-        public DbConnectionProvider(string connectionStringOrConnectionStringName, IRebusLoggerFactory rebusLoggerFactory
-#if NET45
+        public DbConnectionProvider(string connectionString, IRebusLoggerFactory rebusLoggerFactory
+#if HAS_AMBIENT_TRANSACTIONS
             , bool enlistInAmbientTransaction = false
 #endif
             )
@@ -39,10 +39,8 @@ namespace Rebus.SqlServer
 
             _log = rebusLoggerFactory.GetLogger<DbConnectionProvider>();
 
-            var connectionString = GetConnectionString(connectionStringOrConnectionStringName);
-
             _connectionString = EnsureMarsIsEnabled(connectionString);
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             _enlistInAmbientTransaction = enlistInAmbientTransaction;
 #endif
             IsolationLevel = IsolationLevel.ReadCommitted;
@@ -64,15 +62,6 @@ namespace Rebus.SqlServer
             return string.Join("; ", connectionStringSettings.Select(kvp => $"{kvp.Key}={kvp.Value}"));
         }
 
-        static string GetConnectionString(string connectionStringOrConnectionStringName)
-        {
-            var connectionStringSettings = ConfigurationManager.ConnectionStrings[connectionStringOrConnectionStringName];
-
-            return connectionStringSettings != null 
-                ? connectionStringSettings.ConnectionString 
-                : connectionStringOrConnectionStringName;
-        }
-
         /// <summary>
         /// Gets a nice ready-to-use database connection with an open transaction
         /// </summary>
@@ -82,8 +71,7 @@ namespace Rebus.SqlServer
             SqlTransaction transaction = null;
             try
             {
-
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
                 if (_enlistInAmbientTransaction == false)
                 {
                     connection = CreateSqlConnectionSuppressingAPossibleAmbientTransaction();
@@ -109,8 +97,8 @@ namespace Rebus.SqlServer
             }
         }
 
-#if NET45
-        private SqlConnection CreateSqlConnectionInAPossiblyAmbientTransaction()
+#if HAS_AMBIENT_TRANSACTIONS
+        SqlConnection CreateSqlConnectionInAPossiblyAmbientTransaction()
         {
             var connection = new SqlConnection(_connectionString);
             
@@ -122,7 +110,8 @@ namespace Rebus.SqlServer
             
             return connection;
         }
-        private SqlConnection CreateSqlConnectionSuppressingAPossibleAmbientTransaction()
+        
+        SqlConnection CreateSqlConnectionSuppressingAPossibleAmbientTransaction()
         {
             SqlConnection connection;
             using (new System.Transactions.TransactionScope(System.Transactions.TransactionScopeOption.Suppress))
