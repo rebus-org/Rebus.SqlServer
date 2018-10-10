@@ -45,7 +45,7 @@ namespace Rebus.SqlServer.Tests.Bugs
             await _activator.Bus.SendLocal("med");
             await _activator.Bus.SendLocal("dig");
 
-            await Task.Delay(TimeSpan.FromSeconds(3));
+            await Task.Delay(TimeSpan.FromSeconds(2));
 
             var snapshots = SqlTestHelper
                 .Query<SagaSnapshot>(
@@ -59,7 +59,9 @@ namespace Rebus.SqlServer.Tests.Bugs
                 .OrderBy(s => s.Revision)
                 .ToList();
 
-            Assert.That(snapshots.Count, Is.EqualTo(3));
+            Assert.That(snapshots.Count, Is.EqualTo(3), $@"Only expected three snapshots - got these ids/revisions:
+
+{string.Join(Environment.NewLine+Environment.NewLine, snapshots.Select(s => $"{s.Id} / {s.Revision}"))}");
 
             Assert.That(snapshots.Select(s => s.Revision), Is.EqualTo(new[] { 0, 1, 2 }), "Expected snapshots of revision 0, 1, and 2");
             Assert.That(snapshots.GroupBy(s => s.Id).Count(), Is.EqualTo(1), "Expected three snapshots for the same saga ID");
