@@ -106,8 +106,8 @@ namespace Rebus.SqlServer
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return string.Equals(Schema, other.Schema, StringComparison.CurrentCultureIgnoreCase)
-                   && string.Equals(Name, other.Name, StringComparison.CurrentCultureIgnoreCase);
+            return string.Equals(Schema, other.Schema, StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <inheritdoc />
