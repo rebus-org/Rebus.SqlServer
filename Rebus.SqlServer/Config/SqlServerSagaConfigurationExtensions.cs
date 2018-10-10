@@ -18,7 +18,7 @@ namespace Rebus.Config
         public static void StoreInSqlServer(this StandardConfigurer<ISagaStorage> configurer,
             string connectionStringOrConnectionStringName, string dataTableName, string indexTableName,
             bool automaticallyCreateTables = true
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             ,bool enlistInAmbientTransaction = false
 #endif
     )
@@ -32,7 +32,7 @@ namespace Rebus.Config
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
                     , enlistInAmbientTransaction
 #endif
     );

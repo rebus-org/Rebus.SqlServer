@@ -35,13 +35,13 @@ namespace Rebus.Config
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="enlistInAmbientTransaction">If <c>true</c> the connection will be enlisted in the ambient transaction if it exists, else it will create an SqlTransaction and enlist in it</param>
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
         , bool enlistInAmbientTransaction = false
 #endif
         )
         {
             ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             ,enlistInAmbientTransaction
 #endif
             ), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
@@ -82,13 +82,13 @@ namespace Rebus.Config
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="enlistInAmbientTransaction">If <c>true</c> the connection will be enlisted in the ambient transaction if it exists, else it will create an SqlTransaction and enlist in it</param>
         public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
         , bool enlistInAmbientTransaction = false
 #endif
         )
         {
             ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             , enlistInAmbientTransaction
 #endif
             ), inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
@@ -155,13 +155,13 @@ namespace Rebus.Config
         /// The message table will automatically be created if it does not exist.
         /// </summary>
         public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             , bool enlistInAmbientTransaction = false
 #endif
         )
         {
             Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             , enlistInAmbientTransaction
 #endif
             ), null, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
@@ -183,13 +183,13 @@ namespace Rebus.Config
         /// The message table will automatically be created if it does not exist.
         /// </summary>
         public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string inputQueueName
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
             , bool enlistInAmbientTransaction = false
 #endif 
         )
         {
             Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
                 , enlistInAmbientTransaction
 #endif
             ), inputQueueName);

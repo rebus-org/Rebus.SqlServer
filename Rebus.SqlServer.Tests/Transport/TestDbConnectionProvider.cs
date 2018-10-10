@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
 using System.Transactions;
 #endif
 using NUnit.Framework;
@@ -29,7 +29,7 @@ namespace Rebus.SqlServer.Tests.Transport
                 //await dbConnection.Complete();
             }
         }
-#if NET45
+#if HAS_AMBIENT_TRANSACTIONS
         [Test, Ignore("assumes existence of a bimse table")]
         public async Task CanDoWorkInAmbientTransaction()
         {
