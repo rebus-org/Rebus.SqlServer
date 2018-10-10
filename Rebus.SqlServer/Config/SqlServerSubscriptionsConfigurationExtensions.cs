@@ -18,11 +18,7 @@ namespace Rebus.Config
         /// default behavior.
         /// </summary>
         public static void StoreInSqlServer(this StandardConfigurer<ISubscriptionStorage> configurer,
-            string connectionStringOrConnectionStringName, string tableName, bool isCentralized = false, bool automaticallyCreateTables = true
-#if HAS_AMBIENT_TRANSACTIONS
-            , bool enlistInAmbientTransaction = false
-#endif 
-            )
+            string connectionStringOrConnectionStringName, string tableName, bool isCentralized = false, bool automaticallyCreateTables = true, bool enlistInAmbientTransaction = false)
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
             if (connectionStringOrConnectionStringName == null) throw new ArgumentNullException(nameof(connectionStringOrConnectionStringName));
@@ -31,11 +27,7 @@ namespace Rebus.Config
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory
-#if HAS_AMBIENT_TRANSACTIONS
-                    , enlistInAmbientTransaction
-#endif                
-                );
+                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory, enlistInAmbientTransaction);
                 var subscriptionStorage = new SqlServerSubscriptionStorage(connectionProvider, tableName, isCentralized, rebusLoggerFactory);
 
                 if (automaticallyCreateTables)

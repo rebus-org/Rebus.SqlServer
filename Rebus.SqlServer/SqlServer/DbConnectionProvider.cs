@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Configuration;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
-
-//using System.Transactions;
 using Rebus.Logging;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -18,9 +15,7 @@ namespace Rebus.SqlServer
     /// </summary>
     public class DbConnectionProvider : IDbConnectionProvider
     {
-#if HAS_AMBIENT_TRANSACTIONS
-        private readonly bool _enlistInAmbientTransaction;
-#endif
+        readonly bool _enlistInAmbientTransaction;
         readonly string _connectionString;
         readonly ILog _log;
 
@@ -30,9 +25,7 @@ namespace Rebus.SqlServer
         /// unless another isolation level is set with the <see cref="IsolationLevel"/> property
         /// </summary>
         public DbConnectionProvider(string connectionString, IRebusLoggerFactory rebusLoggerFactory
-#if HAS_AMBIENT_TRANSACTIONS
             , bool enlistInAmbientTransaction = false
-#endif
             )
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
@@ -40,9 +33,7 @@ namespace Rebus.SqlServer
             _log = rebusLoggerFactory.GetLogger<DbConnectionProvider>();
 
             _connectionString = EnsureMarsIsEnabled(connectionString);
-#if HAS_AMBIENT_TRANSACTIONS
             _enlistInAmbientTransaction = enlistInAmbientTransaction;
-#endif
             IsolationLevel = IsolationLevel.ReadCommitted;
         }
 
@@ -71,7 +62,6 @@ namespace Rebus.SqlServer
             SqlTransaction transaction = null;
             try
             {
-#if HAS_AMBIENT_TRANSACTIONS
                 if (_enlistInAmbientTransaction == false)
                 {
                     connection = CreateSqlConnectionSuppressingAPossibleAmbientTransaction();
@@ -81,12 +71,6 @@ namespace Rebus.SqlServer
                 {
                     connection = CreateSqlConnectionInAPossiblyAmbientTransaction();
                 }
-#else
-                connection = new SqlConnection(_connectionString);
-                connection.Open();
-                transaction = connection.BeginTransaction(IsolationLevel);
-#endif
-
 
                 return new DbConnectionWrapper(connection, transaction, false);
             }
@@ -97,7 +81,6 @@ namespace Rebus.SqlServer
             }
         }
 
-#if HAS_AMBIENT_TRANSACTIONS
         SqlConnection CreateSqlConnectionInAPossiblyAmbientTransaction()
         {
             var connection = new SqlConnection(_connectionString);
@@ -124,7 +107,6 @@ namespace Rebus.SqlServer
 
             return connection;
         }
-#endif
 
         /// <summary>
         /// Gets/sets the isolation level used for transactions

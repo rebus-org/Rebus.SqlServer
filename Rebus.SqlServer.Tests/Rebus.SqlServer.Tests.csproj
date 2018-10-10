@@ -34,9 +34,6 @@
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net46'">
-    <DefineConstants>HAS_AMBIENT_TRANSACTIONS</DefineConstants>
-  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj" />
     <PackageReference Include="microsoft.net.test.sdk" Version="15.9.0" />
