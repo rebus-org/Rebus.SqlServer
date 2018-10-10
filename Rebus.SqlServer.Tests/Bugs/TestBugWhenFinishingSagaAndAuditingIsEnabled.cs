@@ -45,7 +45,7 @@ namespace Rebus.SqlServer.Tests.Bugs
             await _activator.Bus.SendLocal("med");
             await _activator.Bus.SendLocal("dig");
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TimeSpan.FromSeconds(3));
 
             var snapshots = SqlTestHelper
                 .Query<SagaSnapshot>(
