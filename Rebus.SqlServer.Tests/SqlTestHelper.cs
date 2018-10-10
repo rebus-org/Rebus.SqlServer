@@ -55,7 +55,7 @@ namespace Rebus.SqlServer.Tests
                     try
                     {
                         command.ExecuteNonQuery();
-                        
+
                         Console.WriteLine("OK");
                     }
                     catch
@@ -255,14 +255,19 @@ select s.name as 'schema', t.name as 'table' from sys.tables t
                 {
                     connection.Open();
 
-                    if (connection.GetDatabaseNames().Contains(databaseName, StringComparer.OrdinalIgnoreCase)) return;
-
-                    Console.WriteLine("Creating database {0}", databaseName);
-
                     using (var command = connection.CreateCommand())
                     {
                         command.CommandText = $"CREATE DATABASE [{databaseName}]";
-                        command.ExecuteNonQuery();
+
+                        try
+                        {
+                            command.ExecuteNonQuery();
+                        }
+                        catch (SqlException exception) when (exception.Number == 1801)
+                        {
+                        }
+
+                        Console.WriteLine("Created database {0}", databaseName);
                     }
                 }
 
