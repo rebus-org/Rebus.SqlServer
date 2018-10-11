@@ -62,6 +62,10 @@
 * Add `READCOMMITTEDLOCK` hint such that receive locks work properly also when running the database with snapshot isolation enabled
 * Target .NET 4.5, .NET 4.6, and .NET Standard 2.0
 
+## 5.0.1
+
+* Reduce query plan cache pollution by coming up with lengths for all parameterized queries
+
 ----
 
 [cleytonb]: https://github.com/cleytonb

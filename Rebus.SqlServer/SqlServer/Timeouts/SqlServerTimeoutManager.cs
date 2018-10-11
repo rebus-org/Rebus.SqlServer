@@ -120,8 +120,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
                         $@"INSERT INTO {_tableName.QualifiedName} ([due_time], [headers], [body]) VALUES (@due_time, @headers, @body)";
 
                     command.Parameters.Add("due_time", SqlDbType.DateTime2).Value = approximateDueTime.UtcDateTime;
-                    command.Parameters.Add("headers", SqlDbType.NVarChar).Value = headersString;
-                    command.Parameters.Add("body", SqlDbType.VarBinary).Value = body;
+                    command.Parameters.Add("headers", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(headersString.Length)).Value = headersString;
+                    command.Parameters.Add("body", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(body.Length)).Value = body;
 
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }

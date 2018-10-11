@@ -409,8 +409,8 @@ VALUES
                 // must be last because the other functions on the headers might change them
                 var serializedHeaders = HeaderSerializer.Serialize(headers);
 
-                command.Parameters.Add("headers", SqlDbType.VarBinary).Value = serializedHeaders;
-                command.Parameters.Add("body", SqlDbType.VarBinary).Value = message.Body;
+                command.Parameters.Add("headers", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(serializedHeaders.Length)).Value = serializedHeaders;
+                command.Parameters.Add("body", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(message.Body.Length)).Value = message.Body;
                 command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
                 command.Parameters.Add("ttlseconds", SqlDbType.Int).Value = ttlSeconds;
                 command.Parameters.Add("visible", SqlDbType.Int).Value = initialVisibilityDelay;

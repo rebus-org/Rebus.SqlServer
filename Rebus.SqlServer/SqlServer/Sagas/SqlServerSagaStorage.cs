@@ -270,7 +270,7 @@ WHERE [index].[saga_type] = @saga_type
 
                     var correlationPropertyValue = GetCorrelationPropertyValue(propertyValue);
 
-                    command.Parameters.Add("value", SqlDbType.NVarChar, correlationPropertyValue.Length).Value = correlationPropertyValue;
+                    command.Parameters.Add("value", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(correlationPropertyValue.Length)).Value = correlationPropertyValue;
 
                     using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                     {
@@ -450,11 +450,12 @@ UPDATE {_dataTableName.QualifiedName}
         {
             if (_oldFormatDataTable)
             {
-                command.Parameters.Add("data", SqlDbType.NVarChar).Value = data;
+                command.Parameters.Add("data", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(data.Length)).Value = data;
             }
             else
             {
-                command.Parameters.Add("data", SqlDbType.VarBinary).Value = JsonTextEncoding.GetBytes(data);
+                var bytes = JsonTextEncoding.GetBytes(data);
+                command.Parameters.Add("data", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(bytes.Length)).Value = bytes;
             }
         }
 
@@ -512,11 +513,14 @@ VALUES
 
                 foreach (var parameter in parameters)
                 {
-                    command.Parameters.Add(parameter.PropertyNameParameter, SqlDbType.NVarChar).Value = parameter.PropertyName;
-                    command.Parameters.Add(parameter.PropertyValueParameter, SqlDbType.NVarChar).Value = parameter.PropertyValue;
+                    var propertyName = parameter.PropertyName;
+                    var propertyValue = parameter.PropertyValue;
+
+                    command.Parameters.Add(parameter.PropertyNameParameter, SqlDbType.NVarChar, propertyName.Length).Value = propertyName;
+                    command.Parameters.Add(parameter.PropertyValueParameter, SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(propertyValue.Length)).Value = propertyValue;
                 }
 
-                command.Parameters.Add("saga_type", SqlDbType.NVarChar).Value = sagaTypeName;
+                command.Parameters.Add("saga_type", SqlDbType.NVarChar, sagaTypeName.Length).Value = sagaTypeName;
                 command.Parameters.Add("saga_id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
 
                 try

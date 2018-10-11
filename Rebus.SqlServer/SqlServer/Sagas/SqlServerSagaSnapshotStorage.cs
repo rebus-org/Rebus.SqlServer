@@ -122,10 +122,13 @@ INSERT INTO {_tableName.QualifiedName} (
 
 ";
 
+                    var dataString = DataSerializer.SerializeToString(sagaData);
+                    var metadataString = MetadataSerializer.SerializeToString(sagaAuditMetadata);
+
                     command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
                     command.Parameters.Add("revision", SqlDbType.Int).Value = sagaData.Revision;
-                    command.Parameters.Add("data", SqlDbType.NVarChar).Value = DataSerializer.SerializeToString(sagaData);
-                    command.Parameters.Add("metadata", SqlDbType.NVarChar).Value = MetadataSerializer.SerializeToString(sagaAuditMetadata);
+                    command.Parameters.Add("data", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(dataString.Length)).Value = dataString;
+                    command.Parameters.Add("metadata", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(metadataString.Length)).Value = metadataString;
 
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }

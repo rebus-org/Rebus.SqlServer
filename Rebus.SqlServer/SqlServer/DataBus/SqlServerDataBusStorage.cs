@@ -146,11 +146,13 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 {
                     using (var command = connection.CreateCommand())
                     {
+                        var metadataBytes = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
+
                         command.CommandTimeout = _commandTimeout;
                         command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data], [CreationTime]) VALUES (@id, @meta, @data, @now)";
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
-                        command.Parameters.Add("meta", SqlDbType.VarBinary).Value = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
-                        command.Parameters.Add("data", SqlDbType.VarBinary).Value = source;
+                        command.Parameters.Add("meta", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(metadataBytes.Length)).Value = metadataBytes;
+                        command.Parameters.Add("data", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo((int)source.Length)).Value = source;
                         command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
 
                         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
