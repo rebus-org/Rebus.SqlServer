@@ -5,6 +5,7 @@ using NUnit.Framework;
 namespace Rebus.SqlServer.Tests.Assumptions
 {
     [TestFixture]
+    [Ignore("run if you must")]
     public class TestSpWho
     {
         [Test]
