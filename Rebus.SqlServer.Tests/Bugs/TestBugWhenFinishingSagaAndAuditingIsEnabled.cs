@@ -21,7 +21,7 @@ namespace Rebus.SqlServer.Tests.Bugs
 
         protected override void SetUp()
         {
-            SqlTestHelper.DropTable(TableName);
+            SqlTestHelper.DropAllTables();
 
             _activator = Using(new BuiltinHandlerActivator());
 
@@ -34,6 +34,19 @@ namespace Rebus.SqlServer.Tests.Bugs
                     o.SetMaxParallelism(1);
                 })
                 .Start();
+
+            Console.WriteLine($@"The test is now running - we have the following tables:
+
+{string.Join(Environment.NewLine, SqlTestHelper.GetTableNames())}");
+        }
+
+        protected override void TearDown()
+        {
+            base.TearDown();
+
+            Console.WriteLine($@"The test has finished running - we have the following tables:
+
+{string.Join(Environment.NewLine, SqlTestHelper.GetTableNames())}");
         }
 
         [Test]

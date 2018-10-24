@@ -188,7 +188,7 @@ namespace Rebus.SqlServer.Tests
             }
         }
 
-        static List<TableName> GetTableNames()
+        public static List<TableName> GetTableNames()
         {
             var tableNames = new List<TableName>();
 
