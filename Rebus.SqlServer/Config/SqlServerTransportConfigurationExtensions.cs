@@ -188,7 +188,11 @@ namespace Rebus.Config
                 return transport;
             });
 
-            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager());
+            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), 
+                @"A timeout manager cannot be explicitly configured when using SQL Server as the
+transport. This is because because the SQL transport has built-in deferred 
+message capabilities, and therefore it is not necessary to configure anything 
+else to be able to delay message delivery.");
 
             configurer.OtherService<IPipeline>().Decorate(c =>
             {

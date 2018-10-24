@@ -66,6 +66,10 @@
 
 * Reduce query plan cache pollution by coming up with lengths for all parameterized queries
 
+## 5.0.2
+
+* Improve error message when registering a timeout manager in conjunction with the SQL transport (which has built-in message delay, obviating the need for actual timeout storage)
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
