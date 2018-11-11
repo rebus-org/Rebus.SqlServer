@@ -15,16 +15,16 @@ namespace Rebus.Config
         /// <summary>
         /// Configures the data bus to store data in a central SQL Server 
         /// </summary>
-        public static void StoreInSqlServer(this StandardConfigurer<IDataBusStorage> configurer, string connectionStringOrConnectionStringName, string tableName, bool automaticallyCreateTables = true, int commandTimeout = 240, bool enlistInAmbientTransaction = false)
+        public static void StoreInSqlServer(this StandardConfigurer<IDataBusStorage> configurer, string connectionString, string tableName, bool automaticallyCreateTables = true, int commandTimeout = 240, bool enlistInAmbientTransaction = false)
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
-            if (connectionStringOrConnectionStringName == null) throw new ArgumentNullException(nameof(connectionStringOrConnectionStringName));
+            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
             configurer.Register(c =>
             {
                 var loggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory, enlistInAmbientTransaction);
+                var connectionProvider = new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction);
                 return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, commandTimeout);
             });
         }

@@ -16,19 +16,19 @@ namespace Rebus.Config
         /// Configures Rebus to use SQL Server to store sagas, using the tables specified to store data and indexed properties respectively.
         /// </summary>
         public static void StoreInSqlServer(this StandardConfigurer<ISagaStorage> configurer,
-            string connectionStringOrConnectionStringName, string dataTableName, string indexTableName,
+            string connectionString, string dataTableName, string indexTableName,
             bool automaticallyCreateTables = true, bool enlistInAmbientTransaction = false
     )
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
-            if (connectionStringOrConnectionStringName == null) throw new ArgumentNullException(nameof(connectionStringOrConnectionStringName));
+            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
             if (dataTableName == null) throw new ArgumentNullException(nameof(dataTableName));
             if (indexTableName == null) throw new ArgumentNullException(nameof(indexTableName));
 
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionProvider(connectionStringOrConnectionStringName, rebusLoggerFactory, enlistInAmbientTransaction);
+                var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
                 var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory);
 
                 if (automaticallyCreateTables)

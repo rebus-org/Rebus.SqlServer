@@ -70,6 +70,10 @@
 
 * Improve error message when registering a timeout manager in conjunction with the SQL transport (which has built-in message delay, obviating the need for actual timeout storage)
 
+## 5.0.3
+
+* Correct name of connection string parameter in configuration extensions
+
 ----
 
 [cleytonb]: https://github.com/cleytonb

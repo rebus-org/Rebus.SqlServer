@@ -10,9 +10,6 @@ using Rebus.Threading;
 using Rebus.Timeouts;
 using Rebus.Transport;
 
-// multi-platform stuff is hard for XML doc comments...
-#pragma warning disable 1572
-
 namespace Rebus.Config
 {
     /// <summary>
@@ -27,16 +24,16 @@ namespace Rebus.Config
         /// message again and try reprocessing
         /// </summary>
         /// <param name="configurer">Static to extend</param>
-        /// <param name="connectionStringOrConnectionStringName">Connection string or the named connection</param>
+        /// <param name="connectionString">Connection string</param>
         /// <param name="leaseInterval">If <c>null</c> will default to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTime"/>. Specifies how long a worker will request to keep a message. Higher values require less database communication but increase latency of a message being processed if a worker dies</param>
         /// <param name="leaseTolerance">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTolerance"/>. Workers will wait for this amount of time to elapse, beyond the lease time, before they pick up an already leased message.</param>
         /// <param name="automaticallyRenewLeases">If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <paramref name="leaseAutoRenewInterval"/></param>
         /// <param name="leaseAutoRenewInterval">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal"/>. Specifies how frequently a lease will be renewed whilst the worker is processing a message. Lower values decrease the chance of other workers processing the same message but increase DB communication. A value 50% of <paramref name="leaseInterval"/> should be appropriate</param>
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="enlistInAmbientTransaction">If <c>true</c> the connection will be enlisted in the ambient transaction if it exists, else it will create an SqlTransaction and enlist in it</param>
-        public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false)
+        public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false)
         {
-            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory, enlistInAmbientTransaction), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
+            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
@@ -65,7 +62,7 @@ namespace Rebus.Config
         /// message again and try reprocessing
         /// </summary>
         /// <param name="configurer">Static to extend</param>
-        /// <param name="connectionStringOrConnectionStringName">Connection string or the named connection</param>
+        /// <param name="connectionString">Connection string</param>
         /// <param name="inputQueueName">Name of the queue, which must be a valid table table in SQL Server</param>
         /// <param name="leaseInterval">If <c>null</c> will default to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTime"/>. Specifies how long a worker will request to keep a message. Higher values require less database communication but increase latency of a message being processed if a worker dies</param>
         /// <param name="leaseTolerance">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseTolerance"/>. Workers will wait for this amount of time to elapse, beyond the lease time, before they pick up an already leased message.</param>
@@ -73,9 +70,9 @@ namespace Rebus.Config
         /// <param name="leaseAutoRenewInterval">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal"/>. Specifies how frequently a lease will be renewed whilst the worker is processing a message. Lower values decrease the chance of other workers processing the same message but increase DB communication. A value 50% of <paramref name="leaseInterval"/> should be appropriate</param>
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="enlistInAmbientTransaction">If <c>true</c> the connection will be enlisted in the ambient transaction if it exists, else it will create an SqlTransaction and enlist in it</param>
-        public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false)
+        public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false)
         {
-            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory, enlistInAmbientTransaction), inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
+            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
         }
 
         /// <summary>
@@ -138,9 +135,9 @@ namespace Rebus.Config
         /// Configures Rebus to use SQL Server to transport messages as a one-way client (i.e. will not be able to receive any messages).
         /// The message table will automatically be created if it does not exist.
         /// </summary>
-        public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, bool enlistInAmbientTransaction = false)
+        public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, bool enlistInAmbientTransaction = false)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory, enlistInAmbientTransaction), null, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
+            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), null, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
@@ -158,9 +155,9 @@ namespace Rebus.Config
         /// Configures Rebus to use SQL Server as its transport. The "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
-        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionStringOrConnectionStringName, string inputQueueName, bool enlistInAmbientTransaction = false)
+        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName, bool enlistInAmbientTransaction = false)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionStringOrConnectionStringName, loggerFactory, enlistInAmbientTransaction), inputQueueName);
+            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), inputQueueName);
         }
 
 
@@ -216,4 +213,3 @@ else to be able to delay message delivery.");
         }
     }
 }
-#pragma warning restore 1591
