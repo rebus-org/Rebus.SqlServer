@@ -127,7 +127,7 @@ namespace Rebus.SqlServer.Transport
 			[leasedat],
 			[leaseduntil],
 			[leasedby]
-	FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST)
+	FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST, READCOMMITTEDLOCK)
 	WHERE	M.[visible] < getdate()
 	AND		M.[expiration] > getdate()
 	AND		1 = CASE
@@ -140,7 +140,7 @@ namespace Rebus.SqlServer.Transport
 			[visible] ASC,
 			[id] ASC
 )
-UPDATE	TopCTE WITH (ROWLOCK)
+UPDATE	TopCTE WITH (ROWLOCK, READCOMMITTEDLOCK)
 SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, getdate()),
 		[leasedat] = getdate(),
 		[leasedby] = @leasedby

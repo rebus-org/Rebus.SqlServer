@@ -74,6 +74,10 @@
 
 * Correct name of connection string parameter in configuration extensions
 
+## 5.0.4
+
+* Add `READCOMMITTEDLOCK` also to the receive code of the lease-based transport
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
