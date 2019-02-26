@@ -78,6 +78,10 @@
 
 * Add `READCOMMITTEDLOCK` also to the receive code of the lease-based transport
 
+## 5.0.5
+
+* Fix problem with closed connection when enlisting in ambient transaction - thanks [thomasdc]
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
@@ -85,3 +89,4 @@
 [larsw]: https://github.com/larsw
 [magnus-tretton37]: https://github.com/magnus-tretton37
 [MrMDavidson]: https://github.com/MrMDavidson
+[thomasdc]: https://github.com/thomasdc
