@@ -84,7 +84,10 @@ namespace Rebus.SqlServer
         SqlConnection CreateSqlConnectionInAPossiblyAmbientTransaction()
         {
             var connection = new SqlConnection(_connectionString);
-            
+
+            // do not use Async here! it would cause the tx scope to be disposed on another thread than the one that created it
+            connection.Open();
+
             var transaction = System.Transactions.Transaction.Current;
             if (transaction != null)
             {
