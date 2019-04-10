@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Rebus.Logging;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Timeouts;
+using Rebus.Time;
 using Rebus.Timeouts;
 
 namespace Rebus.Config
@@ -24,9 +25,10 @@ namespace Rebus.Config
 
             configurer.Register(c =>
             {
+                var rebusTime = c.Get<IRebusTime>();
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
-                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory);
+                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
                 if (automaticallyCreateTables)
                 {
@@ -49,9 +51,10 @@ namespace Rebus.Config
 
             configurer.Register(c =>
             {
+                var rebusTime = c.Get<IRebusTime>();
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
-                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory);
+                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
                 if (automaticallyCreateTables)
                 {

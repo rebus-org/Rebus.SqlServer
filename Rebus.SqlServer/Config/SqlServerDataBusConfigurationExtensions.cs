@@ -4,6 +4,7 @@ using Rebus.DataBus;
 using Rebus.Logging;
 using Rebus.SqlServer;
 using Rebus.SqlServer.DataBus;
+using Rebus.Time;
 
 namespace Rebus.Config
 {
@@ -23,9 +24,10 @@ namespace Rebus.Config
 
             configurer.Register(c =>
             {
+                var rebusTime = c.Get<IRebusTime>();
                 var loggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction);
-                return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, commandTimeout);
+                return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, rebusTime, commandTimeout);
             });
         }
 
@@ -40,9 +42,10 @@ namespace Rebus.Config
 
             configurer.Register(c =>
             {
+                var rebusTime = c.Get<IRebusTime>();
                 var loggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, loggerFactory);
-                return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, commandTimeout);
+                return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, rebusTime, commandTimeout);
             });
         }
     }

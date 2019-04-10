@@ -2,6 +2,7 @@
 using Rebus.Logging;
 using Rebus.SqlServer.Timeouts;
 using Rebus.Tests.Contracts.Timeouts;
+using Rebus.Time;
 using Rebus.Timeouts;
 
 namespace Rebus.SqlServer.Tests.Timeouts
@@ -17,9 +18,10 @@ namespace Rebus.SqlServer.Tests.Timeouts
 
         public ITimeoutManager Create()
         {
+            var rebusTime = new DefaultRebusTime();
             var consoleLoggerFactory = new ConsoleLoggerFactory(true);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
-            var timeoutManager = new SqlServerTimeoutManager(connectionProvider, TableName, consoleLoggerFactory);
+            var timeoutManager = new SqlServerTimeoutManager(connectionProvider, TableName, consoleLoggerFactory, rebusTime);
 
             timeoutManager.EnsureTableIsCreated();
 

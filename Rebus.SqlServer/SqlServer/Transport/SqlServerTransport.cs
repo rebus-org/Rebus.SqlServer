@@ -56,6 +56,8 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         protected readonly IDbConnectionProvider ConnectionProvider;
 
+        private readonly IRebusTime _rebusTime;
+
         /// <summary>
         /// Name of the table this transport is using for storage
         /// </summary>
@@ -69,11 +71,12 @@ namespace Rebus.SqlServer.Transport
         /// <summary>
         /// Constructs the transport with the given <see cref="IDbConnectionProvider"/>
         /// </summary>
-        public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory)
+        public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, IRebusTime rebusTime)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
 
+            _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
             ConnectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             ReceiveTableName = inputQueueName != null ? TableName.Parse(inputQueueName) : null;
 
@@ -419,7 +422,7 @@ VALUES
             }
         }
 
-        static int GetInitialVisibilityDelay(IDictionary<string, string> headers)
+        int GetInitialVisibilityDelay(IDictionary<string, string> headers)
         {
             if (!headers.TryGetValue(Headers.DeferredUntil, out var deferredUntilDateTimeOffsetString))
             {
@@ -430,7 +433,7 @@ VALUES
 
             headers.Remove(Headers.DeferredUntil);
 
-            return (int)(deferredUntilTime - RebusTime.Now).TotalSeconds;
+            return (int)(deferredUntilTime - _rebusTime.Now).TotalSeconds;
         }
 
         static int GetTtlSeconds(IReadOnlyDictionary<string, string> headers)

@@ -10,6 +10,7 @@ using Rebus.Logging;
 using Rebus.SqlServer.DataBus;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
+using Rebus.Time;
 
 namespace Rebus.SqlServer.Tests.DataBus
 {
@@ -20,6 +21,7 @@ namespace Rebus.SqlServer.Tests.DataBus
 
         protected override void SetUp()
         {
+            var rebusTime = new DefaultRebusTime();
             var loggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
 
@@ -27,7 +29,7 @@ namespace Rebus.SqlServer.Tests.DataBus
 
             SqlTestHelper.DropTable(tableName);
 
-            _storage = new SqlServerDataBusStorage(connectionProvider, tableName, true, loggerFactory, 240);
+            _storage = new SqlServerDataBusStorage(connectionProvider, tableName, true, loggerFactory, rebusTime, 240);
             _storage.Initialize();
         }
 

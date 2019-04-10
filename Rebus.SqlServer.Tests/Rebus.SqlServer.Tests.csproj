@@ -40,7 +40,7 @@
     <PackageReference Include="microsoft.net.test.sdk" Version="15.9.0" />
     <PackageReference Include="nunit" Version="3.7.1" />
     <PackageReference Include="nunit3testadapter" Version="3.10.0" />
-    <PackageReference Include="rebus" Version="5.0.0" />
+    <PackageReference Include="rebus" Version="6.0.0-b04" />
     <PackageReference Include="rebus.tests.contracts" Version="5.0.0" />
   </ItemGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net46'">

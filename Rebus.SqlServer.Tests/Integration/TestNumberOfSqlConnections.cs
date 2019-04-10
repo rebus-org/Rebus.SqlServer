@@ -11,6 +11,7 @@ using Rebus.Logging;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Threading;
+using Rebus.Time;
 
 namespace Rebus.SqlServer.Tests.Integration
 {
@@ -26,7 +27,7 @@ namespace Rebus.SqlServer.Tests.Integration
                 .Transport(t => t.Register(c =>
                 {
                     var connectionProvider = new TestConnectionProvider(SqlTestHelper.ConnectionString, activeConnections);
-                    var transport = new SqlServerTransport(connectionProvider, "bimse", c.Get<IRebusLoggerFactory>(), c.Get<IAsyncTaskFactory>());
+                    var transport = new SqlServerTransport(connectionProvider, "bimse", c.Get<IRebusLoggerFactory>(), c.Get<IAsyncTaskFactory>(), c.Get<IRebusTime>());
 
                     transport.EnsureTableIsCreated();
 

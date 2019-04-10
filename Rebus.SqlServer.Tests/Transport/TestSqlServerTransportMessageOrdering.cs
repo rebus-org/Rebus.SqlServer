@@ -9,6 +9,7 @@ using Rebus.Messages;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Threading.TaskParallelLibrary;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Transport
@@ -90,6 +91,7 @@ namespace Rebus.SqlServer.Tests.Transport
 
         static SqlServerTransport GetTransport(TransportType transportType)
         {
+            var rebusTime = new DefaultRebusTime();
             var loggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(loggerFactory);
@@ -100,6 +102,7 @@ namespace Rebus.SqlServer.Tests.Transport
                     QueueName,
                     loggerFactory,
                     asyncTaskFactory,
+                    rebusTime,
                     TimeSpan.FromMinutes(1),
                     TimeSpan.FromSeconds(5),
                     () => "who cares"
@@ -108,7 +111,8 @@ namespace Rebus.SqlServer.Tests.Transport
                     connectionProvider,
                     QueueName,
                     loggerFactory,
-                    asyncTaskFactory
+                    asyncTaskFactory,
+                    rebusTime
                 );
 
             transport.EnsureTableIsCreated();

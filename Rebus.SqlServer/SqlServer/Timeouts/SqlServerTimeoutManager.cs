@@ -17,19 +17,21 @@ namespace Rebus.SqlServer.Timeouts
     {
         static readonly HeaderSerializer HeaderSerializer = new HeaderSerializer();
         readonly IDbConnectionProvider _connectionProvider;
+        private readonly IRebusTime _rebusTime;
         readonly TableName _tableName;
         readonly ILog _log;
 
         /// <summary>
         /// Constructs the timeout manager, using the specified connection provider and table to store the messages until they're due.
         /// </summary>
-        public SqlServerTimeoutManager(IDbConnectionProvider connectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory)
+        public SqlServerTimeoutManager(IDbConnectionProvider connectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory, IRebusTime rebusTime)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-            _connectionProvider = connectionProvider;
+            _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
+            _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
+
             _tableName = TableName.Parse(tableName);
             _log = rebusLoggerFactory.GetLogger<SqlServerTimeoutManager>();
         }
@@ -155,7 +157,7 @@ WHERE [due_time] <= @current_time
 ORDER BY [due_time] ASC
 ";
 
-                    command.Parameters.Add("current_time", SqlDbType.DateTime2).Value = RebusTime.Now.UtcDateTime;
+                    command.Parameters.Add("current_time", SqlDbType.DateTime2).Value = _rebusTime.Now.UtcDateTime;
 
                     using (var reader = command.ExecuteReader())
                     {
