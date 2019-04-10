@@ -41,7 +41,7 @@ namespace Rebus.SqlServer.DataBus
             _tableName = TableName.Parse(tableName);
             _ensureTableIsCreated = ensureTableIsCreated;
             _commandTimeout = commandTimeout;
-            _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(_rebusTime));
+            _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
             _log = rebusLoggerFactory.GetLogger<SqlServerDataBusStorage>();
         }
 
