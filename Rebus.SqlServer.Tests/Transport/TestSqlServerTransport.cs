@@ -12,6 +12,7 @@ using Rebus.Messages;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Threading.TaskParallelLibrary;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Transport
@@ -27,11 +28,12 @@ namespace Rebus.SqlServer.Tests.Transport
         {
             SqlTestHelper.DropAllTables();
 
+            var rebusTime = new DefaultRebusTime();
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
 
-            _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory);
+            _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory, rebusTime);
             _transport.EnsureTableIsCreated();
 
             Using(_transport);

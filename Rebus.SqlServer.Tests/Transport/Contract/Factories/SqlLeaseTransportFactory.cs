@@ -6,6 +6,7 @@ using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
@@ -28,12 +29,12 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 
             _tablesToDrop.Add(tableName);
 
+            var rebusTime = new DefaultRebusTime();
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var transport = new SqlServerLeaseTransport(connectionProvider, null, consoleLoggerFactory,
-                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
-            //var transport = new SqlServerTransport(connectionProvider, tableName, null, consoleLoggerFactory, asyncTaskFactory);
+                asyncTaskFactory, rebusTime, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
 
             _disposables.Add(transport);
 
@@ -50,13 +51,13 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 
             _tablesToDrop.Add(tableName);
 
+            var rebusTime = new DefaultRebusTime();
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var transport = new SqlServerLeaseTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory,
-                asyncTaskFactory, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
-//            var transport = new SqlServerTransport(connectionProvider, tableName, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
-            
+                asyncTaskFactory, rebusTime, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName);
+
             _disposables.Add(transport);
             
             transport.EnsureTableIsCreated();

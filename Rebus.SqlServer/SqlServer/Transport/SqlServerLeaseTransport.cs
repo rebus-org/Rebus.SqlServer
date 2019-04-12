@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Threading;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Transport
@@ -50,26 +51,28 @@ namespace Rebus.SqlServer.Transport
         readonly Func<string> _leasedByFactory;
 
         /// <summary>
-		/// Constructor
-		/// </summary>
-		/// <param name="connectionProvider">A <see cref="IDbConnection"/> to obtain a database connection</param>
-		/// <param name="inputQueueName">Name of the queue this transport is servicing</param>
-		/// <param name="rebusLoggerFactory">A <seealso cref="IRebusLoggerFactory"/> for building loggers</param>
-		/// <param name="asyncTaskFactory">A <seealso cref="IAsyncTaskFactory"/> for creating periodic tasks</param>
-		/// <param name="leaseInterval">Interval of time messages are leased for</param>
-		/// <param name="leaseTolerance">Buffer to allow lease overruns by</param>
-		/// <param name="leasedByFactory">Factory for generating a string which identifies who has leased a message (eg. A hostname)</param>
-		/// <param name="automaticLeaseRenewalInterval">If non-<c>null</c> messages will be automatically re-leased after this time period has elapsed</param>
-		public SqlServerLeaseTransport(
+        /// Constructor
+        /// </summary>
+        /// <param name="connectionProvider">A <see cref="IDbConnection"/> to obtain a database connection</param>
+        /// <param name="inputQueueName">Name of the queue this transport is servicing</param>
+        /// <param name="rebusLoggerFactory">A <seealso cref="IRebusLoggerFactory"/> for building loggers</param>
+        /// <param name="asyncTaskFactory">A <seealso cref="IAsyncTaskFactory"/> for creating periodic tasks</param>
+        /// <param name="rebusTime">A <seealso cref="IRebusTime"/> to provide the current time</param>
+        /// <param name="leaseInterval">Interval of time messages are leased for</param>
+        /// <param name="leaseTolerance">Buffer to allow lease overruns by</param>
+        /// <param name="leasedByFactory">Factory for generating a string which identifies who has leased a message (eg. A hostname)</param>
+        /// <param name="automaticLeaseRenewalInterval">If non-<c>null</c> messages will be automatically re-leased after this time period has elapsed</param>
+        public SqlServerLeaseTransport(
             IDbConnectionProvider connectionProvider,
             string inputQueueName,
             IRebusLoggerFactory rebusLoggerFactory,
             IAsyncTaskFactory asyncTaskFactory,
+            IRebusTime rebusTime,
             TimeSpan leaseInterval,
             TimeSpan? leaseTolerance,
             Func<string> leasedByFactory,
             TimeSpan? automaticLeaseRenewalInterval = null
-            ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory)
+            ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory, rebusTime)
         {
             _leasedByFactory = leasedByFactory;
             _leaseIntervalMilliseconds = (long)Math.Ceiling(leaseInterval.TotalMilliseconds);

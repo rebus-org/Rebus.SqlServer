@@ -7,6 +7,7 @@ using Rebus.Pipeline.Receive;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Transport;
 using Rebus.Threading;
+using Rebus.Time;
 using Rebus.Timeouts;
 using Rebus.Transport;
 
@@ -104,6 +105,7 @@ namespace Rebus.Config
 
             Configure(configurer, connectionProviderFactory, inputQueueName, (context, provider, inputQueue) =>
             {
+                var rebusTime = context.Get<IRebusTime>();
                 var rebusLoggerFactory = context.Get<IRebusLoggerFactory>();
                 var asyncTaskFactory = context.Get<IAsyncTaskFactory>();
                 return new SqlServerLeaseTransport(
@@ -111,6 +113,7 @@ namespace Rebus.Config
                     inputQueueName,
                     rebusLoggerFactory,
                     asyncTaskFactory,
+                    rebusTime,
                     leaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
                     leaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance, leasedByFactory,
                     automaticallyRenewLeases
@@ -137,7 +140,7 @@ namespace Rebus.Config
         /// </summary>
         public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, bool enlistInAmbientTransaction = false)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), null, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
+            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), null, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()));
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
         }
@@ -168,7 +171,7 @@ namespace Rebus.Config
         /// </summary>
         static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName)
         {
-            Configure(configurer, connectionProviderFactory, inputQueueName, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>()));
+            Configure(configurer, connectionProviderFactory, inputQueueName, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()));
         }
 
         static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName, TransportFactoryDelegate transportFactory)

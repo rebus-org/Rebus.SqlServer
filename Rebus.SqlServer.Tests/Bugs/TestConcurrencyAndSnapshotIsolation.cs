@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using System.Threading;
@@ -10,6 +9,7 @@ using Rebus.Messages;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Threading.TaskParallelLibrary;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Bugs
@@ -70,19 +70,22 @@ namespace Rebus.SqlServer.Tests.Bugs
 
         SqlServerTransport GetTransport(string connectionString, IsolationLevel isolationLevel)
         {
+            var rebusTime = new DefaultRebusTime();
             var rebusLoggerFactory = new ConsoleLoggerFactory(false);
 
             var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory)
             {
                 IsolationLevel = isolationLevel
             };
+
             var taskFactory = new TplAsyncTaskFactory(rebusLoggerFactory);
 
             var transport = new SqlServerTransport(
                 connectionProvider: connectionProvider,
                 inputQueueName: _queueName,
                 rebusLoggerFactory: rebusLoggerFactory,
-                asyncTaskFactory: taskFactory
+                asyncTaskFactory: taskFactory,
+                rebusTime: rebusTime
             );
 
             transport.Initialize();

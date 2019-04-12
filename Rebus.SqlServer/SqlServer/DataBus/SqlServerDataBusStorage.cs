@@ -28,11 +28,12 @@ namespace Rebus.SqlServer.DataBus
         readonly bool _ensureTableIsCreated;
         readonly ILog _log;
         readonly int _commandTimeout ;
+        private readonly IRebusTime _rebusTime;
 
         /// <summary>
         /// Creates the data storage
         /// </summary>
-        public SqlServerDataBusStorage(IDbConnectionProvider connectionProvider, string tableName, bool ensureTableIsCreated, IRebusLoggerFactory rebusLoggerFactory, int commandTimeout)
+        public SqlServerDataBusStorage(IDbConnectionProvider connectionProvider, string tableName, bool ensureTableIsCreated, IRebusLoggerFactory rebusLoggerFactory, IRebusTime rebusTime, int commandTimeout)
         {
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
@@ -40,6 +41,7 @@ namespace Rebus.SqlServer.DataBus
             _tableName = TableName.Parse(tableName);
             _ensureTableIsCreated = ensureTableIsCreated;
             _commandTimeout = commandTimeout;
+            _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
             _log = rebusLoggerFactory.GetLogger<SqlServerDataBusStorage>();
         }
 
@@ -137,7 +139,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         {
             var metadataToWrite = new Dictionary<string, string>(metadata ?? new Dictionary<string, string>())
             {
-                [MetadataKeys.SaveTime] = RebusTime.Now.ToString("O")
+                [MetadataKeys.SaveTime] = _rebusTime.Now.ToString("O")
             };
 
             try
@@ -153,7 +155,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                         command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
                         command.Parameters.Add("meta", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(metadataBytes.Length)).Value = metadataBytes;
                         command.Parameters.Add("data", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo((int)source.Length)).Value = source;
-                        command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
+                        command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = _rebusTime.Now;
 
                         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                     }
@@ -236,7 +238,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = $"UPDATE {_tableName.QualifiedName} SET [LastReadTime] = @now WHERE [Id] = @id";
-                command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = RebusTime.Now;
+                command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = _rebusTime.Now;
                 command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
                 await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }

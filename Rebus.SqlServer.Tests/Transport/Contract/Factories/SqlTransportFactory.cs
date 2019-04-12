@@ -6,6 +6,7 @@ using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
@@ -22,10 +23,11 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 
         public ITransport CreateOneWayClient()
         {
+            var rebusTime = new DefaultRebusTime();
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, null, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new SqlServerTransport(connectionProvider, null, consoleLoggerFactory, asyncTaskFactory, rebusTime);
 
             _disposables.Add(transport);
 
@@ -42,10 +44,11 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 
             _tablesToDrop.Add(tableName);
 
+            var rebusTime = new DefaultRebusTime();
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory);
+            var transport = new SqlServerTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, rebusTime);
             
             _disposables.Add(transport);
             

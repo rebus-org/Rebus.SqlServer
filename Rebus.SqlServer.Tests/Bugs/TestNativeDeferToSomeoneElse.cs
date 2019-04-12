@@ -10,7 +10,6 @@ using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Routing;
 using Rebus.Routing.TypeBased;
-using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 
