@@ -86,6 +86,10 @@
 
 * Change default data type of timeouts table PK IDs to be `BIGINT` - thanks [rsivanov]
 
+## 6.0.0-a1
+
+* Update Rebus dependency to version 6 - thanks [nativenolde]
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
@@ -93,5 +97,6 @@
 [larsw]: https://github.com/larsw
 [magnus-tretton37]: https://github.com/magnus-tretton37
 [MrMDavidson]: https://github.com/MrMDavidson
+[nativenolde]: https://github.com/nativenolde
 [rsivanov]: https://github.com/rsivanov
 [thomasdc]: https://github.com/thomasdc

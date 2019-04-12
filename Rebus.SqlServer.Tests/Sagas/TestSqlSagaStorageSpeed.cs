@@ -22,6 +22,7 @@ namespace Rebus.SqlServer.Tests.Sagas
         readonly string _indexTableName = TestConfig.GetName("sagaindex");
 
         BuiltinHandlerActivator _activator;
+        IBusStarter _starter;
 
         protected override void SetUp()
         {
@@ -32,7 +33,7 @@ namespace Rebus.SqlServer.Tests.Sagas
             SqlTestHelper.DropTable(_indexTableName);
             SqlTestHelper.DropTable(_dataTableName);
 
-            Configure.With(_activator)
+            _starter = Configure.With(_activator)
                 .Logging(l => l.Console(LogLevel.Warn))
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "saga-perf"))
                 .Sagas(s => s.StoreInSqlServer(SqlTestHelper.ConnectionString, _dataTableName, _indexTableName))
@@ -41,7 +42,7 @@ namespace Rebus.SqlServer.Tests.Sagas
                     o.SetNumberOfWorkers(1);
                     o.SetMaxParallelism(1);
                 })
-                .Start();
+                .Create();
         }
 
         protected override void TearDown()
@@ -56,6 +57,7 @@ namespace Rebus.SqlServer.Tests.Sagas
             var counter = new SharedCounter(2);
 
             _activator.Register(() => new LongStringSaga(counter));
+            _starter.Start();
 
             var longString = string.Join("/", Enumerable.Repeat("long string", 100000));
 

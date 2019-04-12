@@ -17,6 +17,7 @@ namespace Rebus.SqlServer.Tests.Bugs
     public class TestBugWhenFinishingSagaAndAuditingIsEnabled : FixtureBase
     {
         BuiltinHandlerActivator _activator;
+        IBusStarter _starter;
         const string TableName = "SagaSnapshots";
 
         protected override void SetUp()
@@ -25,7 +26,7 @@ namespace Rebus.SqlServer.Tests.Bugs
 
             _activator = Using(new BuiltinHandlerActivator());
 
-            Configure.With(_activator)
+            _starter = Configure.With(_activator)
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "auditing-buggerino"))
                 .Sagas(s => s.StoreInMemory())
                 .Options(o =>
@@ -33,7 +34,7 @@ namespace Rebus.SqlServer.Tests.Bugs
                     o.EnableSagaAuditing().StoreInSqlServer(SqlTestHelper.ConnectionString, TableName);
                     o.SetMaxParallelism(1);
                 })
-                .Start();
+                .Create();
 
             Console.WriteLine($@"The test is now running - we have the following tables:
 
@@ -53,6 +54,8 @@ namespace Rebus.SqlServer.Tests.Bugs
         public async Task ItWorks()
         {
             _activator.Register(() => new MySaga());
+
+            _starter.Start();
 
             await _activator.Bus.SendLocal("hej");
             await _activator.Bus.SendLocal("med");
