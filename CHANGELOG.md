@@ -82,6 +82,10 @@
 
 * Fix problem with closed connection when enlisting in ambient transaction - thanks [thomasdc]
 
+## 5.1.0
+
+* Change default data type of timeouts table PK IDs to be `BIGINT` - thanks [rsivanov]
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
@@ -89,4 +93,5 @@
 [larsw]: https://github.com/larsw
 [magnus-tretton37]: https://github.com/magnus-tretton37
 [MrMDavidson]: https://github.com/MrMDavidson
+[rsivanov]: https://github.com/rsivanov
 [thomasdc]: https://github.com/thomasdc
