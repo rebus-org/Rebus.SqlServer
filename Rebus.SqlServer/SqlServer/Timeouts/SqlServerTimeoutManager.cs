@@ -75,7 +75,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                             _tableName.Name
                         }')
     CREATE TABLE {_tableName.QualifiedName} (
-        [id] [int] IDENTITY(1,1) NOT NULL,
+        [id] [bigint] IDENTITY(1,1) NOT NULL,
 	    [due_time] [datetimeoffset](7) NOT NULL,
 	    [headers] [nvarchar](MAX) NOT NULL,
 	    [body] [varbinary](MAX) NOT NULL,
@@ -161,7 +161,7 @@ ORDER BY [due_time] ASC
                     {
                         while (reader.Read())
                         {
-                            var id = (int)reader["id"];
+                            var id = Convert.ToInt64(reader["id"]);
                             var headersString = (string)reader["headers"];
                             var headers = HeaderSerializer.DeserializeFromString(headersString);
                             var body = (byte[])reader["body"];
@@ -171,7 +171,7 @@ ORDER BY [due_time] ASC
                                 using (var deleteCommand = connection.CreateCommand())
                                 {
                                     deleteCommand.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [id] = @id";
-                                    deleteCommand.Parameters.Add("id", SqlDbType.Int).Value = id;
+                                    deleteCommand.Parameters.Add("id", SqlDbType.BigInt).Value = id;
                                     await deleteCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
                                 }
                             });
