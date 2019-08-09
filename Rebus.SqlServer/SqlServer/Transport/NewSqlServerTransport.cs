@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -348,7 +347,7 @@ WHERE	id = @id
 
         void ApplyTransactionSemantics(ITransactionContext context, long messageId)
         {
-            AutomaticLeaseRenewer renewal = null;
+            AutomaticLeaseRenewer renewal;
 
             if (true)
             {
@@ -404,9 +403,6 @@ WHERE	id = @id
             return new TransportMessage(headersDictionary, body);
         }
 
-
-        public string Address => _inputQueueName;
-
         static int GetMessagePriority(Dictionary<string, string> headers)
         {
             var valueOrNull = headers.GetValueOrNull(MessagePriorityHeaderKey);
@@ -447,20 +443,6 @@ WHERE	id = @id
             var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
 
             return (int)timeToBeReceived.TotalSeconds;
-        }
-
-        class OutgoingSqlMessage
-        {
-            public string Schema { get; }
-            public string TableName { get; }
-            public TransportMessage TransportMessage { get; }
-
-            public OutgoingSqlMessage(string schema, string tableName, TransportMessage transportMessage)
-            {
-                Schema = schema;
-                TableName = tableName;
-                TransportMessage = transportMessage;
-            }
         }
     }
 }
