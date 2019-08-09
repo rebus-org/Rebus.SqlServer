@@ -7,6 +7,7 @@ using Rebus.Time;
 using Rebus.Transport;
 // ReSharper disable ArgumentsStyleNamedExpression
 // ReSharper disable ArgumentsStyleLiteral
+// ReSharper disable ArgumentsStyleOther
 
 namespace Rebus.Config
 {
@@ -39,7 +40,8 @@ namespace Rebus.Config
                     asyncTaskFactory: asyncTaskFactory,
                     rebusLoggerFactory: rebusLoggerFactory,
                     inputQueueName: inputQueueName,
-                    schema: options.Schema
+                    schema: options.Schema,
+                    timingConfiguration: options.GetTimingConfiguration()
                 );
             });
 
@@ -69,7 +71,8 @@ namespace Rebus.Config
                     asyncTaskFactory: asyncTaskFactory,
                     rebusLoggerFactory: rebusLoggerFactory,
                     inputQueueName: null,
-                    schema: options.Schema
+                    schema: options.Schema,
+                    timingConfiguration: options.GetTimingConfiguration()
                 );
             });
 

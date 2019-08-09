@@ -1,4 +1,5 @@
 ﻿using System;
+using Rebus.SqlServer;
 
 namespace Rebus.Config
 {
@@ -7,6 +8,8 @@ namespace Rebus.Config
     /// </summary>
     public class SqlServerOneWayOptions
     {
+        readonly TimingConfiguration _timingConfiguration = new TimingConfiguration();
+
         /// <summary>
         /// Configures the transport to use the schema specified by <paramref name="schema"/>
         /// </summary>
@@ -17,6 +20,8 @@ namespace Rebus.Config
         }
 
         internal string Schema { get; set; } = "dbo";
+
+        internal TimingConfiguration GetTimingConfiguration() => _timingConfiguration;
     }
 
     /// <summary>
@@ -24,6 +29,8 @@ namespace Rebus.Config
     /// </summary>
     public class SqlServerOptions
     {
+        readonly TimingConfiguration _timingConfiguration = new TimingConfiguration();
+
         /// <summary>
         /// Configures the transport to use the schema specified by <paramref name="schema"/>
         /// </summary>
@@ -33,6 +40,17 @@ namespace Rebus.Config
             return this;
         }
 
+        /// <summary>
+        /// Sets the interval with which expired messages are cleaned up in the background. If the interval is zero or below, expired messages will not be cleaned up.
+        /// </summary>
+        public SqlServerOptions SetExpiredMessagesCleanupInterval(TimeSpan interval)
+        {
+            _timingConfiguration.ExpiredMessagesCleanupInterval = interval;
+            return this;
+        }
+
         internal string Schema { get; set; } = "dbo";
+
+        internal TimingConfiguration GetTimingConfiguration() => _timingConfiguration;
     }
 }

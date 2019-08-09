@@ -7,6 +7,10 @@ using Rebus.Tests.Contracts.Transports;
 using Rebus.Threading.TaskParallelLibrary;
 using Rebus.Time;
 using Rebus.Transport;
+// ReSharper disable ArgumentsStyleOther
+// ReSharper disable ArgumentsStyleNamedExpression
+// ReSharper disable ArgumentsStyleLiteral
+// ReSharper disable ArgumentsStyleStringLiteral
 
 namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 {
@@ -23,7 +27,16 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new NewSqlServerTransport(connectionProvider, rebusTime, asyncTaskFactory, consoleLoggerFactory, null, "dbo");
+            var timingConfiguration = new TimingConfiguration();
+            var transport = new NewSqlServerTransport(
+                connectionProvider: connectionProvider,
+                rebusTime: rebusTime,
+                asyncTaskFactory: asyncTaskFactory,
+                rebusLoggerFactory: consoleLoggerFactory,
+                inputQueueName: null,
+                schema: "dbo",
+                timingConfiguration: timingConfiguration
+            );
 
             _disposables.Add(transport);
 
@@ -38,7 +51,16 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new NewSqlServerTransport(connectionProvider, rebusTime, asyncTaskFactory, consoleLoggerFactory, inputQueueAddress, "dbo");
+            var timingConfiguration = new TimingConfiguration();
+            var transport = new NewSqlServerTransport(
+                connectionProvider: connectionProvider,
+                rebusTime: rebusTime,
+                asyncTaskFactory: asyncTaskFactory,
+                rebusLoggerFactory: consoleLoggerFactory,
+                inputQueueName: inputQueueAddress,
+                schema: "dbo",
+                timingConfiguration: timingConfiguration
+            );
 
             _disposables.Add(transport);
 

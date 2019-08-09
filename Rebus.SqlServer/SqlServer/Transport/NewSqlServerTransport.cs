@@ -31,33 +31,44 @@ namespace Rebus.SqlServer.Transport
 
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
         readonly IDbConnectionProvider _connectionProvider;
+        readonly TimingConfiguration _timingConfiguration;
+        readonly bool _cleanupTaskEnabled;
+        readonly IAsyncTask _cleanupTask;
         readonly string _inputQueueName;
         readonly IRebusTime _rebusTime;
         readonly string _schema;
         readonly bool _isClient;
-        readonly IAsyncTask _cleanupTask;
         readonly ILog _log;
 
-        public NewSqlServerTransport(IDbConnectionProvider connectionProvider, IRebusTime rebusTime, IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory, string inputQueueName, string schema) : base(inputQueueName)
+        public NewSqlServerTransport(IDbConnectionProvider connectionProvider, IRebusTime rebusTime, IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory, string inputQueueName, string schema, TimingConfiguration timingConfiguration) : base(inputQueueName)
         {
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+            _timingConfiguration = timingConfiguration ?? throw new ArgumentNullException(nameof(timingConfiguration));
             _inputQueueName = inputQueueName;
             _isClient = string.IsNullOrWhiteSpace(inputQueueName);
             _cleanupTask = asyncTaskFactory.Create(
                 description: "ExpiredMessagesCleanup",
                 action: PerformExpiredMessagesCleanupCycle,
-                intervalSeconds: 60
+                intervalSeconds: (int)timingConfiguration.ExpiredMessagesCleanupInterval.TotalSeconds
             );
+            _cleanupTaskEnabled = timingConfiguration.ExpiredMessagesCleanupInterval > TimeSpan.Zero;
             _log = rebusLoggerFactory.GetLogger<NewSqlServerTransport>();
         }
 
         public override void CreateQueue(string address)
         {
-            AsyncHelpers.RunSync(() => EnsureTableExists(_schema, address));
+            if (address == null) throw new ArgumentNullException(nameof(address));
+
+            AsyncHelpers.RunSync(async () =>
+            {
+                await EnsureSchemaExists(_schema);
+
+                await EnsureTableExists(_schema, address);
+            });
         }
 
         public void Initialize()
@@ -66,23 +77,43 @@ namespace Rebus.SqlServer.Transport
 
             CreateQueue(_inputQueueName);
 
-            _cleanupTask.Start();
+            if (_cleanupTaskEnabled)
+            {
+                _cleanupTask.Start();
+            }
+        }
+
+        async Task EnsureSchemaExists(string schema)
+        {
+            await ExecuteWithRetry(async () =>
+            {
+                using (var connection = await _connectionProvider.GetConnection())
+                {
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = $@"
+if not exists (select 1 from sys.schemas where name = '{schema}')
+	exec('create schema {schema}')
+";
+
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    await connection.Complete();
+                }
+            });
         }
 
         async Task EnsureTableExists(string schema, string tableName)
         {
-            var attempts = 5;
-
-            while (true)
+            await ExecuteWithRetry(async () =>
             {
-                try
+                using (var connection = await _connectionProvider.GetConnection())
                 {
-                    using (var connection = await _connectionProvider.GetConnection())
-                    {
-                        if (connection.GetTableNames()
-                            .Any(t => t.Schema == schema && t.Name == tableName)) return;
+                    if (connection.GetTableNames()
+                        .Any(t => t.Schema == schema && t.Name == tableName)) return;
 
-                        var sql = $@"
+                    var sql = $@"
 
 create table [{schema}].[{tableName}](
 	[id] [bigint] IDENTITY(1,1) NOT NULL,
@@ -104,18 +135,27 @@ create table [{schema}].[{tableName}](
 ";
 
 
-                        await ExecuteNonQuery(connection, sql);
+                    await ExecuteNonQuery(connection, sql);
 
-                        await connection.Complete();
-                    }
+                    await connection.Complete();
+                }
+            });
+        }
 
+        async Task ExecuteWithRetry(Func<Task> task, int maxAttempts = 5)
+        {
+            var attempt = maxAttempts;
+
+            while (true)
+            {
+                try
+                {
+                    await task();
                     return;
                 }
-                catch
+                catch (Exception) when (attempt > 0)
                 {
-                    attempts--;
-                    if (attempts > 0) continue;
-                    throw;
+                    attempt--;
                 }
             }
         }
@@ -386,8 +426,8 @@ WHERE	id = @id
                 {
                     renewal?.Dispose();
 
-                    // Delete the message
-                    using (var deleteConnection = await _connectionProvider.GetConnection())
+                                // Delete the message
+                                using (var deleteConnection = await _connectionProvider.GetConnection())
                     {
                         using (var deleteCommand = deleteConnection.CreateCommand())
                         {
