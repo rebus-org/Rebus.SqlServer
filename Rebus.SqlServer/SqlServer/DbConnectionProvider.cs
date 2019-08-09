@@ -24,9 +24,7 @@ namespace Rebus.SqlServer
         /// a connection string to use. Will use <see cref="System.Data.IsolationLevel.ReadCommitted"/> by default on transactions,
         /// unless another isolation level is set with the <see cref="IsolationLevel"/> property
         /// </summary>
-        public DbConnectionProvider(string connectionString, IRebusLoggerFactory rebusLoggerFactory
-            , bool enlistInAmbientTransaction = false
-            )
+        public DbConnectionProvider(string connectionString, IRebusLoggerFactory rebusLoggerFactory, bool enlistInAmbientTransaction = false)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
@@ -39,8 +37,8 @@ namespace Rebus.SqlServer
 
         string EnsureMarsIsEnabled(string connectionString)
         {
-            var connectionStringSettings = connectionString.Split(new [] {";"}, StringSplitOptions.RemoveEmptyEntries)
-                .Select(kvp => kvp.Split(new [] {"="}, StringSplitOptions.RemoveEmptyEntries))
+            var connectionStringSettings = connectionString.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(kvp => kvp.Split(new[] { "=" }, StringSplitOptions.RemoveEmptyEntries))
                 .ToDictionary(kvp => kvp[0], kvp => string.Join("=", kvp.Skip(1)), StringComparer.OrdinalIgnoreCase);
 
             if (!connectionStringSettings.ContainsKey("MultipleActiveResultSets"))
@@ -93,10 +91,10 @@ namespace Rebus.SqlServer
             {
                 connection.EnlistTransaction(transaction);
             }
-            
+
             return connection;
         }
-        
+
         SqlConnection CreateSqlConnectionSuppressingAPossibleAmbientTransaction()
         {
             SqlConnection connection;

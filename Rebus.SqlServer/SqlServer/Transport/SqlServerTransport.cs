@@ -56,7 +56,7 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         protected readonly IDbConnectionProvider ConnectionProvider;
 
-        private readonly IRebusTime _rebusTime;
+        readonly IRebusTime _rebusTime;
 
         /// <summary>
         /// Name of the table this transport is using for storage
