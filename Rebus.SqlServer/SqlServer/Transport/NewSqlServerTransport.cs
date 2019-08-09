@@ -68,6 +68,8 @@ namespace Rebus.SqlServer.Transport
                 await EnsureSchemaExists(_schema);
 
                 await EnsureTableExists(_schema, address);
+                
+                await EnsureIndexesExist(_schema, address);
             });
         }
 
@@ -77,25 +79,23 @@ namespace Rebus.SqlServer.Transport
 
             CreateQueue(_inputQueueName);
 
-            AsyncHelpers.RunSync(() => ExecuteWithRetry(CreateIndexes));
-
             if (_cleanupTaskEnabled)
             {
                 _cleanupTask.Start();
             }
         }
 
-        async Task CreateIndexes()
+        async Task EnsureIndexesExist(string schema, string tableName)
         {
             using (var connection = await _connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
-                    var receiveIndexName = $"IDX_RCV_{_schema}_{_inputQueueName}";
+                    var receiveIndexName = $"IDX_RCV_{schema}_{tableName}";
 
                     command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
-    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON [{_schema}].[{_inputQueueName}]
+    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON [{schema}].[{tableName}]
     (
 	    [priority] ASC,
         [visible] ASC,
@@ -108,11 +108,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
 
                 using (var command = connection.CreateCommand())
                 {
-                    var expirationIndexName = $"IDX_EXP_{_schema}_{_inputQueueName}";
+                    var expirationIndexName = $"IDX_EXP_{schema}_{tableName}";
 
                     command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
-    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON [{_schema}].[{_inputQueueName}]
+    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON [{schema}].[{tableName}]
     (
         [expiration] ASC
     )
@@ -468,9 +468,21 @@ WHERE	id = @id
                     renewal?.Dispose();
 
                     // Delete the message
-                    using (var deleteConnection = await _connectionProvider.GetConnection())
+                    using (var connection = await _connectionProvider.GetConnection())
                     {
-                        using (var deleteCommand = deleteConnection.CreateCommand())
+                        //                        using (var expireCommand = connection.CreateCommand())
+                        //                        {
+                        //                            expireCommand.CommandType = CommandType.Text;
+                        //                            expireCommand.CommandText = $@"
+                        //UPDATE [{_schema}].[{_inputQueueName}] WITH (ROWLOCK)
+                        //SET [expiration] = '1900-01-01 00:00:00'
+                        //WHERE	id = @id
+                        //";
+                        //                            expireCommand.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
+
+                        //                            await expireCommand.ExecuteNonQueryAsync();
+                        //                        }
+                        using (var deleteCommand = connection.CreateCommand())
                         {
                             deleteCommand.CommandType = CommandType.Text;
                             deleteCommand.CommandText = $@"
@@ -482,7 +494,7 @@ WHERE	id = @id
                             deleteCommand.ExecuteNonQuery();
                         }
 
-                        await deleteConnection.Complete();
+                        await connection.Complete();
                     }
                 }
             );
