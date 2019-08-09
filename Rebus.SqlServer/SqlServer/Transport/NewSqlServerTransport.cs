@@ -11,6 +11,7 @@ using Rebus.Exceptions;
 using Rebus.Extensions;
 using Rebus.Messages;
 using Rebus.Serialization;
+using Rebus.Threading;
 using Rebus.Time;
 using Rebus.Transport;
 
@@ -25,6 +26,7 @@ namespace Rebus.SqlServer.Transport
 
         static readonly HeaderSerializer HeaderSerializer = new HeaderSerializer();
 
+        readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
         readonly IDbConnectionProvider _connectionProvider;
         readonly string _inputQueueName;
         readonly IRebusTime _rebusTime;
@@ -197,6 +199,14 @@ VALUES
 
         public override async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
+            using (await _bottleneck.Enter(cancellationToken))
+            {
+                return await InnerReceive(context, cancellationToken);
+            }
+        }
+
+        async Task<TransportMessage> InnerReceive(ITransactionContext context, CancellationToken cancellationToken)
+        {
             TransportMessage transportMessage;
 
             using (var connection = await _connectionProvider.GetConnection())
@@ -242,10 +252,12 @@ OUTPUT	inserted.*
                         using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
                         {
                             transportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
+
                             if (transportMessage == null) return null;
 
-                            var messageId = (long)reader["id"];
-                            ApplyTransactionSemantics(context, messageId);
+                            var rowId = (long) reader["id"];
+                            
+                            ApplyTransactionSemantics(context, rowId);
                         }
                     }
                     catch (Exception exception) when (cancellationToken.IsCancellationRequested)

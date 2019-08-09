@@ -50,6 +50,8 @@ namespace Rebus.Config
                 return new NewSqlServerTransport(connectionProvider, rebusTime, null, options.Schema);
             });
 
+            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+
             return options;
         }
     }
