@@ -77,9 +77,50 @@ namespace Rebus.SqlServer.Transport
 
             CreateQueue(_inputQueueName);
 
+            AsyncHelpers.RunSync(() => ExecuteWithRetry(CreateIndexes));
+
             if (_cleanupTaskEnabled)
             {
                 _cleanupTask.Start();
+            }
+        }
+
+        async Task CreateIndexes()
+        {
+            using (var connection = await _connectionProvider.GetConnection())
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    var receiveIndexName = $"IDX_RCV_{_schema}_{_inputQueueName}";
+
+                    command.CommandText = $@"
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
+    CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON [{_schema}].[{_inputQueueName}]
+    (
+	    [priority] ASC,
+        [visible] ASC,
+        [expiration] ASC,
+	    [id] ASC
+    )
+";
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                using (var command = connection.CreateCommand())
+                {
+                    var expirationIndexName = $"IDX_EXP_{_schema}_{_inputQueueName}";
+
+                    command.CommandText = $@"
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
+    CREATE NONCLUSTERED INDEX [{expirationIndexName}] ON [{_schema}].[{_inputQueueName}]
+    (
+        [expiration] ASC
+    )
+";
+                    await command.ExecuteNonQueryAsync();
+                }
+
+                await connection.Complete();
             }
         }
 
@@ -426,8 +467,8 @@ WHERE	id = @id
                 {
                     renewal?.Dispose();
 
-                                // Delete the message
-                                using (var deleteConnection = await _connectionProvider.GetConnection())
+                    // Delete the message
+                    using (var deleteConnection = await _connectionProvider.GetConnection())
                     {
                         using (var deleteCommand = deleteConnection.CreateCommand())
                         {
