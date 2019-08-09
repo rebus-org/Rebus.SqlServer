@@ -27,12 +27,12 @@ namespace Rebus.SqlServer.Tests.Transport
             activator.Handle<string>(async _ => counter.Decrement());
 
             Configure.With(activator)
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, "test-queue"))
+                .Transport(t => t.UseSqlServerNew(SqlTestHelper.ConnectionString, "test-queue"))
                 .Start();
 
             var client = Using(
                 Configure.With(new BuiltinHandlerActivator())
-                    .Transport(t => t.UseSqlServerAsOneWayClient(SqlTestHelper.ConnectionString))
+                    .Transport(t => t.UseSqlServerAsOneWayClientNew(SqlTestHelper.ConnectionString))
                     .Routing(r => r.TypeBased().Map<string>("test-queue"))
                     .Start()
             );
@@ -51,12 +51,12 @@ namespace Rebus.SqlServer.Tests.Transport
             activator.Handle<string>(async _ => counter.Decrement());
 
             Configure.With(activator)
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, "test-queue"))
+                .Transport(t => t.UseSqlServerNew(SqlTestHelper.ConnectionString, "test-queue"))
                 .Start();
 
             var client = Using(
                 Configure.With(new BuiltinHandlerActivator())
-                    .Transport(t => t.UseSqlServerAsOneWayClient(SqlTestHelper.ConnectionString))
+                    .Transport(t => t.UseSqlServerAsOneWayClientNew(SqlTestHelper.ConnectionString))
                     .Routing(r => r.TypeBased().Map<string>("test-queue"))
                     .Start()
             );

@@ -2,21 +2,25 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebus.Bus;
 using Rebus.Exceptions;
 using Rebus.Extensions;
+using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Serialization;
 using Rebus.Threading;
 using Rebus.Time;
 using Rebus.Transport;
+// ReSharper disable ArgumentsStyleStringLiteral
+// ReSharper disable ArgumentsStyleNamedExpression
 
 namespace Rebus.SqlServer.Transport
 {
-    class NewSqlServerTransport : AbstractRebusTransport, IInitializable
+    class NewSqlServerTransport : AbstractRebusTransport, IInitializable, IDisposable
     {
         /// <summary>
         /// Special message priority header that can be used with the <see cref="NewSqlServerTransport"/>. The value must be an <see cref="Int32"/>
@@ -31,14 +35,24 @@ namespace Rebus.SqlServer.Transport
         readonly IRebusTime _rebusTime;
         readonly string _schema;
         readonly bool _isClient;
+        readonly IAsyncTask _cleanupTask;
+        readonly ILog _log;
 
-        public NewSqlServerTransport(IDbConnectionProvider connectionProvider, IRebusTime rebusTime, string inputQueueName, string schema) : base(inputQueueName)
+        public NewSqlServerTransport(IDbConnectionProvider connectionProvider, IRebusTime rebusTime, IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory, string inputQueueName, string schema) : base(inputQueueName)
         {
+            if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
+            if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
             _schema = schema ?? throw new ArgumentNullException(nameof(schema));
             _inputQueueName = inputQueueName;
             _isClient = string.IsNullOrWhiteSpace(inputQueueName);
+            _cleanupTask = asyncTaskFactory.Create(
+                description: "ExpiredMessagesCleanup",
+                action: PerformExpiredMessagesCleanupCycle,
+                intervalSeconds: 60
+            );
+            _log = rebusLoggerFactory.GetLogger<NewSqlServerTransport>();
         }
 
         public override void CreateQueue(string address)
@@ -51,6 +65,8 @@ namespace Rebus.SqlServer.Transport
             if (_isClient) return;
 
             CreateQueue(_inputQueueName);
+
+            _cleanupTask.Start();
         }
 
         async Task EnsureTableExists(string schema, string tableName)
@@ -198,6 +214,8 @@ VALUES
 
         public override async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
         {
+            if (_isClient) throw new InvalidOperationException("It is not possible to call Receive on this transport, because it is a one-way client (the input queue is NULL)");
+
             using (await _bottleneck.Enter(cancellationToken))
             {
                 return await InnerReceive(context, cancellationToken);
@@ -254,8 +272,8 @@ OUTPUT	inserted.*
 
                             if (transportMessage == null) return null;
 
-                            var rowId = (long) reader["id"];
-                            
+                            var rowId = (long)reader["id"];
+
                             ApplyTransactionSemantics(context, rowId);
                         }
                     }
@@ -443,6 +461,51 @@ WHERE	id = @id
             var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
 
             return (int)timeToBeReceived.TotalSeconds;
+        }
+
+        async Task PerformExpiredMessagesCleanupCycle()
+        {
+            var results = 0;
+            var stopwatch = Stopwatch.StartNew();
+
+            while (true)
+            {
+                using (var connection = await _connectionProvider.GetConnection())
+                {
+                    int affectedRows;
+
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText =
+                            $@"
+;with TopCTE as (
+	SELECT TOP 1 [id] FROM [{_schema}].[{_inputQueueName}] WITH (ROWLOCK, READPAST)
+				WHERE [expiration] < getdate()
+)
+DELETE FROM TopCTE
+";
+
+                        affectedRows = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    }
+
+                    results += affectedRows;
+
+                    await connection.Complete();
+
+                    if (affectedRows == 0) break;
+                }
+            }
+
+            if (results > 0)
+            {
+                _log.Info("Performed expired messages cleanup in {cleanupTimeSeconds} - {expiredMessageCount} expired messages removed from table {schema}.{tableName}",
+                    stopwatch.Elapsed.TotalSeconds, results, _schema, _inputQueueName);
+            }
+        }
+
+        public void Dispose()
+        {
+            _cleanupTask.Dispose();
         }
     }
 }

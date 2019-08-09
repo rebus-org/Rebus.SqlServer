@@ -2,8 +2,11 @@
 using Rebus.Logging;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Transport;
+using Rebus.Threading;
 using Rebus.Time;
 using Rebus.Transport;
+// ReSharper disable ArgumentsStyleNamedExpression
+// ReSharper disable ArgumentsStyleLiteral
 
 namespace Rebus.Config
 {
@@ -15,7 +18,7 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use the NEW SQL Server transport, which is lease-based and works within one specific schema.
         /// </summary>
-        public static SqlServerOptions UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName)
+        public static SqlServerOptions UseSqlServerNew(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName)
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
             if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
@@ -27,7 +30,17 @@ namespace Rebus.Config
             {
                 var connectionProvider = new DbConnectionProvider(connectionString, c.Get<IRebusLoggerFactory>());
                 var rebusTime = c.Get<IRebusTime>();
-                return new NewSqlServerTransport(connectionProvider, rebusTime, inputQueueName, options.Schema);
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+
+                return new NewSqlServerTransport(
+                    connectionProvider: connectionProvider,
+                    rebusTime: rebusTime,
+                    asyncTaskFactory: asyncTaskFactory,
+                    rebusLoggerFactory: rebusLoggerFactory,
+                    inputQueueName: inputQueueName,
+                    schema: options.Schema
+                );
             });
 
             return options;
@@ -36,7 +49,7 @@ namespace Rebus.Config
         /// <summary>
         /// Configures Rebus to use the NEW SQL Server transport, which is lease-based and works within one specific schema.
         /// </summary>
-        public static SqlServerOneWayOptions UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString)
+        public static SqlServerOneWayOptions UseSqlServerAsOneWayClientNew(this StandardConfigurer<ITransport> configurer, string connectionString)
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
             if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
@@ -47,7 +60,17 @@ namespace Rebus.Config
             {
                 var connectionProvider = new DbConnectionProvider(connectionString, c.Get<IRebusLoggerFactory>());
                 var rebusTime = c.Get<IRebusTime>();
-                return new NewSqlServerTransport(connectionProvider, rebusTime, null, options.Schema);
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+
+                return new NewSqlServerTransport(
+                    connectionProvider: connectionProvider,
+                    rebusTime: rebusTime,
+                    asyncTaskFactory: asyncTaskFactory,
+                    rebusLoggerFactory: rebusLoggerFactory,
+                    inputQueueName: null,
+                    schema: options.Schema
+                );
             });
 
             OneWayClientBackdoor.ConfigureOneWayClient(configurer);
