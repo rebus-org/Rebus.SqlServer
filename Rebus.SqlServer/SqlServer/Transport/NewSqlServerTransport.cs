@@ -115,7 +115,7 @@ if not exists (select 1 from sys.schemas where name = '{schema}')
 
                     var sql = $@"
 
-create table [{schema}].[{tableName}](
+create table [{schema}].[{tableName}] (
 	[id] [bigint] IDENTITY(1,1) NOT NULL,
 	[priority] [int] NOT NULL,
 	[expiration] [datetimeoffset](7) NOT NULL,

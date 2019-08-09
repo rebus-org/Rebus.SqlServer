@@ -4,8 +4,10 @@ using System.Threading.Tasks;
 using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
+using Rebus.Logging;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Transports;
+// ReSharper disable ArgumentsStyleNamedExpression
 
 namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
 {
@@ -26,6 +28,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             SqlTestHelper.DropTable(tableName);
 
             var bus = Configure.With(builtinHandlerActivator)
+                .Logging(l => l.Console(minLevel: LogLevel.Info))
                 .Transport(t => t.UseSqlServerNew(SqlTestHelper.ConnectionString, inputQueueAddress))
                 .Options(o =>
                 {
