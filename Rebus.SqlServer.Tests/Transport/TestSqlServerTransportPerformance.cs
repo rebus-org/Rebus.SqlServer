@@ -23,9 +23,9 @@ namespace Rebus.SqlServer.Tests.Transport
         [TestCase(1000, 60, typeof(SqlServerLeaseBusFactory))]
         [TestCase(1000, 60, typeof(NewSqlServerBusFactory))]
         [TestCase(1000, 60, typeof(SqlServerBusFactory))]
-        [TestCase(10000, 200, typeof(SqlServerLeaseBusFactory))]
-        [TestCase(10000, 200, typeof(NewSqlServerBusFactory))]
-        [TestCase(10000, 200, typeof(SqlServerBusFactory))]
+        //[TestCase(10000, 200, typeof(SqlServerLeaseBusFactory))]
+        //[TestCase(10000, 200, typeof(NewSqlServerBusFactory))]
+        //[TestCase(10000, 200, typeof(SqlServerBusFactory))]
         public async Task Run(int messageCount, int receiveTimeoutSeconds, Type factoryType)
         {
             var factory = (IBusFactory)Activator.CreateInstance(factoryType);

@@ -97,10 +97,10 @@ namespace Rebus.SqlServer.Transport
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
     CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON [{schema}].[{tableName}]
     (
-	    [priority] ASC,
+	    [priority] DESC,
         [visible] ASC,
-        [expiration] ASC,
-	    [id] ASC
+	    [id] ASC,
+	    [expiration] ASC
     )
 ";
                     await command.ExecuteNonQueryAsync();
