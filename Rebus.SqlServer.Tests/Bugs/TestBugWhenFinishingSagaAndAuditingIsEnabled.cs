@@ -78,6 +78,12 @@ namespace Rebus.SqlServer.Tests.Bugs
                 .OrderBy(s => s.Revision)
                 .ToList();
 
+            Console.WriteLine($@"Found these snapshots AFTER the test:
+
+{string.Join(Environment.NewLine, snapshotsAfter.Select(s => $"{s.Id} / {s.Revision}"))}
+
+!!!!!");
+
             Assert.That(snapshotsAfter.Count, Is.EqualTo(3), $@"Only expected three snapshots - got these ids/revisions:
 
 {string.Join(Environment.NewLine + Environment.NewLine, snapshotsAfter.Select(s => $"{s.Id} / {s.Revision}"))}");
