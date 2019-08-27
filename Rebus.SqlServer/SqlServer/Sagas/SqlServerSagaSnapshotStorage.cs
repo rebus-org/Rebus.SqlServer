@@ -130,6 +130,8 @@ INSERT INTO {_tableName.QualifiedName} (
                     command.Parameters.Add("data", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(dataString.Length)).Value = dataString;
                     command.Parameters.Add("metadata", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(metadataString.Length)).Value = metadataString;
 
+                    Console.WriteLine($"OK WE'RE SAVING SAGA SNAPSHOT {sagaData.Id} rev. {sagaData.Revision} NOW");
+                     
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
