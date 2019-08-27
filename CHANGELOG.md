@@ -90,6 +90,7 @@
 
 * Update Rebus dependency to version 6 - thanks [nativenolde]
 
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
