@@ -19,14 +19,15 @@ namespace Rebus.SqlServer.Tests.Sagas
         {
             var loggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
-
+            var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
+            
             var dataTableName = TestConfig.GetName("sagas");
             var indexTableName = TestConfig.GetName("sagaindex");
 
             SqlTestHelper.DropTable(indexTableName);
             SqlTestHelper.DropTable(dataTableName);
 
-            _storage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, loggerFactory);
+            _storage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, loggerFactory, sagaTypeNamingStrategy);
 
             _storage.EnsureTablesAreCreated();
         }

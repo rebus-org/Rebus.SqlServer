@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Rebus.Injection;
 using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer;
@@ -29,7 +30,9 @@ namespace Rebus.Config
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
-                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory);
+                var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
+
+                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy);
 
                 if (automaticallyCreateTables)
                 {
@@ -56,7 +59,9 @@ namespace Rebus.Config
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
-                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory);
+                var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
+
+                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy);
 
                 if (automaticallyCreateTables)
                 {
@@ -65,6 +70,25 @@ namespace Rebus.Config
 
                 return sagaStorage;
             });
+        }
+
+        /// <summary>
+        /// Get the registered implementation of <seealso cref="ISagaTypeNamingStrategy"/> or the default <seealso cref="LegacySagaTypeNamingStrategy"/> if one is not configured
+        /// </summary>
+        private static ISagaTypeNamingStrategy GetSagaTypeNamingStrategy(IResolutionContext resolutionContext, IRebusLoggerFactory rebusLoggerFactory) 
+        {
+            ISagaTypeNamingStrategy sagaTypeNamingStrategy;
+            if (resolutionContext.Has<ISagaTypeNamingStrategy>() == false)
+            {
+                rebusLoggerFactory.GetLogger<SqlServerSagaStorage>().Debug($"An implementation of {nameof(ISagaTypeNamingStrategy)} was not registered. A default, backward compatible, implementation will be used ({nameof(LegacySagaTypeNamingStrategy)}).");
+                sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
+            }
+            else
+            {
+                sagaTypeNamingStrategy = resolutionContext.Get<ISagaTypeNamingStrategy>();
+            }
+
+            return sagaTypeNamingStrategy;
         }
     }
 }

@@ -29,7 +29,8 @@ namespace Rebus.SqlServer.Tests.Sagas
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(true);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
-            var storage = new SqlServerSagaStorage(connectionProvider, DataTableName, IndexTableName, consoleLoggerFactory);
+            var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
+            var storage = new SqlServerSagaStorage(connectionProvider, DataTableName, IndexTableName, consoleLoggerFactory, sagaTypeNamingStrategy);
 
             storage.EnsureTablesAreCreated();
 

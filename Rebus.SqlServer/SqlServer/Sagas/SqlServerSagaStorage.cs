@@ -29,6 +29,7 @@ namespace Rebus.SqlServer.Sagas
 
         readonly ILog _log;
         readonly IDbConnectionProvider _connectionProvider;
+        readonly ISagaTypeNamingStrategy _sagaTypeNamingStrategy;
         readonly TableName _dataTableName;
         readonly TableName _indexTableName;
         bool _oldFormatDataTable;
@@ -36,15 +37,17 @@ namespace Rebus.SqlServer.Sagas
         /// <summary>
         /// Constructs the saga storage, using the specified connection provider and tables for persistence.
         /// </summary>
-		public SqlServerSagaStorage(IDbConnectionProvider connectionProvider, string dataTableName, string indexTableName, IRebusLoggerFactory rebusLoggerFactory)
+		public SqlServerSagaStorage(IDbConnectionProvider connectionProvider, string dataTableName, string indexTableName, IRebusLoggerFactory rebusLoggerFactory, ISagaTypeNamingStrategy sagaTypeNamingStrategy)
         {
             if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
             if (dataTableName == null) throw new ArgumentNullException(nameof(dataTableName));
             if (indexTableName == null) throw new ArgumentNullException(nameof(indexTableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
+            if (sagaTypeNamingStrategy == null) throw new ArgumentNullException(nameof(sagaTypeNamingStrategy));
 
             _log = rebusLoggerFactory.GetLogger<SqlServerSagaStorage>();
             _connectionProvider = connectionProvider;
+            _sagaTypeNamingStrategy = sagaTypeNamingStrategy;
             _dataTableName = TableName.Parse(dataTableName);
             _indexTableName = TableName.Parse(indexTableName);
         }
@@ -540,10 +543,13 @@ VALUES
 
         }
 
-        static string GetSagaTypeName(Type sagaDataType)
+        string GetSagaTypeName(Type sagaDataType)
         {
-            var sagaTypeName = sagaDataType.Name;
-
+            var sagaTypeName = _sagaTypeNamingStrategy.GetSagaTypeName(sagaDataType, MaximumSagaDataTypeNameLength);
+            if (sagaTypeName == null)
+            {
+                throw new Exception($"{_sagaTypeNamingStrategy.GetType().FullName} generated a NULL saga type name for {sagaDataType.FullName}.");
+            }
             if (sagaTypeName.Length > MaximumSagaDataTypeNameLength)
             {
                 throw new InvalidOperationException(
