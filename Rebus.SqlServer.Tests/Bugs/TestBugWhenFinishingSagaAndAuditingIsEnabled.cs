@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -53,6 +54,16 @@ namespace Rebus.SqlServer.Tests.Bugs
         [Test]
         public async Task ItWorks()
         {
+            var snapshotsBefore = QuerySagaSnaps()
+                .OrderBy(s => s.Revision)
+                .ToList();
+
+            Console.WriteLine($@"Found these snapshots BEFORE the test:
+
+{string.Join(Environment.NewLine, snapshotsBefore.Select(s => $"{s.Id} / {s.Revision}"))}
+
+!!!!!");
+
             _activator.Register(() => new MySaga());
 
             _starter.Start();
@@ -63,7 +74,21 @@ namespace Rebus.SqlServer.Tests.Bugs
 
             await Task.Delay(TimeSpan.FromSeconds(2));
 
-            var snapshots = SqlTestHelper
+            var snapshotsAfter = QuerySagaSnaps()
+                .OrderBy(s => s.Revision)
+                .ToList();
+
+            Assert.That(snapshotsAfter.Count, Is.EqualTo(3), $@"Only expected three snapshots - got these ids/revisions:
+
+{string.Join(Environment.NewLine + Environment.NewLine, snapshotsAfter.Select(s => $"{s.Id} / {s.Revision}"))}");
+
+            Assert.That(snapshotsAfter.Select(s => s.Revision), Is.EqualTo(new[] { 0, 1, 2 }), "Expected snapshots of revision 0, 1, and 2");
+            Assert.That(snapshotsAfter.GroupBy(s => s.Id).Count(), Is.EqualTo(1), "Expected three snapshots for the same saga ID");
+        }
+
+        private static IEnumerable<SagaSnapshot> QuerySagaSnaps()
+        {
+            return SqlTestHelper
                 .Query<SagaSnapshot>(
                     $@"
                     SELECT 
@@ -71,16 +96,7 @@ namespace Rebus.SqlServer.Tests.Bugs
                         [Revision]
                     FROM
                         [{TableName}]"
-                )
-                .OrderBy(s => s.Revision)
-                .ToList();
-
-            Assert.That(snapshots.Count, Is.EqualTo(3), $@"Only expected three snapshots - got these ids/revisions:
-
-{string.Join(Environment.NewLine+Environment.NewLine, snapshots.Select(s => $"{s.Id} / {s.Revision}"))}");
-
-            Assert.That(snapshots.Select(s => s.Revision), Is.EqualTo(new[] { 0, 1, 2 }), "Expected snapshots of revision 0, 1, and 2");
-            Assert.That(snapshots.GroupBy(s => s.Id).Count(), Is.EqualTo(1), "Expected three snapshots for the same saga ID");
+                );
         }
 
         class SagaSnapshot
