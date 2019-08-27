@@ -110,12 +110,12 @@ namespace Rebus.SqlServer.Tests
                             command.CommandText = sqlCommand;
                             command.ExecuteNonQuery();
                         }
-                    }
-                    catch (SqlException exception)
-                    {
-                        if (exception.Number == SqlServerMagic.ObjectDoesNotExistOrNoPermission) return;
 
-                        throw;
+                        Console.WriteLine($"SQL OK: {sqlCommand}");
+                    }
+                    catch (SqlException exception) when (exception.Number == SqlServerMagic.ObjectDoesNotExistOrNoPermission)
+                    {
+                        // it's alright
                     }
                 }
             }
