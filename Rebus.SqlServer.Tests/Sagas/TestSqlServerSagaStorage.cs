@@ -21,6 +21,7 @@ namespace Rebus.SqlServer.Tests.Sagas
         {
             var loggerFactory = new ConsoleLoggerFactory(false);
             _connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
+            var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
 
             _dataTableName = TestConfig.GetName("sagas");
             _indexTableName = TestConfig.GetName("sagaindex");
@@ -28,7 +29,7 @@ namespace Rebus.SqlServer.Tests.Sagas
             SqlTestHelper.DropTable(_indexTableName);
             SqlTestHelper.DropTable(_dataTableName);
 
-            _storage = new SqlServerSagaStorage(_connectionProvider, _dataTableName, _indexTableName, loggerFactory);
+            _storage = new SqlServerSagaStorage(_connectionProvider, _dataTableName, _indexTableName, loggerFactory, sagaTypeNamingStrategy);
         }
 
         [Test]
