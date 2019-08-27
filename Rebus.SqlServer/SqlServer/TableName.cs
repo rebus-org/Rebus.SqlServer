@@ -124,7 +124,7 @@ namespace Rebus.SqlServer
         {
             unchecked
             {
-                return (Schema.GetHashCode() * 397) ^ Name.GetHashCode();
+                return (Schema.ToLowerInvariant().GetHashCode() * 397) ^ Name.ToLowerInvariant().GetHashCode();
             }
         }
 
