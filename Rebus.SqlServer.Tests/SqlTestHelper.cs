@@ -121,14 +121,18 @@ namespace Rebus.SqlServer.Tests
             }
             catch (Exception exception)
             {
-                DumpWho();
+                var connections = GetWho();
 
-                throw new RebusApplicationException(exception, $"Could not execute '{sqlCommand}'");
+                throw new RebusApplicationException(exception, $@"Could not execute '{sqlCommand}'
+
+Here are all the currently active connections:
+
+{string.Join(Environment.NewLine, connections)}");
             }
         }
 
 
-        static void DumpWho()
+        static IEnumerable<string> GetWho()
         {
             try
             {
@@ -139,14 +143,11 @@ namespace Rebus.SqlServer.Tests
                     .Where(kvp => kvp.ContainsKey("dbname"))
                     .Where(kvp => kvp["dbname"].Equals(DatabaseName, StringComparison.OrdinalIgnoreCase));
 
-                Console.WriteLine(string.Join(Environment.NewLine,
-                    who.Select(d => string.Join(", ", d.Select(kvp => $"{kvp.Key} = {kvp.Value}")))));
-
-                Console.WriteLine();
+                return who.Select(d => string.Join(", ", d.Select(kvp => $"{kvp.Key} = {kvp.Value}")));
             }
             catch (Exception exception)
             {
-                Console.WriteLine("Could not execute sp_who: {0}", exception);
+                throw new RebusApplicationException(exception, "Could not execute sp_who");
             }
         }
 
