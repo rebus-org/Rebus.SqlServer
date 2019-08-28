@@ -53,7 +53,7 @@ namespace Rebus.Config
         }
 
         /// <summary>
-        /// Configures Rebus to use SQL Server as its transport. The "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
+        /// Configures Rebus to use SQL Server as its transport
         /// </summary>
         /// <param name="configurer">Static to extend</param>
         /// <param name="transportOptions">Options controlling the transport setup</param>
