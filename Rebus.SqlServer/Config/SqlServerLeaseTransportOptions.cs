@@ -41,7 +41,7 @@ namespace Rebus.Config {
         public TimeSpan? LeaseTolerance { get; set; }
 
         /// <summary>
-        /// If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <seealso cref="leaseAutoRenewInterval"/>
+        /// If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <seealso cref="LeaseAutoRenewInterval"/>
         /// </summary>
         public bool AutomaticallyRenewLeases { get; set; }
 
