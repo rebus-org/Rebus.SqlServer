@@ -17,7 +17,55 @@ namespace Rebus.Config
     /// Configuration extensions for the SQL transport
     /// </summary>
     public static class SqlServerTransportConfigurationExtensions
-    {
+    {       
+        /// <summary>
+        /// Configures Rebus to use SQL Server as its transport (in "one-way client mode", i.e. as a send-only endpoint). Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
+        /// Server transport does not hold a transaction open for the entire duration of the message handling. Instead it marks a
+        /// message as being "leased" for a period of time. If the lease has expired then a worker is permitted to acquire the that
+        /// message again and try reprocessing
+        /// </summary>
+        /// <param name="configurer">Static to extend</param>
+        /// <param name="transportOptions">Options controlling the transport setup</param>
+        public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, SqlServerLeaseTransportOptions transportOptions)
+        {
+            if (transportOptions.LeasedByFactory == null)
+            {
+                transportOptions.LeasedByFactory = () => Environment.MachineName;
+            }
+
+            Configure(
+                configurer,
+                (context, provider, inputQueue) => new SqlServerLeaseTransport(
+                    provider,
+                    transportOptions.InputQueueName,
+                    context.Get<IRebusLoggerFactory>(),
+                    context.Get<IAsyncTaskFactory>(),
+                    context.Get<IRebusTime>(),
+                    transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
+                    transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
+                    transportOptions.LeasedByFactory,
+                    transportOptions.AutomaticallyRenewLeases
+                        ? (TimeSpan?)null
+                        : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                ),
+                transportOptions
+            );
+        }
+
+        /// <summary>
+        /// Configures Rebus to use SQL Server as its transport. The "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
+        /// </summary>
+        /// <param name="configurer">Static to extend</param>
+        /// <param name="transportOptions">Options controlling the transport setup</param>
+        public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, SqlServerTransportOptions transportOptions)
+        {
+            Configure(
+                configurer,
+                (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()),
+                transportOptions
+            );
+        }
+
         /// <summary>
         /// Configures Rebus to use SQL Server as its transport (in "one-way client mode", i.e. as a send-only endpoint). Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
         /// Server transport does not hold a transaction open for the entire duration of the message handling. Instead it marks a
@@ -33,11 +81,21 @@ namespace Rebus.Config
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="enlistInAmbientTransaction">If <c>true</c> the connection will be enlisted in the ambient transaction if it exists, else it will create an SqlTransaction and enlist in it</param>
         /// <param name="ensureTablesAreCreated">If <c>true</c> tables for the queue will be created at run time. This means the connection provided to the transport must have schema modification rights. If <c>false</c> tables must be created externally before running</param>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false, bool ensureTablesAreCreated = true)
         {
-            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval, leasedByFactory, ensureTablesAreCreated);
-
-            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+            configurer.UseSqlServerInLeaseMode(
+                new SqlServerLeaseTransportOptions(connectionString, enlistInAmbientTransaction)
+                {
+                    InputQueueName = null,
+                    LeaseInterval = leaseAutoRenewInterval,
+                    LeaseTolerance = leaseTolerance,
+                    AutomaticallyRenewLeases = automaticallyRenewLeases,
+                    LeaseAutoRenewInterval = leaseAutoRenewInterval,
+                    LeasedByFactory = leasedByFactory,
+                    EnsureTablesAreCreated = ensureTablesAreCreated
+                }
+            );
         }
 
         /// <summary>
@@ -50,11 +108,20 @@ namespace Rebus.Config
         /// <param name="automaticallyRenewLeases">If <c>true</c> then workers will automatically renew the lease they have acquired whilst they're still processing the message. This will occur in accordance with <paramref name="leaseAutoRenewInterval"/></param>
         /// <param name="leaseAutoRenewInterval">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal"/>. Specifies how frequently a lease will be renewed whilst the worker is processing a message. Lower values decrease the chance of other workers processing the same message but increase DB communication. A value 50% of <paramref name="leaseInterval"/> should be appropriate</param>
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
         {
-            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), null, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval);
-
-            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+            configurer.UseSqlServerInLeaseMode(
+                new SqlServerLeaseTransportOptions(connectionFactory)
+                {
+                    InputQueueName = null,
+                    LeaseInterval = leaseAutoRenewInterval,
+                    LeaseTolerance = leaseTolerance,
+                    AutomaticallyRenewLeases = automaticallyRenewLeases,
+                    LeaseAutoRenewInterval = leaseAutoRenewInterval,
+                    LeasedByFactory = leasedByFactory,
+                }
+            );
         }
 
         /// <summary>
@@ -73,9 +140,21 @@ namespace Rebus.Config
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="enlistInAmbientTransaction">If <c>true</c> the connection will be enlisted in the ambient transaction if it exists, else it will create an SqlTransaction and enlist in it</param>
         /// <param name="ensureTablesAreCreated">If <c>true</c> tables for the queue will be created at run time. This means the connection provided to the transport must have schema modification rights. If <c>false</c> tables must be created externally before running</param>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false, bool ensureTablesAreCreated = true)
         {
-            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval, leasedByFactory, ensureTablesAreCreated);
+            configurer.UseSqlServerInLeaseMode(
+                new SqlServerLeaseTransportOptions(connectionString, enlistInAmbientTransaction)
+                {
+                    InputQueueName = inputQueueName,
+                    LeaseInterval = leaseAutoRenewInterval,
+                    LeaseTolerance = leaseTolerance,
+                    AutomaticallyRenewLeases = automaticallyRenewLeases,
+                    LeaseAutoRenewInterval = leaseAutoRenewInterval,
+                    LeasedByFactory = leasedByFactory,
+                    EnsureTablesAreCreated = ensureTablesAreCreated
+                }
+            );
         }
 
         /// <summary>
@@ -91,45 +170,20 @@ namespace Rebus.Config
         /// <param name="leaseAutoRenewInterval">If <c>null</c> defaults to <seealso cref="SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal"/>. Specifies how frequently a lease will be renewed whilst the worker is processing a message. Lower values decrease the chance of other workers processing the same message but increase DB communication. A value 50% of <paramref name="leaseInterval"/> should be appropriate</param>
         /// <param name="leasedByFactory">If non-<c>null</c> a factory which returns a string identifying this worker when it leases a message. If <c>null></c> the current machine name is used</param>
         /// <param name="ensureTablesAreCreated">If <c>true</c> tables for the queue will be created at run time. This means the connection provided to the transport must have schema modification rights. If <c>false</c> tables must be created externally before running</param>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool ensureTablesAreCreated = true)
         {
-            ConfigureInLeaseMode(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), inputQueueName, leaseInterval, leaseTolerance, automaticallyRenewLeases, leaseAutoRenewInterval, leasedByFactory, ensureTablesAreCreated);
-        }
-
-        /// <summary>
-        /// Configures everything for a leased <seealso cref="SqlServerLeaseTransport"/>
-        /// </summary>	
-        static void ConfigureInLeaseMode(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool ensureTablesAreCreated = true)
-        {
-            if (leasedByFactory == null)
-            {
-                leasedByFactory = () => Environment.MachineName;
-            }
-
-            Configure(
-                configurer, 
-                connectionProviderFactory,
-                inputQueueName,
-                (context, provider, inputQueue) =>
+            configurer.UseSqlServerInLeaseMode(
+                new SqlServerLeaseTransportOptions(connectionFactory)
                 {
-                    var rebusTime = context.Get<IRebusTime>();
-                    var rebusLoggerFactory = context.Get<IRebusLoggerFactory>();
-                    var asyncTaskFactory = context.Get<IAsyncTaskFactory>();
-                    return new SqlServerLeaseTransport(
-                        provider,
-                        inputQueueName,
-                        rebusLoggerFactory,
-                        asyncTaskFactory,
-                        rebusTime,
-                        leaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
-                        leaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
-                        leasedByFactory,
-                        automaticallyRenewLeases
-                            ? (TimeSpan?)null
-                            : leaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
-                    );
-                },
-                ensureTablesAreCreated 
+                    InputQueueName = inputQueueName,
+                    LeaseInterval = leaseAutoRenewInterval,
+                    LeaseTolerance = leaseTolerance,
+                    AutomaticallyRenewLeases = automaticallyRenewLeases,
+                    LeaseAutoRenewInterval = leaseAutoRenewInterval,
+                    LeasedByFactory = leasedByFactory,
+                    EnsureTablesAreCreated = ensureTablesAreCreated
+                }
             );
         }
 
@@ -137,68 +191,85 @@ namespace Rebus.Config
         /// Configures Rebus to use SQL Server to transport messages as a one-way client (i.e. will not be able to receive any messages).
         /// The message table will automatically be created if it does not exist.
         /// </summary>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory)
         {
-            Configure(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), null);
-
-            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+            configurer.UseSqlServer(
+                new SqlServerTransportOptions(connectionFactory) { 
+                    InputQueueName = null,
+                }
+            );
         }
 
         /// <summary>
         /// Configures Rebus to use SQL Server to transport messages as a one-way client (i.e. will not be able to receive any messages).
         /// The message table will automatically be created if it does not exist.
         /// </summary>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, bool enlistInAmbientTransaction = false)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), null, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()));
-
-            OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+            configurer.UseSqlServer(
+                new SqlServerTransportOptions(connectionString, enlistInAmbientTransaction) { 
+                    InputQueueName = null,
+                }
+            );
         }
 
         /// <summary>
         /// Configures Rebus to use SQL Server as its transport. The "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string inputQueueName, bool ensureTablesAreCreated = true)
         {
-            Configure(configurer, loggerFactory => new DbConnectionFactoryProvider(connectionFactory, loggerFactory), inputQueueName, ensureTablesAreCreated: ensureTablesAreCreated);
+            configurer.UseSqlServer(
+                new SqlServerTransportOptions(connectionFactory) { 
+                    InputQueueName = inputQueueName,
+                    EnsureTablesAreCreated = ensureTablesAreCreated,
+                }
+            );
         }
 
         /// <summary>
         /// Configures Rebus to use SQL Server as its transport. The "queue" specified by <paramref name="inputQueueName"/> will be used when querying for messages.
         /// The message table will automatically be created if it does not exist.
         /// </summary>
+        [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName, bool enlistInAmbientTransaction = false, bool ensureTablesAreCreated = true)
         {
-            Configure(configurer, loggerFactory => new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction), inputQueueName, ensureTablesAreCreated);
+            configurer.UseSqlServer(
+                new SqlServerTransportOptions(connectionString, enlistInAmbientTransaction) { 
+                    InputQueueName = inputQueueName,
+                    EnsureTablesAreCreated = ensureTablesAreCreated,
+                }
+            );
         }
 
 
         delegate SqlServerTransport TransportFactoryDelegate(IResolutionContext context, IDbConnectionProvider connectionProvider, string inputQueueName);
 
-        /// <summary>
-        /// Configures everything for a standard <seealso cref="SqlServerTransport"/>
-        /// </summary>
-        static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName, bool ensureTablesAreCreated = true)
-        {
-            Configure(configurer, connectionProviderFactory, inputQueueName, (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()), ensureTablesAreCreated);
-        }
-
-        static void Configure(StandardConfigurer<ITransport> configurer, Func<IRebusLoggerFactory, IDbConnectionProvider> connectionProviderFactory, string inputQueueName, TransportFactoryDelegate transportFactory, bool ensureTablesAreCreated = true)
+        static void Configure(StandardConfigurer<ITransport> configurer, TransportFactoryDelegate transportFactory, SqlServerTransportOptions transportOptions)
         {
             configurer.Register(context =>
-            {
-                var rebusLoggerFactory = context.Get<IRebusLoggerFactory>();
-                var connectionProvider = connectionProviderFactory(rebusLoggerFactory);
-                var transport = transportFactory(context, connectionProvider, inputQueueName);
-                if ((inputQueueName != null) && (ensureTablesAreCreated == true))
                 {
-                    transport.EnsureTableIsCreated();
-                }
-                return transport;
-            });
+                    var connectionProvider = transportOptions.ConnectionProviderFactory(context);
+                    var transport = transportFactory(context, connectionProvider, transportOptions.InputQueueName);
+                    if ((transportOptions.InputQueueName != null) && (transportOptions.EnsureTablesAreCreated == true))
+                    {
+                        transport.EnsureTableIsCreated();
+                    }
 
-            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(), 
+                    return transport;
+
+                }
+            );
+
+            if (transportOptions.IsOneWayQueue == true)
+            {
+                OneWayClientBackdoor.ConfigureOneWayClient(configurer);
+            }
+
+            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(),
                 @"A timeout manager cannot be explicitly configured when using SQL Server as the
 transport. This is because because the SQL transport has built-in deferred 
 message capabilities, and therefore it is not necessary to configure anything 
@@ -224,5 +295,6 @@ else to be able to delay message delivery.");
                 return options;
             });
         }
+
     }
 }
