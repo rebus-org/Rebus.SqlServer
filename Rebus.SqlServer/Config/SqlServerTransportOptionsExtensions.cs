@@ -84,7 +84,7 @@ namespace Rebus.Config
         }
 
         /// <summary>
-        /// Disables automatic lease renewal. Message handlers that run longer than <seealso cref="LeaseInterval"/> would be processed by another worker even if the worker processing this message is healthy
+        /// Disables automatic lease renewal. Message handlers that run longer than <seealso cref="SqlServerLeaseTransportOptions.LeaseInterval"/> would be processed by another worker even if the worker processing this message is healthy
         /// </summary>
         public static TLeaseTransportOptions DisableAutomaticLeaseRenewal<TLeaseTransportOptions>(this TLeaseTransportOptions options) where TLeaseTransportOptions : SqlServerLeaseTransportOptions
         {
