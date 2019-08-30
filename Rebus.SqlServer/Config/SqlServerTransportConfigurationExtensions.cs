@@ -30,30 +30,31 @@ namespace Rebus.Config
         public static SqlServerLeaseTransportOptions UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, SqlServerLeaseTransportOptions transportOptions, string inputQueueName)
         {
             return Configure(
-                configurer,
-                (context, provider, inputQueue) =>
-                {
-                    if (transportOptions.LeasedByFactory == null)
+                    configurer,
+                    (context, provider, inputQueue) =>
                     {
-                        transportOptions.SetLeasedByFactory(() => Environment.MachineName);
-                    }
+                        if (transportOptions.LeasedByFactory == null)
+                        {
+                            transportOptions.SetLeasedByFactory(() => Environment.MachineName);
+                        }
 
-                    return new SqlServerLeaseTransport(
-                        provider,
-                        transportOptions.InputQueueName,
-                        context.Get<IRebusLoggerFactory>(),
-                        context.Get<IAsyncTaskFactory>(),
-                        context.Get<IRebusTime>(),
-                        transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
-                        transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
-                        transportOptions.LeasedByFactory,
-                        transportOptions.AutomaticallyRenewLeases
-                            ? (TimeSpan?)null
-                            : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
-                    );
-                },
-                transportOptions
-            );
+                        return new SqlServerLeaseTransport(
+                            provider,
+                            transportOptions.InputQueueName,
+                            context.Get<IRebusLoggerFactory>(),
+                            context.Get<IAsyncTaskFactory>(),
+                            context.Get<IRebusTime>(),
+                            transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
+                            transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
+                            transportOptions.LeasedByFactory,
+                            transportOptions.AutomaticallyRenewLeases
+                                ? (TimeSpan?)null
+                                : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                        );
+                    },
+                    transportOptions
+                )
+                .ReadFrom(inputQueueName);
         }
 
         /// <summary>
@@ -67,30 +68,31 @@ namespace Rebus.Config
         public static SqlServerLeaseTransportOptions UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, SqlServerLeaseTransportOptions transportOptions)
         {
             return Configure(
-                configurer,
-                (context, provider, inputQueue) =>
-                {
-                    if (transportOptions.LeasedByFactory == null)
+                    configurer,
+                    (context, provider, inputQueue) =>
                     {
-                        transportOptions.SetLeasedByFactory(() => Environment.MachineName);
-                    }
+                        if (transportOptions.LeasedByFactory == null)
+                        {
+                            transportOptions.SetLeasedByFactory(() => Environment.MachineName);
+                        }
 
-                    return new SqlServerLeaseTransport(
-                        provider,
-                        transportOptions.InputQueueName,
-                        context.Get<IRebusLoggerFactory>(),
-                        context.Get<IAsyncTaskFactory>(),
-                        context.Get<IRebusTime>(),
-                        transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
-                        transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
-                        transportOptions.LeasedByFactory,
-                        transportOptions.AutomaticallyRenewLeases
-                            ? (TimeSpan?)null
-                            : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
-                    );
-                },
-                transportOptions
-            ).AsOneWayClient();
+                        return new SqlServerLeaseTransport(
+                            provider,
+                            transportOptions.InputQueueName,
+                            context.Get<IRebusLoggerFactory>(),
+                            context.Get<IAsyncTaskFactory>(),
+                            context.Get<IRebusTime>(),
+                            transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
+                            transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
+                            transportOptions.LeasedByFactory,
+                            transportOptions.AutomaticallyRenewLeases
+                                ? (TimeSpan?)null
+                                : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                        );
+                    },
+                    transportOptions
+                )
+                .AsOneWayClient();
         }
 
         /// <summary>
