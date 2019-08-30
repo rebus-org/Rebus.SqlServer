@@ -179,27 +179,28 @@ OUTPUT	inserted.*";
         /// <summary>
         /// Provides an oppurtunity for derived implementations to also update the schema
         /// </summary>
-        protected override string AdditionalSchemaModifications()
+        /// <param name="tableName"></param>
+        protected override string AdditionalSchemaModifications(TableName tableName)
         {
             return $@"
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}' AND COLUMN_NAME = 'leaseduntil')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}' AND COLUMN_NAME = 'leaseduntil')
 BEGIN
-	ALTER TABLE {ReceiveTableName.QualifiedName} ADD leaseduntil datetime2 null
+	ALTER TABLE {tableName.QualifiedName} ADD leaseduntil datetime2 null
 END
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}' AND COLUMN_NAME = 'leasedby')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}' AND COLUMN_NAME = 'leasedby')
 BEGIN
-	ALTER TABLE {ReceiveTableName.QualifiedName} ADD leasedby nvarchar({LeasedByColumnSize}) null
+	ALTER TABLE {tableName.QualifiedName} ADD leasedby nvarchar({LeasedByColumnSize}) null
 END
 
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{ReceiveTableName.Schema}' AND TABLE_NAME = '{ReceiveTableName.Name}' AND COLUMN_NAME = 'leasedat')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}' AND COLUMN_NAME = 'leasedat')
 BEGIN
-	ALTER TABLE {ReceiveTableName.QualifiedName} ADD leasedat datetime2 null
+	ALTER TABLE {tableName.QualifiedName} ADD leasedat datetime2 null
 END
 
 ";

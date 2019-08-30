@@ -208,16 +208,17 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
 ");
 
-                var additional = AdditionalSchemaModifications();
+                var additional = AdditionalSchemaModifications(tableName);
                 ExecuteCommands(connection, additional);
                 await connection.Complete();
             }
         }
 
         /// <summary>
-        /// Provides an oppurtunity for derived implementations to also update the schema
+        /// Provides an opportunity for derived implementations to also update the schema
         /// </summary>
-        protected virtual string AdditionalSchemaModifications()
+        /// <param name="tableName">Name of the table to create schema modifications for</param>
+        protected virtual string AdditionalSchemaModifications(TableName tableName)
         {
             return string.Empty;
         }
