@@ -19,14 +19,15 @@ namespace Rebus.Config
     public static class SqlServerTransportConfigurationExtensions
     {       
         /// <summary>
-        /// Configures Rebus to use SQL Server as its transport (in "one-way client mode", i.e. as a send-only endpoint). Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
+        /// Configures Rebus to use SQL Server as its transport. Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
         /// Server transport does not hold a transaction open for the entire duration of the message handling. Instead it marks a
         /// message as being "leased" for a period of time. If the lease has expired then a worker is permitted to acquire the that
         /// message again and try reprocessing
         /// </summary>
         /// <param name="configurer">Static to extend</param>
         /// <param name="transportOptions">Options controlling the transport setup</param>
-        public static SqlServerLeaseTransportOptions UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, SqlServerLeaseTransportOptions transportOptions)
+        /// <param name="inputQueueName">Queue name to process messages from</param>
+        public static SqlServerLeaseTransportOptions UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, SqlServerLeaseTransportOptions transportOptions, string inputQueueName)
         {
             return Configure(
                 configurer,
@@ -56,17 +57,72 @@ namespace Rebus.Config
         }
 
         /// <summary>
+        /// Configures Rebus to use SQL Server as its transport in "one-way client mode" (i.e. as a send only endpoint). Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
+        /// Server transport does not hold a transaction open for the entire duration of the message handling. Instead it marks a
+        /// message as being "leased" for a period of time. If the lease has expired then a worker is permitted to acquire the that
+        /// message again and try reprocessing
+        /// </summary>
+        /// <param name="configurer">Static to extend</param>
+        /// <param name="transportOptions">Options controlling the transport setup</param>
+        public static SqlServerLeaseTransportOptions UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, SqlServerLeaseTransportOptions transportOptions)
+        {
+            return Configure(
+                configurer,
+                (context, provider, inputQueue) =>
+                {
+                    if (transportOptions.LeasedByFactory == null)
+                    {
+                        transportOptions.SetLeasedByFactory(() => Environment.MachineName);
+                    }
+
+                    return new SqlServerLeaseTransport(
+                        provider,
+                        transportOptions.InputQueueName,
+                        context.Get<IRebusLoggerFactory>(),
+                        context.Get<IAsyncTaskFactory>(),
+                        context.Get<IRebusTime>(),
+                        transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
+                        transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
+                        transportOptions.LeasedByFactory,
+                        transportOptions.AutomaticallyRenewLeases
+                            ? (TimeSpan?)null
+                            : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                    );
+                },
+                transportOptions
+            ).AsOneWayClient();
+        }
+
+        /// <summary>
         /// Configures Rebus to use SQL Server as its transport
         /// </summary>
         /// <param name="configurer">Static to extend</param>
         /// <param name="transportOptions">Options controlling the transport setup</param>
-        public static SqlServerTransportOptions UseSqlServer(this StandardConfigurer<ITransport> configurer, SqlServerTransportOptions transportOptions)
+        /// <param name="inputQueueName">Queue name to process messages from</param>
+        public static SqlServerTransportOptions UseSqlServer(this StandardConfigurer<ITransport> configurer, SqlServerTransportOptions transportOptions, string inputQueueName)
         {
             return Configure(
-                configurer,
-                (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()),
-                transportOptions
-            );
+                    configurer,
+                    (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()),
+                    transportOptions
+                )
+                .ReadFrom(inputQueueName);
+        }
+
+        /// <summary>
+        /// Configures Rebus to use SQLServer as its transport in "one-way client mode" (i.e. as a send-only endpoint). 
+        /// </summary>
+        /// <param name="configurer"></param>
+        /// <param name="transportOptions"></param>
+        /// <returns></returns>
+        public static SqlServerTransportOptions UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, SqlServerTransportOptions transportOptions)
+        {
+            return Configure(
+                    configurer,
+                    (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()),
+                    transportOptions
+                )
+                .AsOneWayClient();
         }
 
         /// <summary>
@@ -87,8 +143,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false, bool ensureTablesAreCreated = true)
         {
-            configurer.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(connectionString, enlistInAmbientTransaction))
-                .AsOneWayClient()
+            configurer.UseSqlServerInLeaseModeAsOneWayClient(new SqlServerLeaseTransportOptions(connectionString, enlistInAmbientTransaction))
                 .SetEnsureTablesAreCreated(ensureTablesAreCreated)
                 .SetLeaseInterval(leaseAutoRenewInterval)
                 .SetLeaseTolerance(leaseTolerance)
@@ -109,8 +164,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseModeAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null)
         {
-            configurer.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(connectionFactory))
-                .AsOneWayClient()
+            configurer.UseSqlServerInLeaseModeAsOneWayClient(new SqlServerLeaseTransportOptions(connectionFactory))
                 .SetLeaseInterval(leaseInterval)
                 .SetLeaseTolerance(leaseTolerance)
                 .SetAutomaticLeaseRenewal(automaticallyRenewLeases, leaseAutoRenewInterval)
@@ -136,8 +190,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool enlistInAmbientTransaction = false, bool ensureTablesAreCreated = true)
         {
-            configurer.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(connectionString, enlistInAmbientTransaction))
-                .ReadFrom(inputQueueName)
+            configurer.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(connectionString, enlistInAmbientTransaction), inputQueueName)
                 .SetEnsureTablesAreCreated(ensureTablesAreCreated)
                 .SetLeaseInterval(leaseInterval)
                 .SetLeaseTolerance(leaseTolerance)
@@ -161,8 +214,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServerInLeaseMode) + " with a " + nameof(SqlServerLeaseTransportOptions) + " instead.")]
         public static void UseSqlServerInLeaseMode(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string inputQueueName, TimeSpan? leaseInterval = null, TimeSpan? leaseTolerance = null, bool automaticallyRenewLeases = false, TimeSpan? leaseAutoRenewInterval = null, Func<string> leasedByFactory = null, bool ensureTablesAreCreated = true)
         {
-            configurer.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(connectionFactory))
-                .ReadFrom(inputQueueName)
+            configurer.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(connectionFactory), inputQueueName)
                 .SetEnsureTablesAreCreated(ensureTablesAreCreated)
                 .SetLeaseInterval(leaseInterval)
                 .SetLeaseTolerance(leaseTolerance)
@@ -177,8 +229,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory)
         {
-            configurer.UseSqlServer(new SqlServerTransportOptions(connectionFactory))
-                .AsOneWayClient();
+            configurer.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(connectionFactory));
         }
 
         /// <summary>
@@ -188,7 +239,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServerAsOneWayClient(this StandardConfigurer<ITransport> configurer, string connectionString, bool enlistInAmbientTransaction = false)
         {
-            configurer.UseSqlServer(new SqlServerTransportOptions(connectionString, enlistInAmbientTransaction))
+            configurer.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(connectionString, enlistInAmbientTransaction))
                 .AsOneWayClient();
         }
 
@@ -199,7 +250,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, Func<Task<IDbConnection>> connectionFactory, string inputQueueName, bool ensureTablesAreCreated = true)
         {
-            configurer.UseSqlServer(new SqlServerTransportOptions(connectionFactory))
+            configurer.UseSqlServer(new SqlServerTransportOptions(connectionFactory), inputQueueName)
                 .ReadFrom(inputQueueName)
                 .SetEnsureTablesAreCreated(ensureTablesAreCreated);
         }
@@ -211,7 +262,7 @@ namespace Rebus.Config
         [Obsolete("Will be removed in a future version use " + nameof(UseSqlServer) + " with a " + nameof(SqlServerTransport) + " instead.")]
         public static void UseSqlServer(this StandardConfigurer<ITransport> configurer, string connectionString, string inputQueueName, bool enlistInAmbientTransaction = false, bool ensureTablesAreCreated = true)
         {
-            configurer.UseSqlServer(new SqlServerTransportOptions(connectionString, enlistInAmbientTransaction))
+            configurer.UseSqlServer(new SqlServerTransportOptions(connectionString, enlistInAmbientTransaction), inputQueueName)
                 .ReadFrom(inputQueueName)
                 .SetEnsureTablesAreCreated(ensureTablesAreCreated);
         }
