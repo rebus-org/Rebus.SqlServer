@@ -6,7 +6,7 @@
     <RootNamespace>Rebus.SqlServer.Tests</RootNamespace>
     <AssemblyName>Rebus.SqlServer.Tests</AssemblyName>
     <!-- <TargetFrameworks>net45;net46;netcoreapp2.1</TargetFrameworks> -->
-    <TargetFrameworks>net46</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.1</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Authors>mookid8000</Authors>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</PackageLicenseUrl>
