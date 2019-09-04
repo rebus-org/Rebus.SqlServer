@@ -27,7 +27,7 @@ namespace Rebus.SqlServer.DataBus
         readonly TableName _tableName;
         readonly bool _ensureTableIsCreated;
         readonly ILog _log;
-        readonly int _commandTimeout ;
+        readonly int _commandTimeout;
         private readonly IRebusTime _rebusTime;
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Rebus.SqlServer.DataBus
                 if (connection.GetTableNames().Contains(_tableName))
                 {
                     var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
-                    
+
                     if (!columns.Any(x => x.Name == "CreationTime"))
                     {
                         _log.Info("Adding CreationTime column to data bus table {tableName}", _tableName.QualifiedName);
@@ -293,6 +293,89 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
             catch (Exception exception)
             {
                 throw new RebusApplicationException(exception, $"Could not load metadata for data with ID {id}");
+            }
+        }
+
+        /// <summary>Deletes the attachment with the given ID</summary>
+        public async Task Delete(string id)
+        {
+            try
+            {
+                using (var connection = await _connectionProvider.GetConnection())
+                {
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [Id] = @id";
+                        command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
+
+                        await command.ExecuteNonQueryAsync();
+                    }
+
+                    await connection.Complete();
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new RebusApplicationException(exception, $"Could not delete data with ID {id}");
+            }
+        }
+
+        /// <summary>
+        /// Iterates through IDs of attachments that match the given <paramref name="readTime" /> and <paramref name="saveTime" /> criteria.
+        /// </summary>
+        public IEnumerable<string> Query(TimeRange readTime = null, TimeRange saveTime = null)
+        {
+            IDbConnection connection = null;
+
+            AsyncHelpers.RunSync(async () =>
+            {
+                connection = await _connectionProvider.GetConnection();
+            });
+
+            using (connection)
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    var query = new StringBuilder($"SELECT [Id] FROM {_tableName.QualifiedName} WHERE 1=1");
+
+                    var readTimeFrom = readTime?.From;
+                    var readTimeTo = readTime?.To;
+                    var saveTimeFrom = saveTime?.From;
+                    var saveTimeTo = saveTime?.To;
+
+                    if (readTimeFrom != null)
+                    {
+                        query.Append(" AND [LastReadTime] >= @readTimeFrom");
+                        command.Parameters.Add("readTimeFrom", SqlDbType.DateTimeOffset).Value = readTimeFrom;
+                    }
+                    if (readTimeTo != null)
+                    {
+                        query.Append(" AND [LastReadTime] < @readTimeTo");
+                        command.Parameters.Add("readTimeTo", SqlDbType.DateTimeOffset).Value = readTimeTo;
+                    }
+                    if (saveTimeFrom != null)
+                    {
+                        query.Append(" AND [CreationTime] >= @saveTimeFrom");
+                        command.Parameters.Add("saveTimeFrom", SqlDbType.DateTimeOffset).Value = saveTimeFrom;
+                    }
+                    if (saveTimeTo != null)
+                    {
+                        query.Append(" AND [CreationTime] < @saveTimeTo");
+                        command.Parameters.Add("saveTimeTo", SqlDbType.DateTimeOffset).Value = saveTimeTo;
+                    }
+
+                    command.CommandText = query.ToString();
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        var ordinal = reader.GetOrdinal("Id");
+
+                        while (reader.Read())
+                        {
+                            yield return (string)reader[ordinal];
+                        }
+                    }
+                }
             }
         }
     }
