@@ -22,13 +22,17 @@ namespace Rebus.Config
             if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-            configurer.Register(c =>
+            configurer.OtherService<SqlServerDataBusStorage>().Register(c =>
             {
                 var rebusTime = c.Get<IRebusTime>();
                 var loggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, loggerFactory, enlistInAmbientTransaction);
                 return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, rebusTime, commandTimeout);
             });
+
+            configurer.Register(c => c.Get<SqlServerDataBusStorage>());
+
+            configurer.OtherService<IDataBusStorageManagement>().Register(c => c.Get<SqlServerDataBusStorage>());
         }
 
         /// <summary>
@@ -40,13 +44,17 @@ namespace Rebus.Config
             if (connectionFactory == null) throw new ArgumentNullException(nameof(connectionFactory));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-            configurer.Register(c =>
+            configurer.OtherService<SqlServerDataBusStorage>().Register(c =>
             {
                 var rebusTime = c.Get<IRebusTime>();
                 var loggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, loggerFactory);
                 return new SqlServerDataBusStorage(connectionProvider, tableName, automaticallyCreateTables, loggerFactory, rebusTime, commandTimeout);
             });
+
+            configurer.Register(c => c.Get<SqlServerDataBusStorage>());
+
+            configurer.OtherService<IDataBusStorageManagement>().Register(c => c.Get<SqlServerDataBusStorage>());
         }
     }
 }

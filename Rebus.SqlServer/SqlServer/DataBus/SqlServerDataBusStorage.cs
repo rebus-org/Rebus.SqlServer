@@ -19,7 +19,7 @@ namespace Rebus.SqlServer.DataBus
     /// <summary>
     /// Implementation of <see cref="IDataBusStorage"/> that uses SQL Server to store data
     /// </summary>
-    public class SqlServerDataBusStorage : IDataBusStorage, IInitializable
+    public class SqlServerDataBusStorage : IDataBusStorage, IDataBusStorageManagement, IInitializable
     {
         static readonly Encoding TextEncoding = Encoding.UTF8;
         readonly DictionarySerializer _dictionarySerializer = new DictionarySerializer();
@@ -28,7 +28,7 @@ namespace Rebus.SqlServer.DataBus
         readonly bool _ensureTableIsCreated;
         readonly ILog _log;
         readonly int _commandTimeout;
-        private readonly IRebusTime _rebusTime;
+        readonly IRebusTime _rebusTime;
 
         /// <summary>
         /// Creates the data storage

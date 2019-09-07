@@ -86,7 +86,7 @@
 
 * Change default data type of timeouts table PK IDs to be `BIGINT` - thanks [rsivanov]
 
-## 6.0.0-a5
+## 6.0.0-a6
 
 * Update Rebus dependency to version 6 - thanks [nativenolde]
 * Make it possible to avoid automatic schema creation - thanks [MrMDavidson]
