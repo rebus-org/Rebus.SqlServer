@@ -182,6 +182,9 @@ OUTPUT	inserted.*";
         /// <param name="tableName"></param>
         protected override string AdditionalSchemaModifications(TableName tableName)
         {
+            var receiveIndexName = $"IDX_RECEIVE_LEASE_{tableName.Schema}_{tableName.Name}";
+            var deleteIndexName = $"IDX_DELETE_LEASE_{tableName.Schema}_{tableName.Name}";
+
             return $@"
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}' AND COLUMN_NAME = 'leaseduntil')
 BEGIN
@@ -203,6 +206,29 @@ BEGIN
 	ALTER TABLE {tableName.QualifiedName} ADD leasedat datetime2 null
 END
 
+----
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes I JOIN sys.objects O ON I.name = '{receiveIndexName}' AND I.object_id = o.object_id and o.schema_id = SCHEMA_ID('{tableName.Schema}'))
+BEGIN
+	CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {tableName.QualifiedName}
+	(
+		[priority] ASC,
+	    [visible] ASC,
+	    [expiration] ASC,
+	    [leaseduntil] ASC,
+	    [id] ASC
+	)
+END
+
+----
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes I JOIN sys.objects O ON I.name = '{deleteIndexName}' AND I.object_id = o.object_id and o.schema_id = SCHEMA_ID('{tableName.Schema}'))
+BEGIN
+	CREATE NONCLUSTERED INDEX [{deleteIndexName}] ON {tableName.QualifiedName}
+	(
+		[id] ASC
+	)
+END
 ";
         }
 
