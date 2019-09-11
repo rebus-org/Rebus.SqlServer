@@ -208,15 +208,26 @@ END
 
 ----
 
+-- Drop the V0 Receive Index
+-- v0 index was (Priority, Visible, Expiration, LeasedUntil, Id)
+-- We can find this by looking for the index with priority as is_descending_key = 0
+IF EXISTS (SELECT 1 FROM sys.indexes I JOIN sys.index_columns IC ON I.object_id = OBJECT_ID('{tableName.QualifiedName}') AND I.name = '{receiveIndexName}' AND IC.object_id = I.object_id AND IC.index_id = I.index_id JOIN sys.columns C ON C.object_id = IC.object_id AND C.column_id = IC.column_id AND C.name = 'priority' and IC.is_descending_key = 0)
+BEGIN
+    DROP INDEX {receiveIndexName} ON {tableName.QualifiedName}
+END
+
+----
+
+-- V1 Index: (Priority DESC, Visible, Id, Expiration, LeasedUntil)
 IF NOT EXISTS (SELECT 1 FROM sys.indexes I JOIN sys.objects O ON I.name = '{receiveIndexName}' AND I.object_id = o.object_id and o.schema_id = SCHEMA_ID('{tableName.Schema}'))
 BEGIN
 	CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {tableName.QualifiedName}
 	(
-		[priority] ASC,
-	    [visible] ASC,
-	    [expiration] ASC,
-	    [leaseduntil] ASC,
-	    [id] ASC
+		[priority] DESC,
+		[visible] ASC,
+		[id] ASC,
+		[expiration] ASC,
+		[leaseduntil] ASC
 	)
 END
 
