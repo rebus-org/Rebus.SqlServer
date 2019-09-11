@@ -47,9 +47,10 @@ namespace Rebus.Config
                             transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
                             transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
                             transportOptions.LeasedByFactory,
-                            transportOptions.AutomaticallyRenewLeases
-                                ? (TimeSpan?)null
-                                : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                            transportOptions.AutomaticallyRenewLeases == true
+                                ? transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                                : (TimeSpan?)null
+
                         );
                     },
                     transportOptions
