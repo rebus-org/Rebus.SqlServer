@@ -38,8 +38,7 @@ namespace Rebus.SqlServer.Tests
             }
         }
 
-        //public static string DatabaseName => $"rebus2_test_{TestConfig.Suffix}_{CompileTargetSuffix}".TrimEnd('_');
-        public static string DatabaseName = "rebus2_test";
+        public static string DatabaseName => $"rebus2_test_{TestConfig.Suffix}_{CompileTargetSuffix}".TrimEnd('_');
 
         static string CompileTargetSuffix
         {
@@ -301,7 +300,7 @@ select s.name as 'schema', t.name as 'table' from sys.tables t
         static string GetConnectionStringForDatabase(string databaseName)
         {
             return Environment.GetEnvironmentVariable("REBUS_SQLSERVER")
-                   ?? $"Server=MICHAEL\\SQLEXPRESS; database={databaseName}; trusted_connection=true;";
+                   ?? $"server=.; database={databaseName}; trusted_connection=true;";
         }
     }
 }
