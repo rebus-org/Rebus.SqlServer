@@ -213,7 +213,7 @@ END
 -- We can find this by looking for the index with priority as is_descending_key = 0
 IF EXISTS (SELECT 1 FROM sys.indexes I JOIN sys.index_columns IC ON I.object_id = OBJECT_ID('{tableName.QualifiedName}') AND I.name = '{receiveIndexName}' AND IC.object_id = I.object_id AND IC.index_id = I.index_id JOIN sys.columns C ON C.object_id = IC.object_id AND C.column_id = IC.column_id AND C.name = 'priority' and IC.is_descending_key = 0)
 BEGIN
-    DROP INDEX {receiveIndexName} ON {tableName.QualifiedName}
+    DROP INDEX [{receiveIndexName}] ON {tableName.QualifiedName}
 END
 
 ----
