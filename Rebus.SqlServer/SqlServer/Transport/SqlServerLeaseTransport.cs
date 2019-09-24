@@ -44,10 +44,10 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public static readonly TimeSpan DefaultLeaseAutomaticRenewal = TimeSpan.FromSeconds(150);
 
-        readonly long _leaseIntervalMilliseconds;
-        readonly long _leaseToleranceMilliseconds;
+        readonly TimeSpan _leaseInterval;
+        readonly TimeSpan _leaseTolerance;
         readonly bool _automaticLeaseRenewal;
-        readonly long _automaticLeaseRenewalIntervalMilliseconds;
+        readonly TimeSpan _automaticLeaseRenewalInterval;
         readonly Func<string> _leasedByFactory;
 
         /// <summary>
@@ -75,8 +75,8 @@ namespace Rebus.SqlServer.Transport
             ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory, rebusTime)
         {
             _leasedByFactory = leasedByFactory;
-            _leaseIntervalMilliseconds = (long)Math.Ceiling(leaseInterval.TotalMilliseconds);
-            _leaseToleranceMilliseconds = (long)Math.Ceiling((leaseTolerance ?? TimeSpan.FromSeconds(15)).TotalMilliseconds);
+            _leaseInterval = leaseInterval;
+            _leaseTolerance = leaseTolerance ?? TimeSpan.FromSeconds(15);
             if (automaticLeaseRenewalInterval.HasValue == false)
             {
                 _automaticLeaseRenewal = false;
@@ -84,7 +84,7 @@ namespace Rebus.SqlServer.Transport
             else
             {
                 _automaticLeaseRenewal = true;
-                _automaticLeaseRenewalIntervalMilliseconds = (long)Math.Ceiling(automaticLeaseRenewalInterval.Value.TotalMilliseconds);
+                _automaticLeaseRenewalInterval = automaticLeaseRenewalInterval.Value;
             }
         }
 
@@ -135,7 +135,7 @@ namespace Rebus.SqlServer.Transport
 	AND		M.[expiration] > sysdatetimeoffset()
 	AND		1 = CASE
 					WHEN M.[leaseduntil] is null then 1
-					WHEN DATEADD(ms, @leasetolerancemilliseconds, M.[leaseduntil]) < sysdatetimeoffset() THEN 1
+					WHEN DATEADD(ms, @leasetolerancemilliseconds, DATEADD(ss, @leasetolerancetotalseconds, M.[leaseduntil])) < sysdatetimeoffset() THEN 1
 					ELSE 0
 				END
 	ORDER
@@ -144,12 +144,14 @@ namespace Rebus.SqlServer.Transport
 			[id] ASC
 )
 UPDATE	TopCTE WITH (ROWLOCK, READCOMMITTEDLOCK)
-SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, sysdatetimeoffset()),
+SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, DATEADD(ss, @leasetotalseconds, sysdatetimeoffset())),
 		[leasedat] = sysdatetimeoffset(),
 		[leasedby] = @leasedby
 OUTPUT	inserted.*";
-                    selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.BigInt).Value = _leaseIntervalMilliseconds;
-                    selectCommand.Parameters.Add("@leasetolerancemilliseconds", SqlDbType.BigInt).Value = _leaseToleranceMilliseconds;
+                    selectCommand.Parameters.Add("@leasetotalseconds", SqlDbType.Int).Value = (int)_leaseInterval.TotalSeconds;
+                    selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.Int).Value = _leaseInterval.Milliseconds;
+                    selectCommand.Parameters.Add("@leasetolerancetotalseconds", SqlDbType.Int).Value = (int)_leaseTolerance.TotalSeconds;
+                    selectCommand.Parameters.Add("@leasetolerancemilliseconds", SqlDbType.Int).Value = _leaseTolerance.Milliseconds;
                     selectCommand.Parameters.Add("@leasedby", SqlDbType.VarChar, LeasedByColumnSize).Value = _leasedByFactory();
 
                     try
@@ -253,7 +255,7 @@ END
             AutomaticLeaseRenewer renewal = null;
             if (_automaticLeaseRenewal == true)
             {
-                renewal = new AutomaticLeaseRenewer(ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalIntervalMilliseconds, _leaseIntervalMilliseconds);
+                renewal = new AutomaticLeaseRenewer(ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalInterval, _leaseInterval);
             }
 
             context.OnAborted(
@@ -332,32 +334,40 @@ WHERE	id = @id
         /// <param name="connectionProvider">Provider for obtaining a connection</param>
         /// <param name="tableName">Name of the table the messages are stored in</param>
         /// <param name="messageId">Identifier of the message whose lease is being updated</param>
-        /// <param name="leaseIntervalMilliseconds">New lease interval in milliseconds. If <c>null</c> the lease will be released</param>
-        static async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, long? leaseIntervalMilliseconds)
+        /// <param name="leaseInterval">New lease interval. If <c>null</c> the lease will be released</param>
+        static async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, TimeSpan? leaseInterval)
         {
             using (var connection = await connectionProvider.GetConnection())
             {
                 using (var command = connection.CreateCommand())
                 {
                     command.CommandType = CommandType.Text;
-                    command.CommandText = $@"
+
+                    if (leaseInterval.HasValue)
+                    {
+                        command.CommandText = $@"
 UPDATE	{tableName} WITH (ROWLOCK)
-SET		leaseduntil =	CASE
-							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
-							ELSE dateadd(ms, @leaseintervalmilliseconds, sysdatetimeoffset())
-						END,
-		leasedby	=	CASE
-							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
-							ELSE leasedby
-						END,
-		leasedat	=	CASE
-							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
-							ELSE leasedat
-						END
+SET		leaseduntil =	dateadd(ms, @leaseintervalmilliseconds, dateadd(ss, @leaseintervaltotalseconds, sysdatetimeoffset())),
+		leasedby	=	leasedby,
+		leasedat	=	leasedat
 WHERE	id = @id
 ";
-                    command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
-                    command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.BigInt).Value = (object)leaseIntervalMilliseconds ?? DBNull.Value;
+                        command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
+                        command.Parameters.Add("@leaseintervaltotalseconds", SqlDbType.Int).Value = (int)leaseInterval.Value.TotalSeconds;
+                        command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.Int).Value = leaseInterval.Value.Milliseconds;
+                    }
+                    else
+                    {
+                        command.CommandText = $@"
+UPDATE	{tableName} WITH (ROWLOCK)
+SET		leaseduntil =	NULL,
+		leasedby	=	NULL,
+		leasedat	=	NULL
+WHERE	id = @id
+";
+                        command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
+                    }
+
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 
@@ -373,17 +383,17 @@ WHERE	id = @id
             readonly string _tableName;
             readonly long _messageId;
             readonly IDbConnectionProvider _connectionProvider;
-            readonly long _leaseIntervalMilliseconds;
+            readonly TimeSpan _leaseInterval;
             Timer _renewTimer;
 
-            public AutomaticLeaseRenewer(string tableName, long messageId, IDbConnectionProvider connectionProvider, long renewIntervalMilliseconds, long leaseIntervalMilliseconds)
+            public AutomaticLeaseRenewer(string tableName, long messageId, IDbConnectionProvider connectionProvider, TimeSpan renewInterval, TimeSpan leaseInterval)
             {
                 _tableName = tableName;
                 _messageId = messageId;
                 _connectionProvider = connectionProvider;
-                _leaseIntervalMilliseconds = leaseIntervalMilliseconds;
+                _leaseInterval = leaseInterval;
 
-                _renewTimer = new Timer(RenewLease, null, TimeSpan.FromMilliseconds(renewIntervalMilliseconds), TimeSpan.FromMilliseconds(renewIntervalMilliseconds));
+                _renewTimer = new Timer(RenewLease, null, renewInterval, renewInterval);
             }
 
             public void Dispose()
@@ -395,7 +405,7 @@ WHERE	id = @id
 
             async void RenewLease(object state)
             {
-                await UpdateLease(_connectionProvider, _tableName, _messageId, _leaseIntervalMilliseconds).ConfigureAwait(false);
+                await UpdateLease(_connectionProvider, _tableName, _messageId, _leaseInterval).ConfigureAwait(false);
             }
         }
 
