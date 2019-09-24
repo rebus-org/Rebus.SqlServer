@@ -304,8 +304,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 				[body]
 		FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST, READCOMMITTEDLOCK)
 		WHERE	
-                M.[visible] < getdate()
-		AND		M.[expiration] > getdate()
+                M.[visible] < sysdatetimeoffset()
+		AND		M.[expiration] > sysdatetimeoffset()
 		ORDER
 		BY		[priority] DESC,
 				[visible] ASC,
@@ -400,15 +400,15 @@ VALUES
     @headers,
     @body,
     @priority,
-    dateadd(ss, @visible, getdate()),
-    dateadd(ss, @ttlseconds, getdate())
+    dateadd(ms, @visibilemilliseconds, dateadd(ss, @visibiletotalseconds, sysdatetimeoffset())),
+    dateadd(ms, @ttlmilliseconds, dateadd(ss, @ttltotalseconds, sysdatetimeoffset()))
 )";
 
                 var headers = message.Headers.Clone();
 
                 var priority = GetMessagePriority(headers);
-                var initialVisibilityDelay = GetInitialVisibilityDelay(headers);
-                var ttlSeconds = GetTtlSeconds(headers);
+                var visible = GetInitialVisibilityDelay(headers);
+                var ttl = GetTtl(headers);
 
                 // must be last because the other functions on the headers might change them
                 var serializedHeaders = HeaderSerializer.Serialize(headers);
@@ -416,38 +416,43 @@ VALUES
                 command.Parameters.Add("headers", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(serializedHeaders.Length)).Value = serializedHeaders;
                 command.Parameters.Add("body", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(message.Body.Length)).Value = message.Body;
                 command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
-                command.Parameters.Add("ttlseconds", SqlDbType.Int).Value = ttlSeconds;
-                command.Parameters.Add("visible", SqlDbType.Int).Value = initialVisibilityDelay;
+                command.Parameters.Add("visibiletotalseconds", SqlDbType.Int).Value = (int)visible.TotalSeconds;
+                command.Parameters.Add("visibilemilliseconds", SqlDbType.Int).Value = visible.Milliseconds;
+                command.Parameters.Add("ttltotalseconds", SqlDbType.Int).Value = (int)ttl.TotalSeconds;
+                command.Parameters.Add("ttlmilliseconds", SqlDbType.Int).Value = ttl.Milliseconds;
 
                 await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
         }
 
-        int GetInitialVisibilityDelay(IDictionary<string, string> headers)
+        TimeSpan GetInitialVisibilityDelay(IDictionary<string, string> headers)
         {
             if (!headers.TryGetValue(Headers.DeferredUntil, out var deferredUntilDateTimeOffsetString))
             {
-                return 0;
+                return TimeSpan.Zero;
             }
 
             var deferredUntilTime = deferredUntilDateTimeOffsetString.ToDateTimeOffset();
 
             headers.Remove(Headers.DeferredUntil);
 
-            return (int)(deferredUntilTime - _rebusTime.Now).TotalSeconds;
+            var visibilityDelay = deferredUntilTime - _rebusTime.Now;
+            return visibilityDelay;
         }
 
-        static int GetTtlSeconds(IReadOnlyDictionary<string, string> headers)
+        static TimeSpan GetTtl(IReadOnlyDictionary<string, string> headers)
         {
             const int defaultTtlSecondsAbout60Years = int.MaxValue;
 
             if (!headers.ContainsKey(Headers.TimeToBeReceived))
-                return defaultTtlSecondsAbout60Years;
+            {
+                return TimeSpan.FromSeconds(defaultTtlSecondsAbout60Years);
+            }
 
             var timeToBeReceivedStr = headers[Headers.TimeToBeReceived];
             var timeToBeReceived = TimeSpan.Parse(timeToBeReceivedStr);
 
-            return (int)timeToBeReceived.TotalSeconds;
+            return timeToBeReceived;
         }
 
         async Task PerformExpiredMessagesCleanupCycle()
@@ -468,7 +473,7 @@ VALUES
 ;with TopCTE as (
 	SELECT TOP 1 [id] FROM {ReceiveTableName.QualifiedName} WITH (ROWLOCK, READPAST)
 				WHERE 
-                    [expiration] < getdate()
+                    [expiration] < sysdatetimeoffset()
 )
 DELETE FROM TopCTE
 ";
