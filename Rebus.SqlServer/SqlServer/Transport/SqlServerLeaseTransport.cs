@@ -131,11 +131,11 @@ namespace Rebus.SqlServer.Transport
 			[leaseduntil],
 			[leasedby]
 	FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST, READCOMMITTEDLOCK)
-	WHERE	M.[visible] < getdate()
-	AND		M.[expiration] > getdate()
+	WHERE	M.[visible] < sysdatetimeoffset()
+	AND		M.[expiration] > sysdatetimeoffset()
 	AND		1 = CASE
 					WHEN M.[leaseduntil] is null then 1
-					WHEN DATEADD(ms, @leasetolerancemilliseconds, M.[leaseduntil]) < getdate() THEN 1
+					WHEN DATEADD(ms, @leasetolerancemilliseconds, M.[leaseduntil]) < sysdatetimeoffset() THEN 1
 					ELSE 0
 				END
 	ORDER
@@ -144,8 +144,8 @@ namespace Rebus.SqlServer.Transport
 			[id] ASC
 )
 UPDATE	TopCTE WITH (ROWLOCK, READCOMMITTEDLOCK)
-SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, getdate()),
-		[leasedat] = getdate(),
+SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, sysdatetimeoffset()),
+		[leasedat] = sysdatetimeoffset(),
 		[leasedby] = @leasedby
 OUTPUT	inserted.*";
                     selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.BigInt).Value = _leaseIntervalMilliseconds;
@@ -344,7 +344,7 @@ WHERE	id = @id
 UPDATE	{tableName} WITH (ROWLOCK)
 SET		leaseduntil =	CASE
 							WHEN @leaseintervalmilliseconds IS NULL THEN NULL
-							ELSE dateadd(ms, @leaseintervalmilliseconds, getdate())
+							ELSE dateadd(ms, @leaseintervalmilliseconds, sysdatetimeoffset())
 						END,
 		leasedby	=	CASE
 							WHEN @leaseintervalmilliseconds IS NULL THEN NULL

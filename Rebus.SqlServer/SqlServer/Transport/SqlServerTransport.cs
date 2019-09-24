@@ -304,8 +304,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 				[body]
 		FROM	{ReceiveTableName.QualifiedName} M WITH (ROWLOCK, READPAST, READCOMMITTEDLOCK)
 		WHERE	
-                M.[visible] < getdate()
-		AND		M.[expiration] > getdate()
+                M.[visible] < sysdatetimeoffset()
+		AND		M.[expiration] > sysdatetimeoffset()
 		ORDER
 		BY		[priority] DESC,
 				[visible] ASC,
@@ -400,8 +400,8 @@ VALUES
     @headers,
     @body,
     @priority,
-    dateadd(ss, @visible, getdate()),
-    dateadd(ss, @ttlseconds, getdate())
+    dateadd(ss, @visible, sysdatetimeoffset()),
+    dateadd(ss, @ttlseconds, sysdatetimeoffset())
 )";
 
                 var headers = message.Headers.Clone();
@@ -468,7 +468,7 @@ VALUES
 ;with TopCTE as (
 	SELECT TOP 1 [id] FROM {ReceiveTableName.QualifiedName} WITH (ROWLOCK, READPAST)
 				WHERE 
-                    [expiration] < getdate()
+                    [expiration] < sysdatetimeoffset()
 )
 DELETE FROM TopCTE
 ";
