@@ -259,7 +259,7 @@ END
             }
 
             context.OnAborted(
-                () =>
+                ctx =>
                 {
                     renewal?.Dispose();
 
@@ -268,7 +268,7 @@ END
             );
 
             context.OnCommitted(
-                async () =>
+                async ctx =>
                 {
                     renewal?.Dispose();
 
@@ -303,7 +303,7 @@ WHERE	id = @id
                 {
                     var outgoingMessages = new ConcurrentQueue<AddressedTransportMessage>();
 
-                    async Task SendOutgoingMessages()
+                    async Task SendOutgoingMessages(ITransactionContext _)
                     {
                         using (var connection = await ConnectionProvider.GetConnection())
                         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Rebus.Extensions;
 using Rebus.Logging;
@@ -63,7 +63,11 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             _disposables.ForEach(d => d.Dispose());
             _disposables.Clear();
 
-            _tablesToDrop.ForEach(SqlTestHelper.DropTable);
+            foreach (var table in _tablesToDrop)
+            {
+                SqlTestHelper.DropTable(table);
+            }
+
             _tablesToDrop.Clear();
         }
     }
