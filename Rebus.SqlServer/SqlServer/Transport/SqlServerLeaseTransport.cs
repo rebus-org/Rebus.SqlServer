@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Threading;
@@ -61,7 +62,7 @@ namespace Rebus.SqlServer.Transport
         /// <param name="leaseInterval">Interval of time messages are leased for</param>
         /// <param name="leaseTolerance">Buffer to allow lease overruns by</param>
         /// <param name="leasedByFactory">Factory for generating a string which identifies who has leased a message (eg. A hostname)</param>
-        /// <param name="automaticLeaseRenewalInterval">If non-<c>null</c> messages will be automatically re-leased after this time period has elapsed</param>
+        /// <param name="options">Additional options</param>
         public SqlServerLeaseTransport(
             IDbConnectionProvider connectionProvider,
             string inputQueueName,
@@ -71,13 +72,16 @@ namespace Rebus.SqlServer.Transport
             TimeSpan leaseInterval,
             TimeSpan? leaseTolerance,
             Func<string> leasedByFactory,
-            TimeSpan? automaticLeaseRenewalInterval = null
-            ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory, rebusTime)
+            SqlServerLeaseTransportOptions options 
+            ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory, rebusTime, options)
         {
             _leasedByFactory = leasedByFactory;
             _leaseInterval = leaseInterval;
             _leaseTolerance = leaseTolerance ?? TimeSpan.FromSeconds(15);
-            if (automaticLeaseRenewalInterval.HasValue == false)
+
+            var automaticLeaseRenewalInterval = options.LeaseAutoRenewInterval;
+
+            if (!automaticLeaseRenewalInterval.HasValue)
             {
                 _automaticLeaseRenewal = false;
             }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebus.Config;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -33,7 +34,7 @@ namespace Rebus.SqlServer.Tests.Transport
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
 
-            _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory, rebusTime);
+            _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory, rebusTime, new SqlServerTransportOptions(connectionProvider));
             _transport.EnsureTableIsCreated();
 
             Using(_transport);

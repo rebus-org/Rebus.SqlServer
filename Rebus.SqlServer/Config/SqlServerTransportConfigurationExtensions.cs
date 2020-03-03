@@ -47,9 +47,7 @@ namespace Rebus.Config
                             transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
                             transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
                             transportOptions.LeasedByFactory,
-                            transportOptions.AutomaticallyRenewLeases == true
-                                ? transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
-                                : (TimeSpan?)null
+                            transportOptions
 
                         );
                     },
@@ -86,9 +84,7 @@ namespace Rebus.Config
                             transportOptions.LeaseInterval ?? SqlServerLeaseTransport.DefaultLeaseTime,
                             transportOptions.LeaseTolerance ?? SqlServerLeaseTransport.DefaultLeaseTolerance,
                             transportOptions.LeasedByFactory,
-                            transportOptions.AutomaticallyRenewLeases
-                                ? (TimeSpan?)null
-                                : transportOptions.LeaseAutoRenewInterval ?? SqlServerLeaseTransport.DefaultLeaseAutomaticRenewal
+                            transportOptions
                         );
                     },
                     transportOptions
@@ -106,7 +102,7 @@ namespace Rebus.Config
         {
             return Configure(
                     configurer,
-                    (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()),
+                    (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>(), transportOptions),
                     transportOptions
                 )
                 .ReadFrom(inputQueueName);
@@ -122,7 +118,7 @@ namespace Rebus.Config
         {
             return Configure(
                     configurer,
-                    (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>()),
+                    (context, provider, inputQueue) => new SqlServerTransport(provider, inputQueue, context.Get<IRebusLoggerFactory>(), context.Get<IAsyncTaskFactory>(), context.Get<IRebusTime>(), transportOptions),
                     transportOptions
                 )
                 .AsOneWayClient();
@@ -277,7 +273,7 @@ namespace Rebus.Config
         {
             configurer.Register(context =>
                 {
-                    if (transportOptions.IsOneWayQueue == true)
+                    if (transportOptions.IsOneWayQueue)
                     {
                         OneWayClientBackdoor.ConfigureOneWayClient(configurer);
                     }
@@ -290,7 +286,6 @@ namespace Rebus.Config
                     }
 
                     return transport;
-
                 }
             );
 

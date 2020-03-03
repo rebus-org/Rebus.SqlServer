@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Rebus.Config;
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.SqlServer.Transport;
@@ -27,7 +28,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, null, consoleLoggerFactory, asyncTaskFactory, rebusTime);
+            var transport = new SqlServerTransport(connectionProvider, null, consoleLoggerFactory, asyncTaskFactory, rebusTime, new SqlServerTransportOptions(connectionProvider));
 
             _disposables.Add(transport);
 
@@ -48,7 +49,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
-            var transport = new SqlServerTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, rebusTime);
+            var transport = new SqlServerTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, rebusTime, new SqlServerTransportOptions(connectionProvider));
             
             _disposables.Add(transport);
             

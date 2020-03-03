@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebus.Bus;
+using Rebus.Config;
 using Rebus.Exceptions;
 using Rebus.Extensions;
 using Rebus.Logging;
@@ -42,7 +43,7 @@ namespace Rebus.SqlServer.Transport
         public const string CurrentConnectionKey = "sql-server-transport-current-connection";
 
         /// <summary>
-        /// Default interval that will be used for <see cref="ExpiredMessagesCleanupInterval"/> unless it is explicitly set to something else
+        /// Default delay between executing the background cleanup task
         /// </summary>
         public static readonly TimeSpan DefaultExpiredMessagesCleanupInterval = TimeSpan.FromSeconds(20);
 
@@ -71,7 +72,7 @@ namespace Rebus.SqlServer.Transport
         /// <summary>
         /// Constructs the transport with the given <see cref="IDbConnectionProvider"/>
         /// </summary>
-        public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, IRebusTime rebusTime)
+        public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, IRebusTime rebusTime, SqlServerTransportOptions options)
         {
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
             if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
@@ -82,9 +83,10 @@ namespace Rebus.SqlServer.Transport
 
             _log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
 
-            ExpiredMessagesCleanupInterval = DefaultExpiredMessagesCleanupInterval;
+            var cleanupInterval = options.ExpiredMessagesCleanupInterval ?? DefaultExpiredMessagesCleanupInterval;
+            var intervalSeconds = (int)cleanupInterval.TotalSeconds;
 
-            _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, intervalSeconds: 60);
+            _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, intervalSeconds: intervalSeconds);
         }
 
         /// <summary>
@@ -96,11 +98,6 @@ namespace Rebus.SqlServer.Transport
 
             _expiredMessagesCleanupTask.Start();
         }
-
-        /// <summary>
-        /// Configures the interval between periodic deletion of expired messages. Defaults to <see cref="DefaultExpiredMessagesCleanupInterval"/>
-        /// </summary>
-        public TimeSpan ExpiredMessagesCleanupInterval { get; set; }
 
         /// <summary>
         /// Gets the name that this SQL transport will use to query by when checking the messages table

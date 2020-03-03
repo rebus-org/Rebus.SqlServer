@@ -55,5 +55,10 @@ namespace Rebus.Config
         /// If <c>false</c> tables will not be created and must be created outside of Rebus
         /// </summary>
         public bool EnsureTablesAreCreated { get; internal set; } = true;
+
+        /// <summary>
+        /// Gets the delay between executions of the background cleanup task
+        /// </summary>
+        internal TimeSpan? ExpiredMessagesCleanupInterval { get; set; }
     }
 }

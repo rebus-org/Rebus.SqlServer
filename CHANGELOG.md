@@ -1,54 +1,42 @@
 # Changelog
 
 ## 2.0.0-b01
-
 * Test release
 
 ## 2.0.0-b02
-
 * Use more convenient namespaces
 
 ## 2.0.0-b03
-
 * Optimized streamed reading of data
 
 ## 2.0.0-b04
-
 * Dispose connection properly also when an error occurs
 
 ## 2.0.0
-
 * Release 2.0.0
 
 ## 2.1.0-b01
-
 * Add support for schemas to all SQL Server-based things - thanks [cleytonb]
 
 ## 2.1.0-b02
-
 * Topic/subscriber address length checks on subscription storage because SQL Server is crazy
 * Support custom topic/subscriber address lengths in subscription storage via simple schema reflection at startup
 
 ## 3.0.0
-
 * Update to Rebus 3
 
 ## 3.1.0
-
 * Register SQL Transport as if it was an external timeout manager, enabling message deferral from one-way clients
 
 ## 3.1.1
-
 * Fix unspecified saga revision after delete (fixes clash with SQL Server saga auditing assumption that revision be incremented also on delete...)
 
 ## 4.0.0
-
 * Update to Rebus 4
 * Add .NET Core support (netstandard1.6)
 * Made `CurrentConnectionKey` of `SqlTransport` public
 
 ## 5.0.0
-
 * Add lease-based transport - thanks [MrMDavidson]
 * Add creation time column to data bus storage - thanks [IsaacSee]
 * Shift transports to use table-per-queue layout to improve overall performance and avoid having a long queue bring everything to a halt - thanks [magnus-tretton37]
@@ -63,37 +51,33 @@
 * Target .NET 4.5, .NET 4.6, and .NET Standard 2.0
 
 ## 5.0.1
-
 * Reduce query plan cache pollution by coming up with lengths for all parameterized queries
 
 ## 5.0.2
-
 * Improve error message when registering a timeout manager in conjunction with the SQL transport (which has built-in message delay, obviating the need for actual timeout storage)
 
 ## 5.0.3
-
 * Correct name of connection string parameter in configuration extensions
 
 ## 5.0.4
-
 * Add `READCOMMITTEDLOCK` also to the receive code of the lease-based transport
 
 ## 5.0.5
-
 * Fix problem with closed connection when enlisting in ambient transaction - thanks [thomasdc]
 
 ## 5.1.0
-
 * Change default data type of timeouts table PK IDs to be `BIGINT` - thanks [rsivanov]
 
 ## 6.0.0
-
 * Update Rebus dependency to version 6 - thanks [nativenolde]
 * Make it possible to avoid automatic schema creation - thanks [MrMDavidson]
 * Simplify configuration API and deprecate swarm of old overloads
 * Implement new data bus storage APIs that enable querying and deleting
 * Add two more indexes to improve performance and resource utilization of lease-based transport - thanks [MrMDavidson]
 * Reduce implicit conversions and improve precision in SQL transport - thanks [tompazourek]
+
+## 6.0.1
+* Fix bug that would ignore the setting for customizing the delay between cleanup cycles
 
 ----
 

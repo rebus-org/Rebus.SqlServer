@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.SqlServer.Transport;
@@ -85,7 +86,8 @@ namespace Rebus.SqlServer.Tests.Bugs
                 inputQueueName: _queueName,
                 rebusLoggerFactory: rebusLoggerFactory,
                 asyncTaskFactory: taskFactory,
-                rebusTime: rebusTime
+                rebusTime: rebusTime,
+                options: new SqlServerTransportOptions(connectionProvider)
             );
 
             transport.Initialize();

@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.SqlServer.Transport;
@@ -105,14 +106,16 @@ namespace Rebus.SqlServer.Tests.Transport
                     rebusTime,
                     TimeSpan.FromMinutes(1),
                     TimeSpan.FromSeconds(5),
-                    () => "who cares"
+                    () => "who cares",
+                    new SqlServerLeaseTransportOptions(connectionProvider)
                 )
                 : new SqlServerTransport(
                     connectionProvider,
                     QueueName,
                     loggerFactory,
                     asyncTaskFactory,
-                    rebusTime
+                    rebusTime,
+                    new SqlServerTransportOptions(connectionProvider)
                 );
 
             transport.EnsureTableIsCreated();

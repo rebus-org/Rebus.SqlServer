@@ -18,7 +18,7 @@ namespace Rebus.Config
         }
 
         /// <summary>
-        /// Configures teh transport to read from <paramref name="inputQueueName"/>
+        /// Configures the transport to read from <paramref name="inputQueueName"/>
         /// </summary>
         public static TTransportOptions ReadFrom<TTransportOptions>(this TTransportOptions options, string inputQueueName) where TTransportOptions : SqlServerTransportOptions
         {
@@ -41,6 +41,15 @@ namespace Rebus.Config
         public static TTransportOptions SetEnsureTablesAreCreated<TTransportOptions>(this TTransportOptions options, bool ensureTablesAreCreated) where TTransportOptions : SqlServerTransportOptions
         {
             options.EnsureTablesAreCreated = ensureTablesAreCreated;
+            return options;
+        }
+
+        /// <summary>
+        /// Sets the delay between executions of the background cleanup task
+        /// </summary>
+        public static TTransportOptions SetExpiredMessagesCleanupInterval<TTransportOptions>(this TTransportOptions options, TimeSpan interval) where TTransportOptions : SqlServerTransportOptions
+        {
+            options.ExpiredMessagesCleanupInterval = interval;
             return options;
         }
 
