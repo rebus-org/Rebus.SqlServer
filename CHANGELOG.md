@@ -79,6 +79,9 @@
 ## 6.0.1
 * Fix bug that would ignore the setting for customizing the delay between cleanup cycles
 
+## 6.1.0
+* Add ability to auto-delete input queue when shutting down - thanks [rsivanov]
+
 ----
 
 [cleytonb]: https://github.com/cleytonb
