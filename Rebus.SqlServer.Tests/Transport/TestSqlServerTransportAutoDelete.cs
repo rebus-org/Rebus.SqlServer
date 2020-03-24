@@ -26,13 +26,22 @@ namespace Rebus.SqlServer.Tests.Transport
             
             var options = new SqlServerTransportOptions(SqlTestHelper.ConnectionString);
 
-            Configure.With(new BuiltinHandlerActivator())
+            var activator = Using(new BuiltinHandlerActivator());
+            Configure.With(activator)
                 .Logging(l => l.Use(consoleLoggerFactory))
-                .Transport(t => t.UseSqlServer(options, queueName).SetAutoDeleteQueue(true));
-            
+                .Transport(t => t.UseSqlServer(options, queueName).SetAutoDeleteQueue(true))
+                .Start();
+
             using (var connection = await connectionProvider.GetConnection())
             {
-                Assert.False(connection.GetTableNames().Contains(TableName.Parse(queueName)));
+                Assert.That(connection.GetTableNames().Contains(TableName.Parse(queueName)), Is.True);
+            }
+
+            CleanUpDisposables();
+
+            using (var connection = await connectionProvider.GetConnection())
+            {
+                Assert.That(connection.GetTableNames().Contains(TableName.Parse(queueName)), Is.False);
             }
         }
     }
