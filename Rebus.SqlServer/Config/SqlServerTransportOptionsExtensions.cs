@@ -45,6 +45,15 @@ namespace Rebus.Config
         }
 
         /// <summary>
+        /// Sets if table will be dropped automatically
+        /// </summary>
+        public static TTransportOptions SetAutoDeleteQueue<TTransportOptions>(this TTransportOptions options, bool autoDeleteQueue) where TTransportOptions : SqlServerTransportOptions
+        {
+            options.AutoDeleteQueue = autoDeleteQueue;
+            return options;
+        }
+        
+        /// <summary>
         /// Sets the delay between executions of the background cleanup task
         /// </summary>
         public static TTransportOptions SetExpiredMessagesCleanupInterval<TTransportOptions>(this TTransportOptions options, TimeSpan interval) where TTransportOptions : SqlServerTransportOptions

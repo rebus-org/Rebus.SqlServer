@@ -67,6 +67,7 @@ namespace Rebus.SqlServer.Transport
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
         readonly ILog _log;
         readonly IAsyncTask _expiredMessagesCleanupTask;
+        readonly bool _autoDeleteQueue;
         bool _disposed;
 
         /// <summary>
@@ -87,6 +88,7 @@ namespace Rebus.SqlServer.Transport
             var intervalSeconds = (int)cleanupInterval.TotalSeconds;
 
             _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, intervalSeconds: intervalSeconds);
+            _autoDeleteQueue = options.AutoDeleteQueue;
         }
 
         /// <summary>
@@ -219,6 +221,69 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         {
             return string.Empty;
         }
+        
+        /// <summary>
+        /// Checks if the table with the configured name exists - if it is, it will be dropped
+        /// </summary>
+        void EnsureTableIsDropped()
+        {
+            try
+            {
+                AsyncHelpers.RunSync(() => EnsureTableIsDroppedAsync(ReceiveTableName));
+            }
+            catch
+            {
+                // if it failed because of a collision between another thread doing the same thing, just try again once:
+                AsyncHelpers.RunSync(() => EnsureTableIsDroppedAsync(ReceiveTableName));
+            }
+        }        
+
+        async Task EnsureTableIsDroppedAsync(TableName tableName)
+        {
+            try
+            {
+                await InnerEnsureTableIsDroppedAsync(tableName).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // if it fails the first time, and if it's because of some kind of conflict,
+                // we should run it again and see if the situation has stabilized
+                await InnerEnsureTableIsDroppedAsync(tableName).ConfigureAwait(false);
+            }
+        }
+
+        async Task InnerEnsureTableIsDroppedAsync(TableName tableName)
+        {
+            using (var connection = await ConnectionProvider.GetConnection())
+            {
+                var tableNames = connection.GetTableNames();
+
+                if (!tableNames.Contains(tableName))
+                {
+                    _log.Info("A table named {tableName} doesn't exist", tableName.QualifiedName);
+                    await connection.Complete();
+                    return;
+                }
+
+                _log.Info("Table {tableName} exists - it will be dropped now", tableName.QualifiedName);
+
+                ExecuteCommands(connection, $@"
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}')
+    DROP TABLE {tableName.QualifiedName};");
+
+                var additional = AdditionalSchemaModificationsOnDeleteQueue();
+                ExecuteCommands(connection, additional);
+                await connection.Complete();
+            }
+        }
+        
+        /// <summary>
+        /// Provides an oppurtunity for derived implementations to also update the schema when the queue is deleted automatically 
+        /// </summary>
+        protected virtual string AdditionalSchemaModificationsOnDeleteQueue()
+        {
+            return string.Empty;
+        }        
 
         static void ExecuteCommands(IDbConnection connection, string sqlCommands)
         {
@@ -534,6 +599,8 @@ DELETE FROM TopCTE
             try
             {
                 _expiredMessagesCleanupTask.Dispose();
+                if (_autoDeleteQueue)
+                    EnsureTableIsDropped();
             }
             finally
             {

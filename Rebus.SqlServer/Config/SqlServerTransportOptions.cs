@@ -57,6 +57,11 @@ namespace Rebus.Config
         public bool EnsureTablesAreCreated { get; internal set; } = true;
 
         /// <summary>
+        /// If true, the input queue table will be automatically dropped on transport disposal
+        /// </summary>
+        public bool AutoDeleteQueue { get; internal set; } = false;
+
+        /// <summary>
         /// Gets the delay between executions of the background cleanup task
         /// </summary>
         internal TimeSpan? ExpiredMessagesCleanupInterval { get; set; }
