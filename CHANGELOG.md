@@ -82,6 +82,9 @@
 ## 6.1.0
 * Add ability to auto-delete input queue when shutting down - thanks [rsivanov]
 
+## 6.1.1
+* Fix bug that would not make column types for "leaseduntil" and "leasedat" DATETIMEOFFSET as intended
+
 ----
 
 [cleytonb]: https://github.com/cleytonb

@@ -194,7 +194,7 @@ OUTPUT	inserted.*";
             return $@"
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}' AND COLUMN_NAME = 'leaseduntil')
 BEGIN
-	ALTER TABLE {tableName.QualifiedName} ADD leaseduntil datetime2 null
+	ALTER TABLE {tableName.QualifiedName} ADD leaseduntil datetimeoffset null
 END
 
 ----
@@ -209,7 +209,7 @@ END
 
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}' AND COLUMN_NAME = 'leasedat')
 BEGIN
-	ALTER TABLE {tableName.QualifiedName} ADD leasedat datetime2 null
+	ALTER TABLE {tableName.QualifiedName} ADD leasedat datetimeoffset null
 END
 
 ----
