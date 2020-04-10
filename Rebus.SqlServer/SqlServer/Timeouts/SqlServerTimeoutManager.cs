@@ -118,10 +118,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
             {
                 using (var command = connection.CreateCommand())
                 {
-                    command.CommandText =
-                        $@"INSERT INTO {_tableName.QualifiedName} ([due_time], [headers], [body]) VALUES (@due_time, @headers, @body)";
+                    command.CommandText = $@"INSERT INTO {_tableName.QualifiedName} ([due_time], [headers], [body]) VALUES (@due_time, @headers, @body)";
 
-                    command.Parameters.Add("due_time", SqlDbType.DateTime2).Value = approximateDueTime.UtcDateTime;
+                    command.Parameters.Add("due_time", SqlDbType.DateTimeOffset, 7).Value = approximateDueTime;
                     command.Parameters.Add("headers", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(headersString.Length)).Value = headersString;
                     command.Parameters.Add("body", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(body.Length)).Value = body;
 
@@ -157,7 +156,7 @@ WHERE [due_time] <= @current_time
 ORDER BY [due_time] ASC
 ";
 
-                    command.Parameters.Add("current_time", SqlDbType.DateTime2).Value = _rebusTime.Now.UtcDateTime;
+                    command.Parameters.Add("current_time", SqlDbType.DateTimeOffset, 7).Value = _rebusTime.Now;
 
                     using (var reader = command.ExecuteReader())
                     {
