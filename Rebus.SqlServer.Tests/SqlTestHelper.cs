@@ -50,6 +50,8 @@ namespace Rebus.SqlServer.Tests
                 return "net46";
                 #elif NETCOREAPP21
                 return "netcoreapp21";
+                #elif NETCOREAPP31
+                return "netcoreapp31";
                 #else
                 throw new InvalidOperationException("please return suffix dependent on compile target");
                 #endif
