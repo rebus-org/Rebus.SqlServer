@@ -166,7 +166,7 @@ OUTPUT	inserted.*";
                             if (transportMessage == null) return null;
 
                             var messageId = (long)reader["id"];
-                            ApplyTransactionSemantics(context, messageId);
+                            ApplyTransactionSemantics(context, messageId, cancellationToken);
                         }
                     }
                     catch (Exception exception) when (cancellationToken.IsCancellationRequested)
@@ -254,20 +254,28 @@ END
         /// </summary>
         /// <param name="context">Transaction context of the message processing</param>
         /// <param name="messageId">Identifier of the message currently being processed</param>
-        private void ApplyTransactionSemantics(ITransactionContext context, long messageId)
+        /// <param name="cancellationToken">Token to abort processing</param>
+        private void ApplyTransactionSemantics(ITransactionContext context, long messageId, CancellationToken cancellationToken)
         {
             AutomaticLeaseRenewer renewal = null;
             if (_automaticLeaseRenewal == true)
             {
-                renewal = new AutomaticLeaseRenewer(ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalInterval, _leaseInterval);
+                renewal = new AutomaticLeaseRenewer(
+                    this, ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalInterval, _leaseInterval, cancellationToken);
             }
 
             context.OnAborted(
                 ctx =>
                 {
                     renewal?.Dispose();
-
-                    AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName, messageId, null));
+                    try
+                    {
+                        AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName, messageId, null, cancellationToken));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "While Resetting Lease");
+                    }
                 }
             );
 
@@ -275,26 +283,42 @@ END
                 async ctx =>
                 {
                     renewal?.Dispose();
-
-                    // Delete the message
-                    using (var deleteConnection = await ConnectionProvider.GetConnection())
+                    try
                     {
-                        using (var deleteCommand = deleteConnection.CreateCommand())
-                        {
-                            deleteCommand.CommandType = CommandType.Text;
-                            deleteCommand.CommandText = $@"
+                        await DeleteMessage(messageId, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "While Deleteing Message");
+                    }
+                }
+            );
+        }
+
+        /// <summary>
+        /// Responsible for deleating the message on transaction commit
+        /// </summary>
+        /// <param name="messageId">Identifier of the message currently being processed</param>
+        /// <param name="cancellationToken">Token to abort processing</param>
+        protected virtual async Task DeleteMessage(long messageId, CancellationToken cancellationToken)
+        {
+            // Delete the message
+            using (var deleteConnection = await ConnectionProvider.GetConnection())
+            {
+                using (var deleteCommand = deleteConnection.CreateCommand())
+                {
+                    deleteCommand.CommandType = CommandType.Text;
+                    deleteCommand.CommandText = $@"
 DELETE
 FROM	{ReceiveTableName.QualifiedName} WITH (ROWLOCK)
 WHERE	id = @id
 ";
-                            deleteCommand.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
-                            deleteCommand.ExecuteNonQuery();
-                        }
-
-                        await deleteConnection.Complete();
-                    }
+                    deleteCommand.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
+                    await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
                 }
-            );
+
+                await deleteConnection.Complete();
+            }
         }
 
         /// <summary>
@@ -339,7 +363,8 @@ WHERE	id = @id
         /// <param name="tableName">Name of the table the messages are stored in</param>
         /// <param name="messageId">Identifier of the message whose lease is being updated</param>
         /// <param name="leaseInterval">New lease interval. If <c>null</c> the lease will be released</param>
-        static async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, TimeSpan? leaseInterval)
+        /// <param name="cancellationToken">Token to abort processing</param>
+        protected virtual async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, TimeSpan? leaseInterval, CancellationToken cancellationToken)
         {
             using (var connection = await connectionProvider.GetConnection())
             {
@@ -372,33 +397,36 @@ WHERE	id = @id
                         command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
                     }
 
-                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                 }
 
                 await connection.Complete();
             }
         }
-
         /// <summary>
         /// Handles automatically renewing a lease for a given message
         /// </summary>
         class AutomaticLeaseRenewer : IDisposable
         {
+            private readonly SqlServerLeaseTransport _serverLeaseTransport;
             readonly string _tableName;
             readonly long _messageId;
             readonly IDbConnectionProvider _connectionProvider;
             readonly TimeSpan _leaseInterval;
+            readonly CancellationToken _cancellationToken;
             Timer _renewTimer;
 
-            public AutomaticLeaseRenewer(string tableName, long messageId, IDbConnectionProvider connectionProvider, TimeSpan renewInterval, TimeSpan leaseInterval)
+            public AutomaticLeaseRenewer(SqlServerLeaseTransport serverLeaseTransport, string tableName, long messageId, IDbConnectionProvider connectionProvider, TimeSpan renewInterval, TimeSpan leaseInterval, CancellationToken cancellationToken)
             {
+                _serverLeaseTransport = serverLeaseTransport;
                 _tableName = tableName;
                 _messageId = messageId;
                 _connectionProvider = connectionProvider;
                 _leaseInterval = leaseInterval;
-
+                _cancellationToken = cancellationToken;
                 _renewTimer = new Timer(RenewLease, null, renewInterval, renewInterval);
             }
+
 
             public void Dispose()
             {
@@ -409,9 +437,17 @@ WHERE	id = @id
 
             async void RenewLease(object state)
             {
-                await UpdateLease(_connectionProvider, _tableName, _messageId, _leaseInterval).ConfigureAwait(false);
+                try
+                {
+                    await _serverLeaseTransport.UpdateLease(_connectionProvider, _tableName, _messageId, _leaseInterval, _cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _serverLeaseTransport.Log.Error(ex, "While Renewing Lease");
+                }
             }
         }
+
 
         class AddressedTransportMessage
         {

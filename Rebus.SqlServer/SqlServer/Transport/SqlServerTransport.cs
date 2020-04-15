@@ -64,8 +64,12 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         protected readonly TableName ReceiveTableName;
 
+        /// <summary>
+        /// Logger
+        /// </summary>
+        protected readonly ILog Log;
+        
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
-        readonly ILog _log;
         readonly IAsyncTask _expiredMessagesCleanupTask;
         readonly bool _autoDeleteQueue;
         bool _disposed;
@@ -82,7 +86,7 @@ namespace Rebus.SqlServer.Transport
             ConnectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             ReceiveTableName = inputQueueName != null ? TableName.Parse(inputQueueName) : null;
 
-            _log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
+            Log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
 
             var cleanupInterval = options.ExpiredMessagesCleanupInterval ?? DefaultExpiredMessagesCleanupInterval;
             var intervalSeconds = (int)cleanupInterval.TotalSeconds;
@@ -148,12 +152,12 @@ namespace Rebus.SqlServer.Transport
 
                 if (tableNames.Contains(tableName))
                 {
-                    _log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
+                    Log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
                     await connection.Complete();
                     return;
                 }
 
-                _log.Info("Table {tableName} does not exist - it will be created now", tableName.QualifiedName);
+                Log.Info("Table {tableName} does not exist - it will be created now", tableName.QualifiedName);
 
                 var receiveIndexName = $"IDX_RECEIVE_{tableName.Schema}_{tableName.Name}";
                 var expirationIndexName = $"IDX_EXPIRATION_{tableName.Schema}_{tableName.Name}";
@@ -254,12 +258,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
                 if (!tableNames.Contains(tableName))
                 {
-                    _log.Info("A table named {tableName} doesn't exist", tableName.QualifiedName);
+                    Log.Info("A table named {tableName} doesn't exist", tableName.QualifiedName);
                     await connection.Complete();
                     return;
                 }
 
-                _log.Info("Table {tableName} exists - it will be dropped now", tableName.QualifiedName);
+                Log.Info("Table {tableName} exists - it will be dropped now", tableName.QualifiedName);
 
                 ExecuteCommands(connection, $@"
 IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}')
@@ -547,7 +551,7 @@ DELETE FROM TopCTE
 
             if (results > 0)
             {
-                _log.Info("Performed expired messages cleanup in {cleanupTimeSeconds} - {expiredMessageCount} expired messages with recipient {queueName} were deleted",
+                Log.Info("Performed expired messages cleanup in {cleanupTimeSeconds} - {expiredMessageCount} expired messages with recipient {queueName} were deleted",
                     stopwatch.Elapsed.TotalSeconds, results, ReceiveTableName.QualifiedName);
             }
         }
