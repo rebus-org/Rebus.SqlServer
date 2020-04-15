@@ -85,8 +85,12 @@
 ## 6.1.1
 * Fix bug that would not make column types for "leaseduntil" and "leasedat" DATETIMEOFFSET as intended
 
+## 6.1.2
+* Catch and log exceptions caught when failing to update the lease for long-running message handlers and lease-based transport - thanks [clegendre]
+
 ----
 
+[clegendre]: https://github.com/clegendre
 [cleytonb]: https://github.com/cleytonb
 [IsaacSee]: https://github.com/IsaacSee
 [larsw]: https://github.com/larsw
