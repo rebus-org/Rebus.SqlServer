@@ -7,6 +7,7 @@ using Rebus.Logging;
 using Rebus.Serialization;
 using Rebus.Time;
 using Rebus.Timeouts;
+// ReSharper disable AccessToDisposedClosure
 
 namespace Rebus.SqlServer.Timeouts
 {
@@ -158,9 +159,9 @@ ORDER BY [due_time] ASC
 
                     command.Parameters.Add("current_time", SqlDbType.DateTimeOffset, 7).Value = _rebusTime.Now;
 
-                    using (var reader = command.ExecuteReader())
+                    using (var reader = await command.ExecuteReaderAsync())
                     {
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             var id = Convert.ToInt64(reader["id"]);
                             var headersString = (string)reader["headers"];
