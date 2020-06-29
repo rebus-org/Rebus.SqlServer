@@ -88,6 +88,10 @@
 ## 6.1.2
 * Catch and log exceptions caught when failing to update the lease for long-running message handlers and lease-based transport - thanks [clegendre]
 
+## 7.0.0-a1
+* Replace dependency on System.Data.SqlClient with Microsoft.Data.SqlClient, because it's the future!
+* Only target .NET Standard 2.0, because requiring consumers to be on .NET 4.6.2 or .NET Core 2 is fair
+
 ----
 
 [clegendre]: https://github.com/clegendre

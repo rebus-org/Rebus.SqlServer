@@ -5,7 +5,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus</RootNamespace>
     <AssemblyName>Rebus.SqlServer</AssemblyName>
-    <TargetFrameworks>net45;net46;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Authors>mookid8000</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -42,17 +42,8 @@
     <None Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="microsoft.data.sqlclient" Version="2.0.0" />
     <PackageReference Include="rebus" Version="6.0.0" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-    <PackageReference Include="System.Data.Common" Version="4.3.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.5.0" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net46'">
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Transactions" />
   </ItemGroup>
   <Target BeforeTargets="PreBuildEvent" Name="PreBuild">
     <Exec Command="$(ProjectDir)..\scripts\patch_assemblyinfo.cmd $(ProjectDir)" />
