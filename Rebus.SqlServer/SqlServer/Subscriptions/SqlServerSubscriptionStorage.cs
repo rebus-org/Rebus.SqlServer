@@ -30,14 +30,13 @@ namespace Rebus.SqlServer.Subscriptions
         /// </summary>
         public SqlServerSubscriptionStorage(IDbConnectionProvider connectionProvider, string tableName, bool isCentralized, IRebusLoggerFactory rebusLoggerFactory)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+            _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
             IsCentralized = isCentralized;
 
             _log = rebusLoggerFactory.GetLogger<SqlServerSubscriptionStorage>();
-            _connectionProvider = connectionProvider;
             _tableName = TableName.Parse(tableName);
         }
 

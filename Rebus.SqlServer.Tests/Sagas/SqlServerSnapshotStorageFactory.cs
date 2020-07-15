@@ -46,15 +46,13 @@ namespace Rebus.SqlServer.Tests.Sagas
                 {
                     command.CommandText = $@"SELECT * FROM [{tableName}]";
 
-                    using (var reader = command.ExecuteReader())
+                    using var reader = command.ExecuteReader();
+                    while (await reader.ReadAsync())
                     {
-                        while (await reader.ReadAsync())
-                        {
-                            var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
-                            var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
+                        var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
+                        var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
 
-                            storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
-                        }
+                        storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
                     }
                 }
 

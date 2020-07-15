@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq.Expressions;
 
 namespace Rebus.SqlServer
@@ -29,14 +29,14 @@ namespace Rebus.SqlServer
         {
             if (expression == null) return "";
 
-            if (expression is LambdaExpression)
+            if (expression is LambdaExpression lExpression)
             {
-                expression = ((LambdaExpression)expression).Body;
+                expression = lExpression.Body;
             }
 
-            if (expression is UnaryExpression)
+            if (expression is UnaryExpression uExpression)
             {
-                expression = ((UnaryExpression)expression).Operand;
+                expression = uExpression.Operand;
             }
 
             if (expression is MemberExpression)

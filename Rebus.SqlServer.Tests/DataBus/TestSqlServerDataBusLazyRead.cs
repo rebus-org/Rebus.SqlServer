@@ -43,23 +43,21 @@ namespace Rebus.SqlServer.Tests.DataBus
             Console.WriteLine("Reading data...");
 
             var stopwatch = Stopwatch.StartNew();
-            using (var source = await _storage.Read(dataId))
-            using (var destination = new MemoryStream())
-            {
-                var elapsedWhenStreamIsOpen = stopwatch.Elapsed;
+            using var source = await _storage.Read(dataId);
+            using var destination = new MemoryStream();
+            var elapsedWhenStreamIsOpen = stopwatch.Elapsed;
 
-                Console.WriteLine($"Opening stream took {elapsedWhenStreamIsOpen.TotalSeconds:0.00} s");
+            Console.WriteLine($"Opening stream took {elapsedWhenStreamIsOpen.TotalSeconds:0.00} s");
 
-                await source.CopyToAsync(destination);
+            await source.CopyToAsync(destination);
 
-                var elapsedWhenStreamHasBeenRead = stopwatch.Elapsed;
+            var elapsedWhenStreamHasBeenRead = stopwatch.Elapsed;
 
-                Console.WriteLine($"Entire operation took {elapsedWhenStreamHasBeenRead.TotalSeconds:0.00} s");
+            Console.WriteLine($"Entire operation took {elapsedWhenStreamHasBeenRead.TotalSeconds:0.00} s");
 
-                var fraction = elapsedWhenStreamHasBeenRead.TotalSeconds / 10;
-                Assert.That(elapsedWhenStreamIsOpen.TotalSeconds, Is.LessThan(fraction),
-                    "Expected time to open stream to be less than 1/10 of the time it takes to read the entire stream");
-            }
+            var fraction = elapsedWhenStreamHasBeenRead.TotalSeconds / 10;
+            Assert.That(elapsedWhenStreamIsOpen.TotalSeconds, Is.LessThan(fraction),
+                "Expected time to open stream to be less than 1/10 of the time it takes to read the entire stream");
         }
 
         static byte[] GenerateData(int byteCount)

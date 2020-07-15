@@ -82,12 +82,9 @@ namespace Rebus.SqlServer.Tests.Bugs
             public async Task Process(OutgoingStepContext context, Func<Task> next)
             {
                 var message = context.Load<Message>();
-
-                string temp;
-
-                if (message.Headers.TryGetValue(Headers.DeferredUntil, out temp))
+                if (message.Headers.TryGetValue(Headers.DeferredUntil, out _))
                 {
-                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out temp)
+                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out var temp)
                         || temp == null)
                     {
                         try
