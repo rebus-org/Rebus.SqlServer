@@ -39,15 +39,13 @@ namespace Rebus.SqlServer.Sagas
         /// </summary>
 		public SqlServerSagaStorage(IDbConnectionProvider connectionProvider, string dataTableName, string indexTableName, IRebusLoggerFactory rebusLoggerFactory, ISagaTypeNamingStrategy sagaTypeNamingStrategy)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+            _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             if (dataTableName == null) throw new ArgumentNullException(nameof(dataTableName));
             if (indexTableName == null) throw new ArgumentNullException(nameof(indexTableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
-            if (sagaTypeNamingStrategy == null) throw new ArgumentNullException(nameof(sagaTypeNamingStrategy));
+            _sagaTypeNamingStrategy = sagaTypeNamingStrategy ?? throw new ArgumentNullException(nameof(sagaTypeNamingStrategy));
 
             _log = rebusLoggerFactory.GetLogger<SqlServerSagaStorage>();
-            _connectionProvider = connectionProvider;
-            _sagaTypeNamingStrategy = sagaTypeNamingStrategy;
             _dataTableName = TableName.Parse(dataTableName);
             _indexTableName = TableName.Parse(indexTableName);
         }
@@ -571,7 +569,7 @@ saga type name.");
                 {
                     var value = Reflect.Value(sagaData, path);
 
-                    return new KeyValuePair<string, string>(path, value != null ? value.ToString() : null);
+                    return new KeyValuePair<string, string>(path, value?.ToString());
                 })
                 .Where(kvp => IndexNullProperties || kvp.Value != null)
                 .ToList();

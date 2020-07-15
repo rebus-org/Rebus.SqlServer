@@ -99,9 +99,7 @@ namespace Rebus.SqlServer.Tests.Integration
                 public void Dispose()
                 {
                     _innerConnection.Dispose();
-
-                    object o;
-                    _activeConnections.TryRemove(_id, out o);
+                    _activeConnections.TryRemove(_id, out _);
                 }
             }
         }

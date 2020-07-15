@@ -104,21 +104,19 @@ CREATE TABLE [dbo].[{_indexTableName}](
 
             Console.WriteLine($"Creating tables {_dataTableName} and {_indexTableName}");
 
-            using (var connection = await _connectionProvider.GetConnection())
+            using var connection = await _connectionProvider.GetConnection();
+            using (var command = connection.CreateCommand())
             {
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = createTableOldSchema;
-                    command.ExecuteNonQuery();
-                }
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = createTableOldSchema2;
-                    command.ExecuteNonQuery();
-                }
-
-                await connection.Complete();
+                command.CommandText = createTableOldSchema;
+                command.ExecuteNonQuery();
             }
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = createTableOldSchema2;
+                command.ExecuteNonQuery();
+            }
+
+            await connection.Complete();
         }
     }
 }
