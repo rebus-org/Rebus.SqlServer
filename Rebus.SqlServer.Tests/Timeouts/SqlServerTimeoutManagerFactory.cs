@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Rebus.Logging;
 using Rebus.SqlServer.Timeouts;
 using Rebus.Tests.Contracts.Timeouts;

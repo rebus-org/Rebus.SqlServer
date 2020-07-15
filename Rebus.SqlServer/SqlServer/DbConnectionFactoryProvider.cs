@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
+
 using Rebus.Logging;
+
 using IsolationLevel = System.Data.IsolationLevel;
 
 #pragma warning disable 1998

@@ -2,7 +2,9 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer.Sagas;
@@ -20,7 +22,7 @@ namespace Rebus.SqlServer.Tests.Sagas
             var loggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
             var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
-            
+
             var dataTableName = TestConfig.GetName("sagas");
             var indexTableName = TestConfig.GetName("sagaindex");
 

@@ -12,7 +12,7 @@ namespace Rebus.SqlServer
 
             var log = Math.Log(input, 2);
             var logRoundedUp = Math.Ceiling(log);
-            return (int) Math.Pow(2, logRoundedUp);
+            return (int)Math.Pow(2, logRoundedUp);
         }
     }
 }

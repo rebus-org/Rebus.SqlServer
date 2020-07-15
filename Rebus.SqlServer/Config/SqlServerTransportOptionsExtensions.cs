@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Rebus.SqlServer.Transport;
 
 namespace Rebus.Config
@@ -52,7 +53,7 @@ namespace Rebus.Config
             options.AutoDeleteQueue = autoDeleteQueue;
             return options;
         }
-        
+
         /// <summary>
         /// Sets the delay between executions of the background cleanup task
         /// </summary>

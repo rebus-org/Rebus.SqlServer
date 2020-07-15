@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Data.SqlClient;
+
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Exceptions;
@@ -68,7 +70,7 @@ namespace Rebus.SqlServer.Transport
         /// Logger
         /// </summary>
         protected readonly ILog Log;
-        
+
         readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
         readonly IAsyncTask _expiredMessagesCleanupTask;
         readonly bool _autoDeleteQueue;
@@ -219,7 +221,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
         {
             return string.Empty;
         }
-        
+
         /// <summary>
         /// Checks if the table with the configured name exists - if it is, it will be dropped
         /// </summary>
@@ -234,7 +236,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
                 // if it failed because of a collision between another thread doing the same thing, just try again once:
                 AsyncHelpers.RunSync(() => EnsureTableIsDroppedAsync(ReceiveTableName));
             }
-        }        
+        }
 
         async Task EnsureTableIsDroppedAsync(TableName tableName)
         {
@@ -274,14 +276,14 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
                 await connection.Complete();
             }
         }
-        
+
         /// <summary>
         /// Provides an oppurtunity for derived implementations to also update the schema when the queue is deleted automatically 
         /// </summary>
         protected virtual string AdditionalSchemaModificationsOnDeleteQueue()
         {
             return string.Empty;
-        }        
+        }
 
         static void ExecuteCommands(IDbConnection connection, string sqlCommands)
         {
@@ -443,7 +445,7 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         protected async Task InnerSend(string destinationAddress, TransportMessage message, IDbConnection connection)
         {
             var sendTable = TableName.Parse(destinationAddress);
-            
+
             using (var command = connection.CreateCommand())
             {
                 command.CommandText = $@"

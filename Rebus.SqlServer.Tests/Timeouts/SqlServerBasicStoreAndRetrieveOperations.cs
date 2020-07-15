@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+
 using Rebus.Tests.Contracts.Timeouts;
 
 namespace Rebus.SqlServer.Tests.Timeouts

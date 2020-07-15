@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+
 using Rebus.Injection;
 using Rebus.Logging;
 using Rebus.Sagas;
@@ -75,7 +76,7 @@ namespace Rebus.Config
         /// <summary>
         /// Get the registered implementation of <seealso cref="ISagaTypeNamingStrategy"/> or the default <seealso cref="LegacySagaTypeNamingStrategy"/> if one is not configured
         /// </summary>
-        private static ISagaTypeNamingStrategy GetSagaTypeNamingStrategy(IResolutionContext resolutionContext, IRebusLoggerFactory rebusLoggerFactory) 
+        private static ISagaTypeNamingStrategy GetSagaTypeNamingStrategy(IResolutionContext resolutionContext, IRebusLoggerFactory rebusLoggerFactory)
         {
             ISagaTypeNamingStrategy sagaTypeNamingStrategy;
             if (resolutionContext.Has<ISagaTypeNamingStrategy>() == false)

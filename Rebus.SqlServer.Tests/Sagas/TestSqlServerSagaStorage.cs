@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer.Sagas;
@@ -51,7 +53,7 @@ namespace Rebus.SqlServer.Tests.Sagas
 
             _storage.Initialize();
 
-            var sagaData = new MySagaDizzle {Id=Guid.NewGuid(), Text = "whee!"};
+            var sagaData = new MySagaDizzle { Id = Guid.NewGuid(), Text = "whee!" };
 
             await _storage.Insert(sagaData, noProps);
 

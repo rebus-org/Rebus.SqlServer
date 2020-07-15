@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using Microsoft.Data.SqlClient;
+
 using Rebus.Bus;
 using Rebus.Exceptions;
 using Rebus.Logging;
@@ -86,7 +88,7 @@ namespace Rebus.SqlServer.Sagas
             using (var connection = await _connectionProvider.GetConnection())
             {
                 var tableNames = connection.GetTableNames().ToList();
-                
+
                 var hasDataTable = tableNames.Contains(_dataTableName);
                 var hasIndexTable = tableNames.Contains(_indexTableName);
 
@@ -178,7 +180,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 
         static async Task ExecuteCommands(IDbConnection connection, string sqlCommands)
         {
-            foreach (var commandText in sqlCommands.Split(new[] {"----"}, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var commandText in sqlCommands.Split(new[] { "----" }, StringSplitOptions.RemoveEmptyEntries))
             {
                 try
                 {
@@ -195,7 +197,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 {commandText}");
                 }
             }
-            
+
         }
 
         void VerifyDataTableSchema(string dataTableName, IDbConnection connection)

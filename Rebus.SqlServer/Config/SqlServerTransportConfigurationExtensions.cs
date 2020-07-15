@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+
 using Rebus.Injection;
 using Rebus.Logging;
 using Rebus.Pipeline;
@@ -17,7 +18,7 @@ namespace Rebus.Config
     /// Configuration extensions for the SQL transport
     /// </summary>
     public static class SqlServerTransportConfigurationExtensions
-    {       
+    {
         /// <summary>
         /// Configures Rebus to use SQL Server as its transport. Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
         /// Server transport does not hold a transaction open for the entire duration of the message handling. Instead it marks a

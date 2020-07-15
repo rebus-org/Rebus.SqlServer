@@ -2,7 +2,9 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Logging;

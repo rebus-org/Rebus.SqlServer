@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using Rebus.Auditing.Sagas;
 using Rebus.Logging;
 using Rebus.Sagas;
@@ -52,7 +53,7 @@ namespace Rebus.SqlServer.Tests.Sagas
                             var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
                             var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
 
-                            storedCopies.Add(new SagaDataSnapshot{SagaData = sagaData, Metadata = metadata});
+                            storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
                         }
                     }
                 }
@@ -61,6 +62,6 @@ namespace Rebus.SqlServer.Tests.Sagas
             }
             return storedCopies;
         }
-    
+
     }
 }

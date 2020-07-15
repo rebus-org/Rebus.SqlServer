@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Dynamic;
 using System.Linq;
+
+using Microsoft.Data.SqlClient;
 
 namespace Rebus.SqlServer
 {
@@ -27,7 +28,7 @@ namespace Rebus.SqlServer
         /// </summary>
         public static List<TableName> GetTableNames(this SqlConnection connection, SqlTransaction transaction = null)
         {
-            return GetNamesFrom(connection, transaction, "INFORMATION_SCHEMA.TABLES", new []{ "TABLE_SCHEMA", "TABLE_NAME" })
+            return GetNamesFrom(connection, transaction, "INFORMATION_SCHEMA.TABLES", new[] { "TABLE_SCHEMA", "TABLE_NAME" })
                 .Select(x => new TableName((string)x.TABLE_SCHEMA, (string)x.TABLE_NAME))
                 .ToList();
         }
@@ -37,7 +38,7 @@ namespace Rebus.SqlServer
         /// </summary>
         public static List<string> GetIndexNames(this SqlConnection connection, SqlTransaction transaction = null)
         {
-            return GetNamesFrom(connection, transaction, "sys.indexes", new []{ "name" }).Select(x => (string)x.name).ToList();
+            return GetNamesFrom(connection, transaction, "sys.indexes", new[] { "name" }).Select(x => (string)x.name).ToList();
         }
 
         /// <summary>
@@ -89,7 +90,7 @@ namespace Rebus.SqlServer
         /// </summary>
         public static List<string> GetDatabaseNames(this SqlConnection connection, SqlTransaction transaction = null)
         {
-            return GetNamesFrom(connection, transaction, "sys.databases", new []{ "name" }).Select(x => (string)x.name).ToList();
+            return GetNamesFrom(connection, transaction, "sys.databases", new[] { "name" }).Select(x => (string)x.name).ToList();
         }
 
         static List<dynamic> GetNamesFrom(SqlConnection connection, SqlTransaction transaction, string systemTableName, string[] columnNames)

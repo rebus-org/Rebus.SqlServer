@@ -1,6 +1,8 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Logging;
@@ -8,8 +10,8 @@ using Rebus.Tests.Contracts;
 
 namespace Rebus.SqlServer.Tests.Transport
 {
-	[TestFixture, Category(Categories.SqlServer)]
-	public class TestSqlServerTransportAutoDelete : FixtureBase
+    [TestFixture, Category(Categories.SqlServer)]
+    public class TestSqlServerTransportAutoDelete : FixtureBase
     {
         protected override void SetUp()
         {
@@ -23,7 +25,7 @@ namespace Rebus.SqlServer.Tests.Transport
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
 
             const string queueName = "input";
-            
+
             var options = new SqlServerTransportOptions(SqlTestHelper.ConnectionString);
 
             var activator = Using(new BuiltinHandlerActivator());

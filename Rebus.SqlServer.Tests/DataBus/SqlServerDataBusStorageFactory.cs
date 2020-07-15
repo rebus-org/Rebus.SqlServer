@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Rebus.DataBus;
 using Rebus.Logging;
 using Rebus.SqlServer.DataBus;
@@ -9,12 +10,12 @@ namespace Rebus.SqlServer.Tests.DataBus
     public class SqlServerDataBusStorageFactory : IDataBusStorageFactory
     {
         readonly FakeRebusTime _fakeRebusTime = new FakeRebusTime();
-        
+
         public SqlServerDataBusStorageFactory()
         {
             SqlTestHelper.DropTable("databus");
         }
-        
+
         public IDataBusStorage Create()
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(false);

@@ -2,7 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;

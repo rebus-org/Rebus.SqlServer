@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Data.SqlClient;
 using System.Linq;
-using Rebus.SqlServer.Tests.Extensions;
+
+using Microsoft.Data.SqlClient;
+
 using Rebus.Exceptions;
+using Rebus.SqlServer.Tests.Extensions;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.SqlServer.Tests
@@ -44,17 +46,17 @@ namespace Rebus.SqlServer.Tests
         {
             get
             {
-                #if NET45
+#if NET45
                 return "net45";
-                #elif NET46
+#elif NET46
                 return "net46";
-                #elif NETCOREAPP21
+#elif NETCOREAPP21
                 return "netcoreapp21";
-                #elif NETCOREAPP31
+#elif NETCOREAPP31
                 return "netcoreapp31";
-                #else
+#else
                 throw new InvalidOperationException("please return suffix dependent on compile target");
-                #endif
+#endif
             }
         }
 

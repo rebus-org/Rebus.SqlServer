@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Transactions;
+
 using NUnit.Framework;
+
 using Rebus.Logging;
 
 namespace Rebus.SqlServer.Tests.Transport
@@ -20,7 +22,7 @@ namespace Rebus.SqlServer.Tests.Transport
                 using (var cmd = dbConnection.CreateCommand())
                 {
                     cmd.CommandText = "insert into bimse (text) values ('hej med dig')";
-                    
+
                     await cmd.ExecuteNonQueryAsync();
                 }
 
@@ -36,7 +38,7 @@ namespace Rebus.SqlServer.Tests.Transport
                 Timeout = TimeSpan.FromSeconds(60)
             }))
             {
-                var provizzle = new DbConnectionProvider(SqlTestHelper.ConnectionString, new ConsoleLoggerFactory(true), 
+                var provizzle = new DbConnectionProvider(SqlTestHelper.ConnectionString, new ConsoleLoggerFactory(true),
                     enlistInAmbientTransaction: true);
 
                 using (var dbConnection = await provizzle.GetConnection())
@@ -44,7 +46,7 @@ namespace Rebus.SqlServer.Tests.Transport
                     using (var cmd = dbConnection.CreateCommand())
                     {
                         cmd.CommandText = "insert into bimse (text) values ('Nogen fjellaper liger 2PC')";
-                    
+
                         await cmd.ExecuteNonQueryAsync();
                     }
                 }

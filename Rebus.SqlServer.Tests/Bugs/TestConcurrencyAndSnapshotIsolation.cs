@@ -3,7 +3,9 @@ using System.Data;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -31,9 +33,9 @@ namespace Rebus.SqlServer.Tests.Bugs
             SqlTestHelper.DropTable(_queueName);
 
             var transport = GetTransport(SqlTestHelper.ConnectionString, IsolationLevel.ReadCommitted);
-            
+
             Using(transport);
-         
+
             transport.EnsureTableIsCreated();
         }
 
@@ -61,7 +63,7 @@ namespace Rebus.SqlServer.Tests.Bugs
                 Assert.That(message1, Is.Not.Null);
                 Assert.That(Encoding.UTF8.GetString(message1.Body), Is.EqualTo(sentText));
 
-                Assert.That(message2, Is.Null, 
+                Assert.That(message2, Is.Null,
                     "Expected the second message to be null, because we should NOT be able to accidentally peek at the same message as another ongoing transaction");
 
                 await scope2.CompleteAsync();

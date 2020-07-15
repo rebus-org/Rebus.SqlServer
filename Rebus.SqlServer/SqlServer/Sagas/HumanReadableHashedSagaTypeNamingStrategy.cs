@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Rebus.Extensions;
 
 namespace Rebus.SqlServer.Sagas

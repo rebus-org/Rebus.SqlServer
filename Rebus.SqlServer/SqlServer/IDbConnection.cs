@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
+
+using Microsoft.Data.SqlClient;
 
 namespace Rebus.SqlServer
 {
@@ -21,7 +22,7 @@ namespace Rebus.SqlServer
         /// Gets the names of all the tables in the current database for the current schema
         /// </summary>
         IEnumerable<TableName> GetTableNames();
-        
+
         /// <summary>
         /// Marks that all work has been successfully done and the <see cref="SqlConnection"/> may have its transaction committed or whatever is natural to do at this time
         /// </summary>
@@ -42,7 +43,7 @@ namespace Rebus.SqlServer
         /// Gets the name of the column
         /// </summary>
         public string Name { get; }
-        
+
         /// <summary>
         /// Gets the SQL datatype of the column
         /// </summary>

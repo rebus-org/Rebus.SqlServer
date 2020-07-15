@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using Rebus.Config;
-using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
@@ -60,10 +60,10 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
                 asyncTaskFactory, rebusTime, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(2), () => Environment.MachineName, new SqlServerLeaseTransportOptions(connectionProvider));
 
             _disposables.Add(transport);
-            
+
             transport.EnsureTableIsCreated();
             transport.Initialize();
-            
+
             return transport;
         }
 
@@ -76,7 +76,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             {
                 SqlTestHelper.DropTable(table);
             }
-            
+
             _tablesToDrop.Clear();
         }
     }

@@ -1,8 +1,11 @@
 ﻿using System;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+
+using Microsoft.Data.SqlClient;
+
 using Rebus.Logging;
+
 using IsolationLevel = System.Data.IsolationLevel;
 
 #pragma warning disable 1998
@@ -39,8 +42,8 @@ namespace Rebus.SqlServer
 
         string EnsureMarsIsEnabled(string connectionString)
         {
-            var connectionStringSettings = connectionString.Split(new [] {";"}, StringSplitOptions.RemoveEmptyEntries)
-                .Select(kvp => kvp.Split(new [] {"="}, StringSplitOptions.RemoveEmptyEntries))
+            var connectionStringSettings = connectionString.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(kvp => kvp.Split(new[] { "=" }, StringSplitOptions.RemoveEmptyEntries))
                 .ToDictionary(kvp => kvp[0], kvp => string.Join("=", kvp.Skip(1)), StringComparer.OrdinalIgnoreCase);
 
             if (!connectionStringSettings.ContainsKey("MultipleActiveResultSets"))
@@ -93,10 +96,10 @@ namespace Rebus.SqlServer
             {
                 connection.EnlistTransaction(transaction);
             }
-            
+
             return connection;
         }
-        
+
         SqlConnection CreateSqlConnectionSuppressingAPossibleAmbientTransaction()
         {
             SqlConnection connection;

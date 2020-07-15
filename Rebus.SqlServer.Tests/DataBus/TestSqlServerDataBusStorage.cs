@@ -5,7 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Logging;
 using Rebus.SqlServer.DataBus;
 using Rebus.Tests.Contracts;

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -72,7 +73,7 @@ namespace Rebus.SqlServer.Transport
             TimeSpan leaseInterval,
             TimeSpan? leaseTolerance,
             Func<string> leasedByFactory,
-            SqlServerLeaseTransportOptions options 
+            SqlServerLeaseTransportOptions options
             ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory, rebusTime, options)
         {
             _leasedByFactory = leasedByFactory;

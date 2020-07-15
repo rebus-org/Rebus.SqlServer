@@ -8,7 +8,7 @@ namespace Rebus.SqlServer.Tests.Subscriptions
     public class SqlServerSubscriptionStorageFactory : ISubscriptionStorageFactory
     {
         const string TableName = "RebusSubscriptions";
-        
+
         public ISubscriptionStorage Create()
         {
             var consoleLoggerFactory = new ConsoleLoggerFactory(true);
@@ -16,7 +16,7 @@ namespace Rebus.SqlServer.Tests.Subscriptions
             var storage = new SqlServerSubscriptionStorage(connectionProvider, TableName, true, consoleLoggerFactory);
 
             storage.EnsureTableIsCreated();
-            
+
             return storage;
         }
 

@@ -36,7 +36,7 @@ namespace Rebus.SqlServer.Tests.Math
             var actualOutput = MathUtil.GetNextPowerOfTwo(input);
 
             Assert.That(actualOutput, Is.EqualTo(expectedOutput));
-            Assert.That(actualOutput, Is.GreaterThanOrEqualTo(input), 
+            Assert.That(actualOutput, Is.GreaterThanOrEqualTo(input),
                 "Just to be sure that, if we choose to use this function to come up with a sensible, non-query plan cache-polluting length to pass as SQL parameter length, we never end up truncating anything");
         }
     }

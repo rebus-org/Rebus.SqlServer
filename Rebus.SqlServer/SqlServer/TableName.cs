@@ -12,7 +12,7 @@ namespace Rebus.SqlServer
         /// Gets the schema name of the table
         /// </summary>
         public string Schema { get; }
-        
+
         /// <summary>
         /// Gets the table's name
         /// </summary>
@@ -116,7 +116,7 @@ namespace Rebus.SqlServer
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != GetType()) return false;
-            return Equals((TableName) obj);
+            return Equals((TableName)obj);
         }
 
         /// <inheritdoc />

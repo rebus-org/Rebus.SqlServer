@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
+
 using NUnit.Framework;
+
 using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.SqlServer.Subscriptions;

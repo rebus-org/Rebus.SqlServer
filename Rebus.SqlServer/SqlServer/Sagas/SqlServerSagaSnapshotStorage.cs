@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Rebus.Auditing.Sagas;
 using Rebus.Logging;
 using Rebus.Sagas;
@@ -131,7 +132,7 @@ INSERT INTO {_tableName.QualifiedName} (
                     command.Parameters.Add("metadata", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(metadataString.Length)).Value = metadataString;
 
                     Console.WriteLine($"OK WE'RE SAVING SAGA SNAPSHOT {sagaData.Id} rev. {sagaData.Revision} NOW");
-                     
+
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
 

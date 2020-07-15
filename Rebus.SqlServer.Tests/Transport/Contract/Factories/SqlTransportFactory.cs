@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using Rebus.Config;
-using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
@@ -50,12 +50,12 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
             var transport = new SqlServerTransport(connectionProvider, inputQueueAddress, consoleLoggerFactory, asyncTaskFactory, rebusTime, new SqlServerTransportOptions(connectionProvider));
-            
+
             _disposables.Add(transport);
-            
+
             transport.EnsureTableIsCreated();
             transport.Initialize();
-            
+
             return transport;
         }
 

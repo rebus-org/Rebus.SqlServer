@@ -14,7 +14,7 @@ namespace Rebus.SqlServer
         {
             var dots = path.Split('.');
 
-            foreach(var dot in dots)
+            foreach (var dot in dots)
             {
                 var propertyInfo = obj.GetType().GetProperty(dot);
                 if (propertyInfo == null) return null;
@@ -31,7 +31,7 @@ namespace Rebus.SqlServer
 
             if (expression is LambdaExpression)
             {
-                expression = ((LambdaExpression) expression).Body;
+                expression = ((LambdaExpression)expression).Body;
             }
 
             if (expression is UnaryExpression)
@@ -60,7 +60,7 @@ namespace Rebus.SqlServer
                 }
 
                 var propertyName = memberExpression.Member.Name;
-                
+
                 return prefix + propertyName;
             }
 
