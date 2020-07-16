@@ -30,7 +30,7 @@ namespace Rebus.SqlServer.Tests.Transport.Contract.Factories
             SqlTestHelper.DropTable(tableName);
 
             var bus = Configure.With(builtinHandlerActivator)
-                .Transport(t => t.UseSqlServerInLeaseMode(SqlTestHelper.ConnectionString, inputQueueAddress))
+                .Transport(t => t.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(SqlTestHelper.ConnectionString), inputQueueAddress))
                 .Options(o =>
                 {
                     o.SetNumberOfWorkers(10);

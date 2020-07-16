@@ -16,7 +16,7 @@ namespace Rebus.SqlServer.Tests.Bugs
             try
             {
                 Configure.With(new BuiltinHandlerActivator())
-                    .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, "whatever"))
+                    .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), "whatever"))
                     .Timeouts(t => t.StoreInSqlServer(SqlTestHelper.ConnectionString, "timeouts"))
                     .Start();
             }
