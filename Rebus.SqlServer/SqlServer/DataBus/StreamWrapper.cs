@@ -65,5 +65,4 @@ namespace Rebus.SqlServer.DataBus
             base.Dispose(disposing);
         }
     }
-
 }

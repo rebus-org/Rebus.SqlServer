@@ -404,6 +404,7 @@ WHERE	id = @id
                 await connection.Complete();
             }
         }
+
         /// <summary>
         /// Handles automatically renewing a lease for a given message
         /// </summary>
@@ -448,7 +449,6 @@ WHERE	id = @id
                 }
             }
         }
-
 
         class AddressedTransportMessage
         {

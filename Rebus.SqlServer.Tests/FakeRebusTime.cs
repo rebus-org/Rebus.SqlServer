@@ -10,7 +10,6 @@ namespace Rebus.SqlServer.Tests
 
         public DateTimeOffset Now => _nowFactory();
 
-
         public void SetNow(DateTimeOffset fakeTime) => _nowFactory = () => fakeTime;
     }
 }

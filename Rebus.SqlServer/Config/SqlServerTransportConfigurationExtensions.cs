@@ -267,7 +267,6 @@ namespace Rebus.Config
                 .SetEnsureTablesAreCreated(ensureTablesAreCreated);
         }
 
-
         delegate SqlServerTransport TransportFactoryDelegate(IResolutionContext context, IDbConnectionProvider connectionProvider, string inputQueueName);
 
         static TTransportOptions Configure<TTransportOptions>(StandardConfigurer<ITransport> configurer, TransportFactoryDelegate transportFactory, TTransportOptions transportOptions) where TTransportOptions : SqlServerTransportOptions

@@ -198,44 +198,6 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 
         }
 
-        void VerifyDataTableSchema(string dataTableName, IDbConnection connection)
-        {
-            //  [id] [uniqueidentifier] NOT NULL,
-            //	[revision] [int] NOT NULL,
-            //	[data] [varbinary](max) NOT NULL,
-            var expectedDataTypes = new Dictionary<string, SqlDbType>(StringComparer.OrdinalIgnoreCase)
-            {
-                {"id", SqlDbType.UniqueIdentifier },
-                {"revision", SqlDbType.Int },
-                {"data", SqlDbType.VarBinary },
-            };
-
-            var tableName = TableName.Parse(dataTableName);
-            var columns = connection.GetColumns(tableName.Schema, tableName.Name);
-
-            foreach (var column in columns)
-            {
-                // we skip columns we don't know about - don't prevent people from adding their own columns
-                if (!expectedDataTypes.ContainsKey(column.Name)) continue;
-
-                var expectedDataType = expectedDataTypes[column.Name];
-
-                if (column.Type == expectedDataType) continue;
-
-                // special case: migrating from Rebus 0.99.59 to 0.99.60
-                if (column.Name == "data" && column.Type == SqlDbType.NVarChar && expectedDataType == SqlDbType.VarBinary)
-                {
-                    throw new RebusApplicationException(@"Sorry, but the [data] column data type was changed from NVarChar(MAX) to VarBinary(MAX) in Rebus 0.99.60.
-
-This was done because it turned out that SQL Server was EXTREMELY SLOW to load a saga's data when it was saved as NVarChar - you can expect a reduction in saga data loading time to about 1/10 of the previous time from Rebus version 0.99.60 and on.
-
-Unfortunately, Rebus cannot help migrating any existing pieces of saga data :( so we suggest you wait for a good time when the saga data table is empty, and then you simply wipe the tables and let Rebus (re-)create them.");
-                }
-
-                throw new RebusApplicationException($"The column [{column.Name}] has the type {column.Type} and not the expected {expectedDataType} data type!");
-            }
-        }
-
         /// <summary>
         /// Queries the saga index for an instance with the given <paramref name="sagaDataType"/> with a
         /// a property named <paramref name="propertyName"/> and the value <paramref name="propertyValue"/>
@@ -540,7 +502,6 @@ VALUES
                     throw;
                 }
             }
-
         }
 
         string GetSagaTypeName(Type sagaDataType)

@@ -64,7 +64,6 @@ namespace Rebus.SqlServer.DataBus
                 // if it failed because of a collision between another thread doing the same thing, just try again once:
                 AsyncHelpers.RunSync(EnsureTableIsCreatedAsync);
             }
-
         }
 
         async Task EnsureTableIsCreatedAsync()
