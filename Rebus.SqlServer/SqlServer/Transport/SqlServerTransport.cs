@@ -47,6 +47,7 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public static readonly TimeSpan DefaultExpiredMessagesCleanupInterval = TimeSpan.FromSeconds(20);
 
+        // TODO: This value should probably be used in creating of database
         /// <summary>
         /// Size, in the database, of the recipient column
         /// </summary>

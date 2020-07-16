@@ -84,14 +84,6 @@ namespace Rebus.SqlServer
             }
         }
 
-        /// <summary>
-        /// Gets the names of all databases on the current server
-        /// </summary>
-        public static List<string> GetDatabaseNames(this SqlConnection connection, SqlTransaction transaction = null)
-        {
-            return GetNamesFrom(connection, transaction, "sys.databases", new []{ "name" }).Select(x => (string)x.name).ToList();
-        }
-
         static List<dynamic> GetNamesFrom(SqlConnection connection, SqlTransaction transaction, string systemTableName, string[] columnNames)
         {
             var names = new List<dynamic>();

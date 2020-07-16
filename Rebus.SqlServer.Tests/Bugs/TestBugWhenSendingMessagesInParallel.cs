@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,7 +18,6 @@ namespace Rebus.SqlServer.Tests.Bugs
     public class TestBugWhenSendingMessagesInParallel : FixtureBase
     {
         readonly string _subscriptionsTableName = "subscriptions" + TestConfig.Suffix;
-        readonly string _messagesTableName = "messages" + TestConfig.Suffix;
 
         IBus _bus1;
         IBus _bus2;
