@@ -46,11 +46,11 @@ namespace Rebus.SqlServer.Tests.Transport
                 {
                     if (type == "normal")
                     {
-                        t.UseSqlServer(SqlTestHelper.ConnectionString, "server");
+                        t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), "server");
                     }
                     else
                     {
-                        t.UseSqlServerInLeaseMode(SqlTestHelper.ConnectionString, "server");
+                        t.UseSqlServerInLeaseMode(new SqlServerLeaseTransportOptions(SqlTestHelper.ConnectionString), "server");
                     }
                 })
                 .Options(o =>
@@ -65,11 +65,11 @@ namespace Rebus.SqlServer.Tests.Transport
                 {
                     if (type == "normal")
                     {
-                        t.UseSqlServerAsOneWayClient(SqlTestHelper.ConnectionString);
+                        t.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(SqlTestHelper.ConnectionString));
                     }
                     else
                     {
-                        t.UseSqlServerInLeaseModeAsOneWayClient(SqlTestHelper.ConnectionString);
+                        t.UseSqlServerInLeaseModeAsOneWayClient(new SqlServerLeaseTransportOptions(SqlTestHelper.ConnectionString));
                     }
                 })
                 .Routing(t => t.TypeBased().Map<string>("server"))
