@@ -38,14 +38,7 @@
     <DocumentationFile>bin\Release\Rebus.SqlServer.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Properties\AssemblyInfo.cs" />
-    <None Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="microsoft.data.sqlclient" Version="2.0.0" />
     <PackageReference Include="rebus" Version="6.0.0" />
   </ItemGroup>
-  <Target BeforeTargets="PreBuildEvent" Name="PreBuild">
-    <Exec Command="$(ProjectDir)..\scripts\patch_assemblyinfo.cmd $(ProjectDir)" />
-  </Target>
 </Project>

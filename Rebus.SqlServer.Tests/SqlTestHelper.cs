@@ -38,25 +38,7 @@ namespace Rebus.SqlServer.Tests
             }
         }
 
-        public static string DatabaseName => $"rebus2_test_{TestConfig.Suffix}_{CompileTargetSuffix}".TrimEnd('_');
-
-        static string CompileTargetSuffix
-        {
-            get
-            {
-                #if NET45
-                return "net45";
-                #elif NET46
-                return "net46";
-                #elif NETCOREAPP21
-                return "netcoreapp21";
-                #elif NETCOREAPP31
-                return "netcoreapp31";
-                #else
-                throw new InvalidOperationException("please return suffix dependent on compile target");
-                #endif
-            }
-        }
+        public static string DatabaseName => $"rebus2_test_{TestConfig.Suffix}".TrimEnd('_');
 
         public static void Execute(string sql)
         {

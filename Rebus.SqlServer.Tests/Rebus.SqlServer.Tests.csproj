@@ -45,19 +45,4 @@
     <PackageReference Include="rebus" Version="6.0.0" />
     <PackageReference Include="rebus.tests.contracts" Version="6.0.0" />
   </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net45' OR '$(TargetFramework)' == 'net46'">
-    <Reference Include="System.Transactions" />
-  </ItemGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net45'">
-    <DefineConstants>NET45</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net46'">
-    <DefineConstants>NET46</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp2.1'">
-    <DefineConstants>NETCOREAPP21</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'netcoreapp3.1'">
-    <DefineConstants>NETCOREAPP31</DefineConstants>
-  </PropertyGroup>
 </Project>
