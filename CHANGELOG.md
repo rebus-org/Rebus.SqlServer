@@ -92,6 +92,9 @@
 * Replace dependency on System.Data.SqlClient with Microsoft.Data.SqlClient, because it's the future!
 * Only target .NET Standard 2.0, because requiring consumers to be on .NET 4.6.2 or .NET Core 2 is fair
 
+## 7.0.1
+* Modify receive index for better performance - thanks [seankearon]
+
 ----
 
 [clegendre]: https://github.com/clegendre
@@ -102,5 +105,6 @@
 [MrMDavidson]: https://github.com/MrMDavidson
 [nativenolde]: https://github.com/nativenolde
 [rsivanov]: https://github.com/rsivanov
+[seankearon]: https://github.com/seankearon
 [thomasdc]: https://github.com/thomasdc
 [tompazourek]: https://github.com/tompazourek
