@@ -189,10 +189,10 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{ta
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{receiveIndexName}')
     CREATE NONCLUSTERED INDEX [{receiveIndexName}] ON {tableName.QualifiedName}
     (
-	    [priority] ASC,
+        [priority] DESC,
         [visible] ASC,
-        [expiration] ASC,
-	    [id] ASC
+        [id] ASC,
+        [expiration] ASC
     )
 
 ----
