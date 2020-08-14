@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Dynamic;
 using System.Linq;
+using Microsoft.Data.SqlClient;
 
 namespace Rebus.SqlServer
 {

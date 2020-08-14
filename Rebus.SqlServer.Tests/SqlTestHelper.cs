@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Data.SqlClient;
 using System.Linq;
-using Rebus.SqlServer.Tests.Extensions;
+using Microsoft.Data.SqlClient;
 using Rebus.Exceptions;
+using Rebus.SqlServer.Tests.Extensions;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.SqlServer.Tests
