@@ -89,9 +89,9 @@ namespace Rebus.SqlServer.Transport
             Log = rebusLoggerFactory.GetLogger<SqlServerTransport>();
 
             var cleanupInterval = options.ExpiredMessagesCleanupInterval ?? DefaultExpiredMessagesCleanupInterval;
-            var intervalSeconds = TimeSpan.FromSeconds((int)cleanupInterval.TotalSeconds);
+            var intervalSeconds = (int)cleanupInterval.TotalSeconds;
 
-            _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, false, interval: intervalSeconds);
+            _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, intervalSeconds: intervalSeconds);
             _autoDeleteQueue = options.AutoDeleteQueue;
         }
 

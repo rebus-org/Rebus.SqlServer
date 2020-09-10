@@ -46,7 +46,4 @@
       <PackagePath></PackagePath>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Rebus\Rebus\Rebus.csproj" />
-  </ItemGroup>
 </Project>
