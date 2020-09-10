@@ -31,8 +31,9 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
+                var serializer = c.Get<ISagaSerializer>();
 
-                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy);
+                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
                 if (automaticallyCreateTables)
                 {
@@ -60,8 +61,9 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
+                var serializer = c.Get<ISagaSerializer>();
 
-                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy);
+                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
                 if (automaticallyCreateTables)
                 {

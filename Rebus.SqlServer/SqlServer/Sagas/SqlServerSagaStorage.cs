@@ -24,12 +24,12 @@ namespace Rebus.SqlServer.Sagas
         const string IdPropertyName = nameof(ISagaData.Id);
         const bool IndexNullProperties = false;
 
-        static readonly ObjectSerializer ObjectSerializer = new ObjectSerializer();
         static readonly Encoding JsonTextEncoding = Encoding.UTF8;
 
         readonly ILog _log;
         readonly IDbConnectionProvider _connectionProvider;
         readonly ISagaTypeNamingStrategy _sagaTypeNamingStrategy;
+        readonly ISagaSerializer _sagaSerializer;
         readonly TableName _dataTableName;
         readonly TableName _indexTableName;
         bool _oldFormatDataTable;
@@ -37,7 +37,7 @@ namespace Rebus.SqlServer.Sagas
         /// <summary>
         /// Constructs the saga storage, using the specified connection provider and tables for persistence.
         /// </summary>
-		public SqlServerSagaStorage(IDbConnectionProvider connectionProvider, string dataTableName, string indexTableName, IRebusLoggerFactory rebusLoggerFactory, ISagaTypeNamingStrategy sagaTypeNamingStrategy)
+		public SqlServerSagaStorage(IDbConnectionProvider connectionProvider, string dataTableName, string indexTableName, IRebusLoggerFactory rebusLoggerFactory, ISagaTypeNamingStrategy sagaTypeNamingStrategy, ISagaSerializer sagaSerializer)
         {
             if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
             if (dataTableName == null) throw new ArgumentNullException(nameof(dataTableName));
@@ -48,6 +48,7 @@ namespace Rebus.SqlServer.Sagas
             _log = rebusLoggerFactory.GetLogger<SqlServerSagaStorage>();
             _connectionProvider = connectionProvider;
             _sagaTypeNamingStrategy = sagaTypeNamingStrategy;
+            _sagaSerializer = sagaSerializer;
             _dataTableName = TableName.Parse(dataTableName);
             _indexTableName = TableName.Parse(indexTableName);
         }
@@ -283,7 +284,7 @@ WHERE [index].[saga_type] = @saga_type
 
                         try
                         {
-                            var sagaData = (ISagaData)ObjectSerializer.DeserializeFromString(value);
+                            var sagaData = (ISagaData)_sagaSerializer.DeserializeFromString(value);
 
                             if (!sagaDataType.IsInstanceOfType(sagaData))
                             {
@@ -320,7 +321,7 @@ WHERE [index].[saga_type] = @saga_type
             {
                 using (var command = connection.CreateCommand())
                 {
-                    var data = ObjectSerializer.SerializeToString(sagaData);
+                    var data = _sagaSerializer.SerializeToString(sagaData);
 
                     command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
                     command.Parameters.Add("revision", SqlDbType.Int).Value = sagaData.Revision;
@@ -377,7 +378,7 @@ WHERE [index].[saga_type] = @saga_type
                     // next, update or insert the saga
                     using (var command = connection.CreateCommand())
                     {
-                        var data = ObjectSerializer.SerializeToString(sagaData);
+                        var data = _sagaSerializer.SerializeToString(sagaData);
 
                         command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
                         command.Parameters.Add("current_revision", SqlDbType.Int).Value = revisionToUpdate;
