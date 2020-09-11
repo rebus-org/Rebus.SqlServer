@@ -31,11 +31,11 @@ namespace Rebus.SqlServer.Tests.Bugs
             Using(receiver);
 
             Configure.With(receiver)
-                .Transport(t => t.UseSqlServer(ConnectionString, "receiver"))
+                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
                 .Start();
 
             var senderBus = Configure.With(new BuiltinHandlerActivator())
-                .Transport(x => x.UseSqlServerAsOneWayClient(ConnectionString))
+                .Transport(x => x.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(ConnectionString)))
                 .Routing(r => r.TypeBased().Map<string>("receiver"))
                 .Options(o =>
                 {
@@ -80,12 +80,9 @@ namespace Rebus.SqlServer.Tests.Bugs
             public async Task Process(OutgoingStepContext context, Func<Task> next)
             {
                 var message = context.Load<Message>();
-
-                string temp;
-
-                if (message.Headers.TryGetValue(Headers.DeferredUntil, out temp))
+                if (message.Headers.TryGetValue(Headers.DeferredUntil, out _))
                 {
-                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out temp)
+                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out var temp)
                         || temp == null)
                     {
                         try

@@ -18,8 +18,7 @@ namespace Rebus.Config
         /// </summary>
         public static void StoreInSqlServer(this StandardConfigurer<ISagaStorage> configurer,
             string connectionString, string dataTableName, string indexTableName,
-            bool automaticallyCreateTables = true, bool enlistInAmbientTransaction = false
-    )
+            bool automaticallyCreateTables = true, bool enlistInAmbientTransaction = false)
         {
             if (configurer == null) throw new ArgumentNullException(nameof(configurer));
             if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Rebus.Bus;
 using Rebus.Exceptions;
 using Rebus.Logging;
@@ -39,15 +39,13 @@ namespace Rebus.SqlServer.Sagas
         /// </summary>
 		public SqlServerSagaStorage(IDbConnectionProvider connectionProvider, string dataTableName, string indexTableName, IRebusLoggerFactory rebusLoggerFactory, ISagaTypeNamingStrategy sagaTypeNamingStrategy)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+            _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             if (dataTableName == null) throw new ArgumentNullException(nameof(dataTableName));
             if (indexTableName == null) throw new ArgumentNullException(nameof(indexTableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
-            if (sagaTypeNamingStrategy == null) throw new ArgumentNullException(nameof(sagaTypeNamingStrategy));
+            _sagaTypeNamingStrategy = sagaTypeNamingStrategy ?? throw new ArgumentNullException(nameof(sagaTypeNamingStrategy));
 
             _log = rebusLoggerFactory.GetLogger<SqlServerSagaStorage>();
-            _connectionProvider = connectionProvider;
-            _sagaTypeNamingStrategy = sagaTypeNamingStrategy;
             _dataTableName = TableName.Parse(dataTableName);
             _indexTableName = TableName.Parse(indexTableName);
         }
@@ -196,44 +194,6 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
                 }
             }
             
-        }
-
-        void VerifyDataTableSchema(string dataTableName, IDbConnection connection)
-        {
-            //  [id] [uniqueidentifier] NOT NULL,
-            //	[revision] [int] NOT NULL,
-            //	[data] [varbinary](max) NOT NULL,
-            var expectedDataTypes = new Dictionary<string, SqlDbType>(StringComparer.OrdinalIgnoreCase)
-            {
-                {"id", SqlDbType.UniqueIdentifier },
-                {"revision", SqlDbType.Int },
-                {"data", SqlDbType.VarBinary },
-            };
-
-            var tableName = TableName.Parse(dataTableName);
-            var columns = connection.GetColumns(tableName.Schema, tableName.Name);
-
-            foreach (var column in columns)
-            {
-                // we skip columns we don't know about - don't prevent people from adding their own columns
-                if (!expectedDataTypes.ContainsKey(column.Name)) continue;
-
-                var expectedDataType = expectedDataTypes[column.Name];
-
-                if (column.Type == expectedDataType) continue;
-
-                // special case: migrating from Rebus 0.99.59 to 0.99.60
-                if (column.Name == "data" && column.Type == SqlDbType.NVarChar && expectedDataType == SqlDbType.VarBinary)
-                {
-                    throw new RebusApplicationException(@"Sorry, but the [data] column data type was changed from NVarChar(MAX) to VarBinary(MAX) in Rebus 0.99.60.
-
-This was done because it turned out that SQL Server was EXTREMELY SLOW to load a saga's data when it was saved as NVarChar - you can expect a reduction in saga data loading time to about 1/10 of the previous time from Rebus version 0.99.60 and on.
-
-Unfortunately, Rebus cannot help migrating any existing pieces of saga data :( so we suggest you wait for a good time when the saga data table is empty, and then you simply wipe the tables and let Rebus (re-)create them.");
-                }
-
-                throw new RebusApplicationException($"The column [{column.Name}] has the type {column.Type} and not the expected {expectedDataType} data type!");
-            }
         }
 
         /// <summary>
@@ -540,7 +500,6 @@ VALUES
                     throw;
                 }
             }
-
         }
 
         string GetSagaTypeName(Type sagaDataType)
@@ -571,7 +530,7 @@ saga type name.");
                 {
                     var value = Reflect.Value(sagaData, path);
 
-                    return new KeyValuePair<string, string>(path, value != null ? value.ToString() : null);
+                    return new KeyValuePair<string, string>(path, value?.ToString());
                 })
                 .Where(kvp => IndexNullProperties || kvp.Value != null)
                 .ToList();

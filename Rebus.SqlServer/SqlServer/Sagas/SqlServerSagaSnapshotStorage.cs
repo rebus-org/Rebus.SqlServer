@@ -27,12 +27,11 @@ namespace Rebus.SqlServer.Sagas
         /// </summary>
         public SqlServerSagaSnapshotStorage(IDbConnectionProvider connectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory)
         {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+            _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
             if (tableName == null) throw new ArgumentNullException(nameof(tableName));
             if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
             _log = rebusLoggerFactory.GetLogger<SqlServerSagaSnapshotStorage>();
-            _connectionProvider = connectionProvider;
             _tableName = TableName.Parse(tableName);
         }
 

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Rebus.Exceptions;
 
 #pragma warning disable 1998

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Microsoft.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
@@ -99,9 +99,7 @@ namespace Rebus.SqlServer.Tests.Integration
                 public void Dispose()
                 {
                     _innerConnection.Dispose();
-
-                    object o;
-                    _activeConnections.TryRemove(_id, out o);
+                    _activeConnections.TryRemove(_id, out _);
                 }
             }
         }

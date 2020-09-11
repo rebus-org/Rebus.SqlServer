@@ -45,18 +45,16 @@ namespace Rebus.SqlServer.Tests.Transport
 
         static async Task<string> ReceiveMessageBody(ITransport transport)
         {
-            using (var scope = new RebusTransactionScope())
-            {
-                var transportMessage = await transport.Receive(scope.TransactionContext, CancellationToken.None);
+            using var scope = new RebusTransactionScope();
+            var transportMessage = await transport.Receive(scope.TransactionContext, CancellationToken.None);
 
-                if (transportMessage == null) return null;
+            if (transportMessage == null) return null;
 
-                var body = Encoding.UTF8.GetString(transportMessage.Body);
+            var body = Encoding.UTF8.GetString(transportMessage.Body);
 
-                await scope.CompleteAsync();
+            await scope.CompleteAsync();
 
-                return body;
-            }
+            return body;
         }
 
         public enum TransportType
@@ -83,11 +81,9 @@ namespace Rebus.SqlServer.Tests.Transport
 
         static async Task PutInQueue(ITransport transport, TransportMessage transportMessage)
         {
-            using (var scope = new RebusTransactionScope())
-            {
-                await transport.Send(QueueName, transportMessage, scope.TransactionContext);
-                await scope.CompleteAsync();
-            }
+            using var scope = new RebusTransactionScope();
+            await transport.Send(QueueName, transportMessage, scope.TransactionContext);
+            await scope.CompleteAsync();
         }
 
         static SqlServerTransport GetTransport(TransportType transportType)

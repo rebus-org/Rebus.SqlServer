@@ -94,12 +94,10 @@ namespace Rebus.SqlServer.Tests.Transport
             await Task.WhenAll(Enumerable.Range(0, numberOfMessages)
                 .Select(async i =>
                 {
-                    using (var scope = new RebusTransactionScope())
-                    {
-                        await _transport.Send(QueueName, RecognizableMessage(i), scope.TransactionContext);
-                        await scope.CompleteAsync();
-                        messageIds[i] = 0;
-                    }
+                    using var scope = new RebusTransactionScope();
+                    await _transport.Send(QueueName, RecognizableMessage(i), scope.TransactionContext);
+                    await scope.CompleteAsync();
+                    messageIds[i] = 0;
                 }));
 
             Console.WriteLine("Receiving {0} messages", numberOfMessages);
@@ -112,17 +110,15 @@ namespace Rebus.SqlServer.Tests.Transport
                 {
                     await Task.WhenAll(Enumerable.Range(0, 10).Select(async __ =>
                     {
-                        using (var scope = new RebusTransactionScope())
-                        {
-                            var msg = await _transport.Receive(scope.TransactionContext, _cancellationToken);
-                            await scope.CompleteAsync();
+                        using var scope = new RebusTransactionScope();
+                        var msg = await _transport.Receive(scope.TransactionContext, _cancellationToken);
+                        await scope.CompleteAsync();
 
-                            if (msg != null)
-                            {
-                                Interlocked.Increment(ref receivedMessages);
-                                var id = int.Parse(msg.Headers["id"]);
-                                messageIds.AddOrUpdate(id, 1, (_, existing) => existing + 1);
-                            }
+                        if (msg != null)
+                        {
+                            Interlocked.Increment(ref receivedMessages);
+                            var id = int.Parse(msg.Headers["id"]);
+                            messageIds.AddOrUpdate(id, 1, (_, existing) => existing + 1);
                         }
                     }));
                 }

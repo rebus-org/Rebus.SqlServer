@@ -68,11 +68,9 @@ You know, that or, uh, His Dudeness, or uh, Duder, or El Duderino if you're not 
                             Console.Write(".");
                             try
                             {
-                                using (var source = _storage.Read(dataId).Result)
-                                using (var destination = new MemoryStream())
-                                {
-                                    source.CopyTo(destination);
-                                }
+                                using var source = _storage.Read(dataId).Result;
+                                using var destination = new MemoryStream();
+                                source.CopyTo(destination);
                             }
                             catch (Exception exception)
                             {

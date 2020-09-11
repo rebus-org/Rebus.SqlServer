@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.Data.SqlClient;
 using System.Linq;
-using Rebus.SqlServer.Tests.Extensions;
+using Microsoft.Data.SqlClient;
 using Rebus.Exceptions;
+using Rebus.SqlServer.Tests.Extensions;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.SqlServer.Tests
@@ -42,28 +42,24 @@ namespace Rebus.SqlServer.Tests
 
         public static void Execute(string sql)
         {
-            using (var connection = new SqlConnection(ConnectionString))
+            using var connection = new SqlConnection(ConnectionString);
+            connection.Open();
+
+            Console.Write($"SQL => {sql}        -- ");
+
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+
+            try
             {
-                connection.Open();
+                command.ExecuteNonQuery();
 
-                Console.Write($"SQL => {sql}        -- ");
-
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = sql;
-
-                    try
-                    {
-                        command.ExecuteNonQuery();
-
-                        Console.WriteLine("OK");
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Fail");
-                        throw;
-                    }
-                }
+                Console.WriteLine("OK");
+            }
+            catch
+            {
+                Console.WriteLine("Fail");
+                throw;
             }
         }
 
@@ -96,27 +92,25 @@ namespace Rebus.SqlServer.Tests
         {
             try
             {
-                using (var connection = new SqlConnection(ConnectionString))
+                using var connection = new SqlConnection(ConnectionString);
+                connection.Open();
+
+                var shouldExecute = executeCriteria(connection);
+                if (!shouldExecute) return;
+
+                try
                 {
-                    connection.Open();
-
-                    var shouldExecute = executeCriteria(connection);
-                    if (!shouldExecute) return;
-
-                    try
+                    using (var command = connection.CreateCommand())
                     {
-                        using (var command = connection.CreateCommand())
-                        {
-                            command.CommandText = sqlCommand;
-                            command.ExecuteNonQuery();
-                        }
+                        command.CommandText = sqlCommand;
+                        command.ExecuteNonQuery();
+                    }
 
-                        Console.WriteLine($"SQL OK: {sqlCommand}");
-                    }
-                    catch (SqlException exception) when (exception.Number == SqlServerMagic.ObjectDoesNotExistOrNoPermission)
-                    {
-                        // it's alright
-                    }
+                    Console.WriteLine($"SQL OK: {sqlCommand}");
+                }
+                catch (SqlException exception) when (exception.Number == SqlServerMagic.ObjectDoesNotExistOrNoPermission)
+                {
+                    // it's alright
                 }
             }
             catch (Exception exception)
@@ -153,14 +147,12 @@ Here are all the currently active connections:
 
         public static IEnumerable<T> Query<T>(string query)
         {
-            using (var connection = new SqlConnection(ConnectionString))
-            {
-                connection.Open();
+            using var connection = new SqlConnection(ConnectionString);
+            connection.Open();
 
-                foreach (var result in connection.Query<T>(query))
-                {
-                    yield return result;
-                }
+            foreach (var result in connection.Query<T>(query))
+            {
+                yield return result;
             }
         }
 
@@ -196,19 +188,15 @@ Here are all the currently active connections:
             using (var connection = new SqlConnection(ConnectionString))
             {
                 connection.Open();
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = @"
+                using var command = connection.CreateCommand();
+                command.CommandText = @"
 select s.name as 'schema', t.name as 'table' from sys.tables t
 	join sys.schemas s on s.schema_id = t.schema_id
 ";
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            tableNames.Add(new TableName((string)reader["schema"], (string)reader["table"]));
-                        }
-                    }
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    tableNames.Add(new TableName((string)reader["schema"], (string)reader["table"]));
                 }
             }
 
@@ -217,33 +205,27 @@ select s.name as 'schema', t.name as 'table' from sys.tables t
 
         public static IEnumerable<IDictionary<string, string>> ExecSpWho()
         {
-            using (var connection = new SqlConnection(ConnectionString))
+            using var connection = new SqlConnection(ConnectionString);
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "sp_who;";
+
+            using var reader = command.ExecuteReader();
+            var rows = new List<Dictionary<string, string>>();
+
+            while (reader.Read())
             {
-                connection.Open();
-
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = "sp_who;";
-
-                    using (var reader = command.ExecuteReader())
+                rows.Add(Enumerable.Range(0, reader.FieldCount)
+                    .Select(field => new
                     {
-                        var rows = new List<Dictionary<string, string>>();
-
-                        while (reader.Read())
-                        {
-                            rows.Add(Enumerable.Range(0, reader.FieldCount)
-                                .Select(field => new
-                                {
-                                    ColumnName = reader.GetName(field),
-                                    Value = (reader.GetValue(field) ?? "").ToString().Trim()
-                                })
-                                .ToDictionary(a => a.ColumnName, a => a.Value));
-                        }
-
-                        return rows;
-                    }
-                }
+                        ColumnName = reader.GetName(field),
+                        Value = (reader.GetValue(field) ?? "").ToString().Trim()
+                    })
+                    .ToDictionary(a => a.ColumnName, a => a.Value));
             }
+
+            return rows;
         }
 
         static void InitializeDatabase(string databaseName)
@@ -256,20 +238,18 @@ select s.name as 'schema', t.name as 'table' from sys.tables t
                 {
                     connection.Open();
 
-                    using (var command = connection.CreateCommand())
+                    using var command = connection.CreateCommand();
+                    command.CommandText = $"CREATE DATABASE [{databaseName}]";
+
+                    try
                     {
-                        command.CommandText = $"CREATE DATABASE [{databaseName}]";
-
-                        try
-                        {
-                            command.ExecuteNonQuery();
-                        }
-                        catch (SqlException exception) when (exception.Number == 1801)
-                        {
-                        }
-
-                        Console.WriteLine("Created database {0}", databaseName);
+                        command.ExecuteNonQuery();
                     }
+                    catch (SqlException exception) when (exception.Number == 1801)
+                    {
+                    }
+
+                    Console.WriteLine("Created database {0}", databaseName);
                 }
 
                 _databaseHasBeenInitialized = true;
