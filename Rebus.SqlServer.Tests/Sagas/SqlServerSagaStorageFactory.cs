@@ -2,6 +2,7 @@
 using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer.Sagas;
+using Rebus.SqlServer.Sagas.Serialization;
 using Rebus.Tests.Contracts.Sagas;
 
 namespace Rebus.SqlServer.Tests.Sagas
@@ -30,7 +31,8 @@ namespace Rebus.SqlServer.Tests.Sagas
             var consoleLoggerFactory = new ConsoleLoggerFactory(true);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
             var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
-            var storage = new SqlServerSagaStorage(connectionProvider, DataTableName, IndexTableName, consoleLoggerFactory, sagaTypeNamingStrategy);
+            var serializer = new DefaultSagaSerializer();
+            var storage = new SqlServerSagaStorage(connectionProvider, DataTableName, IndexTableName, consoleLoggerFactory, sagaTypeNamingStrategy, serializer);
 
             storage.EnsureTablesAreCreated();
 

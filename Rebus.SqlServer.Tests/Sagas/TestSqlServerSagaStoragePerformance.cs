@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer.Sagas;
+using Rebus.SqlServer.Sagas.Serialization;
 using Rebus.Tests.Contracts;
 
 namespace Rebus.SqlServer.Tests.Sagas
@@ -20,6 +21,7 @@ namespace Rebus.SqlServer.Tests.Sagas
             var loggerFactory = new ConsoleLoggerFactory(false);
             var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
             var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
+            var serializer = new DefaultSagaSerializer();
             
             var dataTableName = TestConfig.GetName("sagas");
             var indexTableName = TestConfig.GetName("sagaindex");
@@ -27,7 +29,7 @@ namespace Rebus.SqlServer.Tests.Sagas
             SqlTestHelper.DropTable(indexTableName);
             SqlTestHelper.DropTable(dataTableName);
 
-            _storage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, loggerFactory, sagaTypeNamingStrategy);
+            _storage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, loggerFactory, sagaTypeNamingStrategy, serializer);
 
             _storage.EnsureTablesAreCreated();
         }

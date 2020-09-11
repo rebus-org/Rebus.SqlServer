@@ -9,7 +9,7 @@ using Rebus.Bus;
 using Rebus.Exceptions;
 using Rebus.Logging;
 using Rebus.Sagas;
-using Rebus.Serialization;
+using Rebus.SqlServer.Sagas.Serialization;
 
 namespace Rebus.SqlServer.Sagas
 {

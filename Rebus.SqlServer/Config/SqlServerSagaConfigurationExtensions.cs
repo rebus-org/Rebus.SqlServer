@@ -5,6 +5,7 @@ using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Sagas;
+using Rebus.SqlServer.Sagas.Serialization;
 
 namespace Rebus.Config
 {
