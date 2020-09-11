@@ -32,7 +32,7 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
-                var serializer = c.Get<ISagaSerializer>();
+                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
                 var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
@@ -62,7 +62,7 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
-                var serializer = c.Get<ISagaSerializer>();
+                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
                 var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
@@ -92,6 +92,20 @@ namespace Rebus.Config
             }
 
             return sagaTypeNamingStrategy;
+        }
+
+        /// <summary>
+        /// Configures saga to use your own custom saga serializer
+        /// </summary>
+        public static void UseSagaSerializer(this StandardConfigurer<ISagaStorage> configurer, ISagaSerializer serializer = null)
+        {
+            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+            if (serializer == null)
+            {
+                serializer = new DefaultSagaSerializer();
+            }
+
+            configurer.OtherService<ISagaSerializer>().Decorate((c) => serializer);
         }
     }
 }
