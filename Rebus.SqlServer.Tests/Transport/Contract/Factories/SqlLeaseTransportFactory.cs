@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rebus.Config;
-using Rebus.Extensions;
 using Rebus.Logging;
 using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;

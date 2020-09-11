@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using Microsoft.Data.SqlClient;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Exceptions;
@@ -47,6 +47,7 @@ namespace Rebus.SqlServer.Transport
         /// </summary>
         public static readonly TimeSpan DefaultExpiredMessagesCleanupInterval = TimeSpan.FromSeconds(20);
 
+        // TODO: This value should probably be used in creating of database
         /// <summary>
         /// Size, in the database, of the recipient column
         /// </summary>

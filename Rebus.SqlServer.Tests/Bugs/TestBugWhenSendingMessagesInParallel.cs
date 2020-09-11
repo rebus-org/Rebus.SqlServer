@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,7 +18,6 @@ namespace Rebus.SqlServer.Tests.Bugs
     public class TestBugWhenSendingMessagesInParallel : FixtureBase
     {
         readonly string _subscriptionsTableName = "subscriptions" + TestConfig.Suffix;
-        readonly string _messagesTableName = "messages" + TestConfig.Suffix;
 
         IBus _bus1;
         IBus _bus2;
@@ -49,7 +48,7 @@ namespace Rebus.SqlServer.Tests.Bugs
 
             var bus = Configure.With(activator)
                 .Logging(l => l.ColoredConsole(minLevel: LogLevel.Info))
-                .Transport(t => t.UseSqlServer(SqlTestHelper.ConnectionString, inputQueueName))
+                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), inputQueueName))
                 .Subscriptions(s => s.StoreInSqlServer(SqlTestHelper.ConnectionString, _subscriptionsTableName, isCentralized: true))
                 .Start();
 

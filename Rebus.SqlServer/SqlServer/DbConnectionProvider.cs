@@ -1,7 +1,7 @@
 ﻿using System;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Rebus.Logging;
 using IsolationLevel = System.Data.IsolationLevel;
 

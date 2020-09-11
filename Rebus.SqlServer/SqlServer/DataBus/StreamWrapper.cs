@@ -15,9 +15,8 @@ namespace Rebus.SqlServer.DataBus
 
         public StreamWrapper(Stream innerStream, IEnumerable<IDisposable> disposables)
         {
-            if (innerStream == null) throw new ArgumentNullException(nameof(innerStream));
+            _innerStream = innerStream ?? throw new ArgumentNullException(nameof(innerStream));
             if (disposables == null) throw new ArgumentNullException(nameof(disposables));
-            _innerStream = innerStream;
             _disposables = disposables.ToArray();
         }
 
@@ -66,5 +65,4 @@ namespace Rebus.SqlServer.DataBus
             base.Dispose(disposing);
         }
     }
-
 }

@@ -1,5 +1,5 @@
-using Microsoft.Data.SqlClient;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 
 namespace Rebus.SqlServer
 {
