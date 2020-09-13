@@ -1,4 +1,5 @@
-﻿using Rebus.Sagas;
+﻿using System;
+using Rebus.Sagas;
 
 namespace Rebus.SqlServer.Sagas.Serialization
 {
@@ -8,13 +9,13 @@ namespace Rebus.SqlServer.Sagas.Serialization
     public interface ISagaSerializer
     {
         /// <summary>
-        /// Serializes the given object into a string
+        /// Serializes the given ISagaData object into a string
         /// </summary>
         string SerializeToString(ISagaData obj);
 
         /// <summary>
-        /// Deserializes the given string into an object
+        /// Deserializes the given string and type into a ISagaData object
         /// </summary>
-        ISagaData DeserializeFromString(string str);
+        ISagaData DeserializeFromString(Type type, string str);
     }
 }
