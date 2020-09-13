@@ -245,7 +245,7 @@ WHERE [index].[saga_type] = @saga_type
 
                         try
                         {
-                            var sagaData = (ISagaData)_sagaSerializer.DeserializeFromString(value);
+                            var sagaData = _sagaSerializer.DeserializeFromString(value);
 
                             if (!sagaDataType.IsInstanceOfType(sagaData))
                             {

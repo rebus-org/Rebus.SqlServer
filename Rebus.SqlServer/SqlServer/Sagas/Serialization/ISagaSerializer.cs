@@ -1,4 +1,6 @@
-﻿namespace Rebus.SqlServer.Sagas.Serialization
+﻿using Rebus.Sagas;
+
+namespace Rebus.SqlServer.Sagas.Serialization
 {
     /// <summary>
     /// Serializer used to serialize and deserialize saga data
@@ -8,11 +10,11 @@
         /// <summary>
         /// Serializes the given object into a string
         /// </summary>
-        string SerializeToString(object obj);
+        string SerializeToString(ISagaData obj);
 
         /// <summary>
         /// Deserializes the given string into an object
         /// </summary>
-        object DeserializeFromString(string str);
+        ISagaData DeserializeFromString(string str);
     }
 }
