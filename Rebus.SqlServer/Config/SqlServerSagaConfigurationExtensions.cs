@@ -5,6 +5,7 @@ using Rebus.Logging;
 using Rebus.Sagas;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Sagas;
+using Rebus.SqlServer.Sagas.Serialization;
 
 namespace Rebus.Config
 {
@@ -30,8 +31,9 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
+                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
-                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy);
+                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
                 if (automaticallyCreateTables)
                 {
@@ -59,8 +61,9 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
+                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
-                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy);
+                var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
                 if (automaticallyCreateTables)
                 {
@@ -88,6 +91,20 @@ namespace Rebus.Config
             }
 
             return sagaTypeNamingStrategy;
+        }
+
+        /// <summary>
+        /// Configures saga to use your own custom saga serializer
+        /// </summary>
+        public static void UseSagaSerializer(this StandardConfigurer<ISagaStorage> configurer, ISagaSerializer serializer = null)
+        {
+            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+            if (serializer == null)
+            {
+                serializer = new DefaultSagaSerializer();
+            }
+
+            configurer.OtherService<ISagaSerializer>().Decorate((c) => serializer);
         }
     }
 }
