@@ -98,6 +98,9 @@
 ## 7.1.0
 * Add `ISagaSerializer` thus making it possible to customize how saga data is serialized - thanks [mathiasnohall]
 
+## 7.1.1
+* Don't leave connection with NOCOUNT ON in the transport - can interfere with other stuff using the connection
+
 ----
 
 [clegendre]: https://github.com/clegendre
