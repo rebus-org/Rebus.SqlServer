@@ -101,6 +101,9 @@
 ## 7.1.1
 * Don't leave connection with NOCOUNT ON in the transport - can interfere with other stuff using the connection
 
+## 7.1.2
+* Adjustments to the new saga data serializer: Pass type to deserialize method (note: this is breaking, if you've implemented your own `ISagaSerializer`) - thanks [mathiasnohall]
+
 ----
 
 [clegendre]: https://github.com/clegendre
