@@ -33,7 +33,7 @@ namespace Rebus.SqlServer.Tests.Integration
                 .Sagas(x => x.StoreInSqlServer(ConnectionString, "Sagas", "SagaIndex"))
                 .Options(x =>
                 {
-                    x.SetNumberOfWorkers(1);
+                    x.SetNumberOfWorkers(0);
                     x.SetMaxParallelism(1);
                 })
                 .Start();
@@ -63,6 +63,8 @@ namespace Rebus.SqlServer.Tests.Integration
                 Console.WriteLine("w00000t! Got message: {0}", message);
                 gotTheMessage.Set();
             });
+
+            _bus.Advanced.Workers.SetNumberOfWorkers(1);
 
             await _bus.SendLocal("hej med dig min ven!");
 

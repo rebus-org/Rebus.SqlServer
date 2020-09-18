@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
+using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Tests.Contracts;
@@ -18,6 +19,7 @@ namespace Rebus.SqlServer.Tests.Transport
     {
         BuiltinHandlerActivator _activator;
         ListLoggerFactory _loggerFactory;
+        IBus _bus;
 
         protected override void SetUp()
         {
@@ -29,9 +31,10 @@ namespace Rebus.SqlServer.Tests.Transport
 
             _loggerFactory = new ListLoggerFactory(outputToConsole: true);
 
-            Configure.With(_activator)
+            _bus = Configure.With(_activator)
                 .Logging(l => l.Use(_loggerFactory))
                 .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), queueName))
+                .Options(o => o.SetNumberOfWorkers(0))
                 .Start();
         }
 
@@ -52,6 +55,8 @@ namespace Rebus.SqlServer.Tests.Transport
 
                 doneHandlingMessage.Set();
             });
+
+            _bus.Advanced.Workers.SetNumberOfWorkers(1);
 
             _activator.Bus.SendLocal("hej med dig min ven!").Wait();
 

@@ -35,6 +35,7 @@ namespace Rebus.SqlServer.Tests.Integration
                 .Options(o =>
                 {
                     o.LogPipeline();
+                    o.SetNumberOfWorkers(0);
                 })
                 .Start();
         }
@@ -54,6 +55,8 @@ namespace Rebus.SqlServer.Tests.Integration
 
                 done.Set();
             });
+
+            _bus.Advanced.Workers.SetNumberOfWorkers(1);
 
             var sendTime = DateTimeOffset.Now;
 
