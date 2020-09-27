@@ -33,7 +33,7 @@ namespace Rebus.Config
         /// </summary>
         public SqlServerTransportOptions(Func<Task<IDbConnection>> connectionFactory)
         {
-            ConnectionProviderFactory = (resolutionContext) => new DbConnectionFactoryProvider(connectionFactory, resolutionContext.Get<IRebusLoggerFactory>());
+            ConnectionProviderFactory = resolutionContext => new DbConnectionFactoryProvider(connectionFactory);
         }
 
         /// <summary>

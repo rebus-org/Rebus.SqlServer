@@ -59,7 +59,7 @@ namespace Rebus.Config
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
+                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
                 var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 

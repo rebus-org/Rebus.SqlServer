@@ -1,55 +1,25 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Rebus.Logging;
-using IsolationLevel = System.Data.IsolationLevel;
 
 #pragma warning disable 1998
 
 namespace Rebus.SqlServer
 {
     /// <summary>
-    /// Implementation of <see cref="IDbConnectionProvider"/> that ensures that MARS (multiple active result sets) is enabled on the
-    /// given connection string (possibly by enabling it by itself)
+    /// Implementation of <see cref="IDbConnectionProvider"/> that uses an async function to retrieve the <see cref="IDbConnection"/>
     /// </summary>
     public class DbConnectionFactoryProvider : IDbConnectionProvider
     {
         readonly Func<Task<IDbConnection>> _connectionFactory;
-        readonly ILog _log;
 
         /// <summary>
-        /// Uses provided SqlConnection factory as constructor for SqlConnection used. Will use <see cref="System.Data.IsolationLevel.ReadCommitted"/> by default on transactions,
-        /// unless another isolation level is set with the <see cref="IsolationLevel"/> property
+        /// Creates the connection provider to use the specified <paramref name="connectionFactory"/> to create <see cref="IDbConnection"/>s
         /// </summary>
-        public DbConnectionFactoryProvider(Func<Task<IDbConnection>> connectionFactory, IRebusLoggerFactory rebusLoggerFactory)
-        {
-            if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
-
-            _log = rebusLoggerFactory.GetLogger<DbConnectionFactoryProvider>();
-
-            IsolationLevel = IsolationLevel.ReadCommitted;
-
-            _connectionFactory = connectionFactory;
-        }
+        public DbConnectionFactoryProvider(Func<Task<IDbConnection>> connectionFactory) => _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
 
         /// <summary>
         /// Gets a nice ready-to-use database connection with an open transaction
         /// </summary>
-        public async Task<IDbConnection> GetConnection()
-        {
-            try
-            {
-                return await _connectionFactory().ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                _log.Warn("An error occurred when invoking the provided connection factory: {exception}", exception);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Gets/sets the isolation level used for transactions
-        /// </summary>
-        public IsolationLevel IsolationLevel { get; set; }
+        public async Task<IDbConnection> GetConnection() => await _connectionFactory().ConfigureAwait(false);
     }
 }

@@ -50,7 +50,7 @@ namespace Rebus.Config
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
+                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
                 var snapshotStorage = new SqlServerSagaSnapshotStorage(connectionProvider, tableName, rebusLoggerFactory);
 
                 if (automaticallyCreateTables)

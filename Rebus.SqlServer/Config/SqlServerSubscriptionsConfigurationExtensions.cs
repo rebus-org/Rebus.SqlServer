@@ -54,7 +54,7 @@ namespace Rebus.Config
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
+                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
                 var subscriptionStorage = new SqlServerSubscriptionStorage(connectionProvider, tableName, isCentralized, rebusLoggerFactory);
 
                 if (automaticallyCreateTables)

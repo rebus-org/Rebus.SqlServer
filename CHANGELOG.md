@@ -104,6 +104,9 @@
 ## 7.1.2
 * Adjustments to the new saga data serializer: Pass type to deserialize method (note: this is breaking, if you've implemented your own `ISagaSerializer`) - thanks [mathiasnohall]
 
+## 7.1.3
+* Correct XML docs on `DbConnectionFactoryProvider` (were copy/pasted from another implementation of `IDbConnectionProvider`), remove isolation level property from it (wasn't used), and remove logging antipattern
+
 ----
 
 [clegendre]: https://github.com/clegendre

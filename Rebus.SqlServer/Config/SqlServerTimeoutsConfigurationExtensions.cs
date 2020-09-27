@@ -53,7 +53,7 @@ namespace Rebus.Config
             {
                 var rebusTime = c.Get<IRebusTime>();
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory, rebusLoggerFactory);
+                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
                 var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
                 if (automaticallyCreateTables)
