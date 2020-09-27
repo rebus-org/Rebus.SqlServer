@@ -36,9 +36,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj" />
-    <PackageReference Include="microsoft.net.test.sdk" Version="16.5.0" />
+    <PackageReference Include="microsoft.net.test.sdk" Version="16.7.1" />
     <PackageReference Include="nunit" Version="3.12.0" />
-    <PackageReference Include="nunit3testadapter" Version="3.16.1">
+    <PackageReference Include="nunit3testadapter" Version="3.17.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
