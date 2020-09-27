@@ -107,6 +107,9 @@
 ## 7.1.3
 * Correct XML docs on `DbConnectionFactoryProvider` (were copy/pasted from another implementation of `IDbConnectionProvider`), remove isolation level property from it (wasn't used), and remove logging antipattern
 
+## 7.1.4
+* Add necessary overloaded constructor to `SqlServerTransportOptions` to enable resolving an `IDbConnectionProvider` implementation that requires other things (e.g. `IRebusLoggerFactory`). Also add `SqlConnectionOpening` callback to `DbConnectionProvider`, which makes for a good place to set the `AccessToken` property of `SqlConnection`
+
 ----
 
 [clegendre]: https://github.com/clegendre

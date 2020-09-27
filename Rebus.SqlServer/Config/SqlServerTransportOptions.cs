@@ -21,6 +21,14 @@ namespace Rebus.Config
         }
 
         /// <summary>
+        /// Create an instance of the transport with a <paramref name="connectionProviderFactory"/> that can use the <see cref="IResolutionContext"/> to look up things
+        /// </summary>
+        public SqlServerTransportOptions(Func<IResolutionContext, IDbConnectionProvider> connectionProviderFactory)
+        {
+            ConnectionProviderFactory = connectionProviderFactory ?? throw new ArgumentNullException(nameof(connectionProviderFactory));
+        }
+
+        /// <summary>
         /// Creates an instance of the transport connecting via <paramref name="connectionString"/>
         /// </summary>
         public SqlServerTransportOptions(string connectionString, bool enlistInAmbientTransaction = false)

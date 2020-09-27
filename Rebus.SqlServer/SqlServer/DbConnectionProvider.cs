@@ -20,8 +20,8 @@ namespace Rebus.SqlServer
         readonly ILog _log;
 
         /// <summary>
-        /// Wraps the connection string with the given name from app.config (if it is found), or interprets the given string as
-        /// a connection string to use. Will use <see cref="System.Data.IsolationLevel.ReadCommitted"/> by default on transactions,
+        /// Creates the connection provider with the given <paramref name="connectionString"/>.
+        /// Will use <see cref="System.Data.IsolationLevel.ReadCommitted"/> by default on transactions,
         /// unless another isolation level is set with the <see cref="IsolationLevel"/> property
         /// </summary>
         public DbConnectionProvider(string connectionString, IRebusLoggerFactory rebusLoggerFactory, bool enlistInAmbientTransaction = false)
@@ -32,8 +32,12 @@ namespace Rebus.SqlServer
 
             _connectionString = EnsureMarsIsEnabled(connectionString);
             _enlistInAmbientTransaction = enlistInAmbientTransaction;
-            IsolationLevel = IsolationLevel.ReadCommitted;
         }
+
+        /// <summary>
+        /// Callback, which will be invoked every time a new connection is about to be opened
+        /// </summary>
+        public Func<SqlConnection, Task> SqlConnectionOpening { get; set; } = async _ => { };
 
         string EnsureMarsIsEnabled(string connectionString)
         {
@@ -83,6 +87,11 @@ namespace Rebus.SqlServer
         {
             var connection = new SqlConnection(_connectionString);
 
+            if (SqlConnectionOpening != null)
+            {
+                AsyncHelpers.RunSync(() => SqlConnectionOpening(connection));
+            }
+
             // do not use Async here! it would cause the tx scope to be disposed on another thread than the one that created it
             connection.Open();
 
@@ -97,21 +106,25 @@ namespace Rebus.SqlServer
 
         SqlConnection CreateSqlConnectionSuppressingAPossibleAmbientTransaction()
         {
-            SqlConnection connection;
             using (new System.Transactions.TransactionScope(System.Transactions.TransactionScopeOption.Suppress))
             {
-                connection = new SqlConnection(_connectionString);
+                var connection = new SqlConnection(_connectionString);
+
+                if (SqlConnectionOpening != null)
+                {
+                    AsyncHelpers.RunSync(() => SqlConnectionOpening(connection));
+                }
 
                 // do not use Async here! it would cause the tx scope to be disposed on another thread than the one that created it
                 connection.Open();
-            }
 
-            return connection;
+                return connection;
+            }
         }
 
         /// <summary>
         /// Gets/sets the isolation level used for transactions
         /// </summary>
-        public IsolationLevel IsolationLevel { get; set; }
+        public IsolationLevel IsolationLevel { get; set; } = IsolationLevel.ReadCommitted;
     }
 }
