@@ -64,5 +64,30 @@ namespace Rebus.Config
                 return subscriptionStorage;
             });
         }
+
+        /// <summary>
+        /// Configures Rebus to use SQL Server to store timeouts.
+        /// </summary>
+        public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer, SqlServerTimeoutManagerOptions options, string tableName)
+        {
+            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+            configurer.Register(c =>
+            {
+                var rebusTime = c.Get<IRebusTime>();
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var connectionProvider = options.ConnectionProviderFactory(c);
+                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+
+                if (options.EnsureTablesAreCreated)
+                {
+                    subscriptionStorage.EnsureTableIsCreated();
+                }
+
+                return subscriptionStorage;
+            });
+        }
     }
 }

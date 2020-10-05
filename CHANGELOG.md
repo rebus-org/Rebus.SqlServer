@@ -110,6 +110,9 @@
 ## 7.1.4
 * Add necessary overloaded constructor to `SqlServerTransportOptions` to enable resolving an `IDbConnectionProvider` implementation that requires other things (e.g. `IRebusLoggerFactory`). Also add `SqlConnectionOpening` callback to `DbConnectionProvider`, which makes for a good place to set the `AccessToken` property of `SqlConnection`
 
+## 7.1.5
+* Add addition configuration overloads to allow for consistent level of customization across persisters
+
 ----
 
 [clegendre]: https://github.com/clegendre

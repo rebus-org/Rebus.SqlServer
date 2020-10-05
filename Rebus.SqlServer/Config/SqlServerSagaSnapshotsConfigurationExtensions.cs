@@ -61,5 +61,29 @@ namespace Rebus.Config
                 return snapshotStorage;
             });
         }
+
+        /// <summary>
+        /// Configures Rebus to store saga snapshots in SQL Server
+        /// </summary>
+        public static void StoreInSqlServer(this StandardConfigurer<ISagaSnapshotStorage> configurer, SqlServerSagaSnapshotStorageOptions options, string tableName)
+        {
+            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+            configurer.Register(c =>
+            {
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var connectionProvider = options.ConnectionProviderFactory(c);
+                var snapshotStorage = new SqlServerSagaSnapshotStorage(connectionProvider, tableName, rebusLoggerFactory);
+
+                if (options.EnsureTablesAreCreated)
+                {
+                    snapshotStorage.EnsureTableIsCreated();
+                }
+
+                return snapshotStorage;
+            });
+        }
     }
 }
