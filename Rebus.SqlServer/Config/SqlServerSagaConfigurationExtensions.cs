@@ -31,7 +31,7 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
-                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
+                var serializer = c.Has<ISagaSerializer>(false) ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
                 var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
@@ -61,7 +61,7 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
-                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
+                var serializer = c.Has<ISagaSerializer>(false) ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
                 var sagaStorage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, rebusLoggerFactory, sagaTypeNamingStrategy, serializer);
 
@@ -89,7 +89,7 @@ namespace Rebus.Config
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var connectionProvider = options.ConnectionProviderFactory(c);
                 var sagaTypeNamingStrategy = GetSagaTypeNamingStrategy(c, rebusLoggerFactory);
-                var serializer = c.Has<ISagaSerializer>() ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
+                var serializer = c.Has<ISagaSerializer>(false) ? c.Get<ISagaSerializer>() : new DefaultSagaSerializer();
 
                 var sagaStorage = new SqlServerSagaStorage(
                     connectionProvider: connectionProvider,
