@@ -113,6 +113,9 @@
 ## 7.1.5
 * Add addition configuration overloads to allow for consistent level of customization across persisters
 
+## 7.1.6
+* Fix bug in saga data serializer configuration - thanks [mathiasnohall]
+
 ----
 
 [clegendre]: https://github.com/clegendre
