@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -178,7 +179,11 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                 // update last read time quickly
                 await UpdateLastReadTime(id);
 
+                var objectsToDisposeOnException = new ConcurrentStack<IDisposable>();
+
                 var connection = await _connectionProvider.GetConnection();
+
+                objectsToDisposeOnException.Push(connection);
 
                 using (var command = connection.CreateCommand())
                 {
@@ -190,6 +195,8 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
                         var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess).ConfigureAwait(false);
 
+                        objectsToDisposeOnException.Push(reader);
+
                         if (!await reader.ReadAsync().ConfigureAwait(false))
                         {
                             throw new ArgumentException($"Row with ID {id} not found");
@@ -198,6 +205,8 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                         var dataOrdinal = reader.GetOrdinal("data");
                         var stream = reader.GetStream(dataOrdinal);
 
+                        objectsToDisposeOnException.Push(stream);
+                        
                         return new StreamWrapper(stream, new IDisposable[]
                         {
                             // defer closing these until the returned stream is closed
@@ -207,8 +216,11 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     }
                     catch
                     {
-                        // if something of the above fails, we did not pass the connection to someone who can dispose it... wherefore:
-                        connection.Dispose();
+                        // if something of the above fails, we must dispose these things
+                        while (objectsToDisposeOnException.TryPop(out var disposable))
+                        {
+                            disposable.Dispose();
+                        }
                         throw;
                     }
                 }

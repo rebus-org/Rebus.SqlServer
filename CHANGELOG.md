@@ -116,6 +116,9 @@
 ## 7.1.6
 * Fix bug in saga data serializer configuration - thanks [mathiasnohall]
 
+## 7.1.7
+* Fix disposal of data reader when read attempt does not find anything and must throw
+
 ----
 
 [clegendre]: https://github.com/clegendre
