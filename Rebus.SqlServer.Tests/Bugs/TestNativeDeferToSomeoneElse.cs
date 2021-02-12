@@ -30,9 +30,9 @@ namespace Rebus.SqlServer.Tests.Bugs
 
             Using(receiver);
 
-            Configure.With(receiver)
+            var receiverStarter = Configure.With(receiver)
                 .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
-                .Start();
+                .Create();
 
             var senderBus = Configure.With(new BuiltinHandlerActivator())
                 .Transport(x => x.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(ConnectionString)))
@@ -58,6 +58,7 @@ namespace Rebus.SqlServer.Tests.Bugs
             var gotTheString = new ManualResetEvent(false);
 
             receiver.Handle<string>(async message => gotTheString.Set());
+            receiverStarter.Start();
 
             var optionalHeaders = usePipelineStep
                 ? new Dictionary<string, string>()
