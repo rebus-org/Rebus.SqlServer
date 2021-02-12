@@ -18,6 +18,7 @@ namespace Rebus.SqlServer.Tests.Transport
     {
         BuiltinHandlerActivator _activator;
         ListLoggerFactory _loggerFactory;
+        IBusStarter _starter;
 
         protected override void SetUp()
         {
@@ -29,10 +30,10 @@ namespace Rebus.SqlServer.Tests.Transport
 
             _loggerFactory = new ListLoggerFactory(outputToConsole: true);
 
-            Configure.With(_activator)
+            _starter = Configure.With(_activator)
                 .Logging(l => l.Use(_loggerFactory))
                 .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), queueName))
-                .Start();
+                .Create();
         }
 
         [Test]
@@ -53,7 +54,8 @@ namespace Rebus.SqlServer.Tests.Transport
                 doneHandlingMessage.Set();
             });
 
-            _activator.Bus.SendLocal("hej med dig min ven!").Wait();
+            var bus = _starter.Start();
+            bus.SendLocal("hej med dig min ven!").Wait();
 
             doneHandlingMessage.WaitOrDie(TimeSpan.FromMinutes(2));
 

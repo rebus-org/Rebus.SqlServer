@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
@@ -18,7 +17,7 @@ namespace Rebus.SqlServer.Tests.Integration
         static readonly string ConnectionString = SqlTestHelper.ConnectionString;
 
         BuiltinHandlerActivator _activator;
-        IBus _bus;
+        IBusStarter _starter;
 
         protected override void SetUp()
         {
@@ -28,7 +27,7 @@ namespace Rebus.SqlServer.Tests.Integration
 
             Using(_activator);
 
-            _bus = Configure.With(_activator)
+            _starter = Configure.With(_activator)
                 .Transport(x => x.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "test.input"))
                 .Sagas(x => x.StoreInSqlServer(ConnectionString, "Sagas", "SagaIndex"))
                 .Options(x =>
@@ -36,7 +35,7 @@ namespace Rebus.SqlServer.Tests.Integration
                     x.SetNumberOfWorkers(1);
                     x.SetMaxParallelism(1);
                 })
-                .Start();
+                .Create();
         }
 
         protected override void TearDown()
@@ -64,7 +63,8 @@ namespace Rebus.SqlServer.Tests.Integration
                 gotTheMessage.Set();
             });
 
-            await _bus.SendLocal("hej med dig min ven!");
+            var bus = _starter.Start();
+            await bus.SendLocal("hej med dig min ven!");
 
             gotTheMessage.WaitOrDie(TimeSpan.FromSeconds(10));
 

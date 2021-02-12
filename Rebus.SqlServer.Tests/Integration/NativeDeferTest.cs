@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
-using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Messages;
 using Rebus.Routing.TypeBased;
@@ -19,7 +18,7 @@ namespace Rebus.SqlServer.Tests.Integration
     {
         static readonly string QueueName = TestConfig.GetName("input");
         BuiltinHandlerActivator _activator;
-        IBus _bus;
+        IBusStarter _starter;
 
         protected override void SetUp()
         {
@@ -29,14 +28,14 @@ namespace Rebus.SqlServer.Tests.Integration
 
             Using(_activator);
 
-            _bus = Configure.With(_activator)
+            _starter = Configure.With(_activator)
                 .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), QueueName))
                 .Routing(r => r.TypeBased().Map<TimedMessage>(QueueName))
                 .Options(o =>
                 {
                     o.LogPipeline();
                 })
-                .Start();
+                .Create();
         }
 
         [Test]
@@ -57,7 +56,8 @@ namespace Rebus.SqlServer.Tests.Integration
 
             var sendTime = DateTimeOffset.Now;
 
-            await _bus.Defer(TimeSpan.FromSeconds(5), new TimedMessage { Time = sendTime });
+            var bus = _starter.Start();
+            await bus.Defer(TimeSpan.FromSeconds(5), new TimedMessage { Time = sendTime });
 
             done.WaitOrDie(TimeSpan.FromSeconds(8), "Did not receive 5s-deferred message within 8 seconds of waiting....");
 
