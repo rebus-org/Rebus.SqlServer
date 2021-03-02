@@ -45,6 +45,16 @@ namespace Rebus.Config
         }
 
         /// <summary>
+        /// Disables the SQL transport's built-in ability to delay message delivery. This can be done if ther requirements for delayed messages
+        /// exceeds what is convenient, as delayed messages will be sitting in the recipient's table until it is time to be consumed.
+        /// </summary>
+        public SqlServerTransportOptions DisableNativeTimeoutManager()
+        {
+            NativeTimeoutManagerDisabled = true;
+            return this;
+        }
+
+        /// <summary>
         /// Name of the input queue to process. If <c>null</c> or whitespace the transport will be configured in one way mode (send only)
         /// </summary>
         public string InputQueueName { get; internal set; }
@@ -63,5 +73,7 @@ namespace Rebus.Config
         /// Gets the delay between executions of the background cleanup task
         /// </summary>
         internal TimeSpan? ExpiredMessagesCleanupInterval { get; set; }
+
+        internal bool NativeTimeoutManagerDisabled { get; set; }
     }
 }

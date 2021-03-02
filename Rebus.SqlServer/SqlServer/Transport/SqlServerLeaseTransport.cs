@@ -72,7 +72,7 @@ namespace Rebus.SqlServer.Transport
             TimeSpan leaseInterval,
             TimeSpan? leaseTolerance,
             Func<string> leasedByFactory,
-            SqlServerLeaseTransportOptions options 
+            SqlServerLeaseTransportOptions options
             ) : base(connectionProvider, inputQueueName, rebusLoggerFactory, asyncTaskFactory, rebusTime, options)
         {
             _leasedByFactory = leasedByFactory;

@@ -2,13 +2,10 @@
 using System.Threading.Tasks;
 using Rebus.Injection;
 using Rebus.Logging;
-using Rebus.Pipeline;
-using Rebus.Pipeline.Receive;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Transport;
 using Rebus.Threading;
 using Rebus.Time;
-using Rebus.Timeouts;
 using Rebus.Transport;
 
 namespace Rebus.Config
@@ -17,7 +14,7 @@ namespace Rebus.Config
     /// Configuration extensions for the SQL transport
     /// </summary>
     public static class SqlServerTransportConfigurationExtensions
-    {       
+    {
         /// <summary>
         /// Configures Rebus to use SQL Server as its transport. Unlike the <c>UseSqlServer</c> calls the leased version of the SQL 
         /// Server transport does not hold a transaction open for the entire duration of the message handling. Instead it marks a
@@ -287,32 +284,6 @@ namespace Rebus.Config
                     return transport;
                 }
             );
-
-            configurer.OtherService<ITimeoutManager>().Register(c => new DisabledTimeoutManager(),
-                @"A timeout manager cannot be explicitly configured when using SQL Server as the
-transport. This is because because the SQL transport has built-in deferred 
-message capabilities, and therefore it is not necessary to configure anything 
-else to be able to delay message delivery.");
-
-            configurer.OtherService<IPipeline>().Decorate(c =>
-            {
-                var pipeline = c.Get<IPipeline>();
-
-                return new PipelineStepRemover(pipeline)
-                    .RemoveIncomingStep(s => s.GetType() == typeof(HandleDeferredMessagesStep));
-            });
-
-            configurer.OtherService<Options>().Decorate(c =>
-            {
-                var options = c.Get<Options>();
-
-                if (string.IsNullOrWhiteSpace(options.ExternalTimeoutManagerAddressOrNull))
-                {
-                    options.ExternalTimeoutManagerAddressOrNull = SqlServerTransport.MagicExternalTimeoutManagerAddress;
-                }
-
-                return options;
-            });
 
             return transportOptions;
         }
