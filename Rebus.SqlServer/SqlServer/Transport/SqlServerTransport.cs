@@ -425,7 +425,7 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         /// </summary>
         protected static string GetDestinationAddressToUse(string destinationAddress, TransportMessage message)
         {
-            return string.Equals(destinationAddress, MagicExternalTimeoutManagerAddress, StringComparison.CurrentCultureIgnoreCase)
+            return string.Equals(destinationAddress, MagicExternalTimeoutManagerAddress, StringComparison.OrdinalIgnoreCase)
                 ? GetDeferredRecipient(message)
                 : destinationAddress;
         }

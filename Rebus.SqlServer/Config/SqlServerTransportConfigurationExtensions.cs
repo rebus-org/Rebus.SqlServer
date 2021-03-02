@@ -2,10 +2,13 @@
 using System.Threading.Tasks;
 using Rebus.Injection;
 using Rebus.Logging;
+using Rebus.Pipeline;
+using Rebus.Pipeline.Receive;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Transport;
 using Rebus.Threading;
 using Rebus.Time;
+using Rebus.Timeouts;
 using Rebus.Transport;
 
 namespace Rebus.Config
@@ -269,7 +272,7 @@ namespace Rebus.Config
         {
             configurer.Register(context =>
                 {
-                    if (transportOptions.IsOneWayQueue)
+                    if (transportOptions.IsOneWayClient)
                     {
                         OneWayClientBackdoor.ConfigureOneWayClient(configurer);
                     }
@@ -284,6 +287,20 @@ namespace Rebus.Config
                     return transport;
                 }
             );
+
+            configurer.OtherService<Options>().Decorate(c =>
+            {
+                var options = c.Get<Options>();
+
+                // if the transport is a one-way client and no external timeout manager has been configured, set the 
+                // external timeout manager's address to this magic string, which we'll detect later on
+                if (transportOptions.IsOneWayClient && string.IsNullOrWhiteSpace(options.ExternalTimeoutManagerAddressOrNull))
+                {
+                    options.ExternalTimeoutManagerAddressOrNull = SqlServerTransport.MagicExternalTimeoutManagerAddress;
+                }
+
+                return options;
+            });
 
             return transportOptions;
         }

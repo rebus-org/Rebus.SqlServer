@@ -60,14 +60,14 @@ namespace Rebus.Config
         public string InputQueueName { get; internal set; }
 
         /// <summary>
-        /// If <c>true</c> the transport is configured in one way mode
-        /// </summary>
-        public bool IsOneWayQueue => InputQueueName == null;
-
-        /// <summary>
         /// If true, the input queue table will be automatically dropped on transport disposal
         /// </summary>
         public bool AutoDeleteQueue { get; internal set; } = false;
+
+        /// <summary>
+        /// If <c>true</c> the transport is configured in one way mode
+        /// </summary>
+        internal bool IsOneWayClient => InputQueueName == null;
 
         /// <summary>
         /// Gets the delay between executions of the background cleanup task
