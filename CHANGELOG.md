@@ -119,7 +119,7 @@
 ## 7.1.7
 * Fix disposal of data reader when read attempt does not find anything and must throw
 
-## 7.2.0-b1
+## 7.2.0-b2
 * Make it possible to disable native message defer functionality of SQL transport, thus making it possible to run a dedicated SQL timeout manager (like with any other transport) together with the SQL transport
 
 ----

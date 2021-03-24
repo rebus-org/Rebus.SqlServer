@@ -69,7 +69,6 @@ namespace Rebus.SqlServer.DataBus
         {
             using (var connection = await _connectionProvider.GetConnection())
             {
-
                 if (connection.GetTableNames().Contains(_tableName))
                 {
                     var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
@@ -107,11 +106,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
     CREATE TABLE {_tableName.QualifiedName} (
-        [Id] VARCHAR(200),
+        [Id] VARCHAR(400),
         [Meta] VARBINARY(MAX),
         [Data] VARBINARY(MAX),
         [CreationTime] DATETIMEOFFSET,
-        [LastReadTime] DATETIMEOFFSET
+        [LastReadTime] DATETIMEOFFSET,
+        PRIMARY KEY ([Id])
     );
 
 ";
