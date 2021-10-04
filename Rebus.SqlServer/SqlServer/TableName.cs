@@ -96,10 +96,7 @@ namespace Rebus.SqlServer
         }
 
         /// <inheritdoc />
-        public override string ToString()
-        {
-            return QualifiedName;
-        }
+        public override string ToString() => QualifiedName;
 
         /// <inheritdoc />
         public bool Equals(TableName other)
