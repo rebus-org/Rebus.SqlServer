@@ -22,5 +22,10 @@ namespace Rebus.Config.Outbox
 
             return configurer;
         }
+
+        public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
+        {
+
+        }
     }
 }

@@ -46,7 +46,4 @@
       <PackagePath></PackagePath>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="SqlServer\Outbox\" />
-  </ItemGroup>
 </Project>
