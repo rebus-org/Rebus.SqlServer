@@ -97,40 +97,16 @@ CREATE TABLE {_tableName} (
             await InnerSave(outgoingMessages);
         }
 
-        private async Task InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null)
+        /// <inheritdoc />
+        public async Task<OutboxMessageBatch> GetNextMessageBatch(int maxMessageBatchSize = 100)
         {
-            using var scope = new RebusTransactionScope();
-            using var connection = _connectionProvider(scope.TransactionContext);
-
-            foreach (var message in outgoingMessages)
+            if (maxMessageBatchSize <= 0)
             {
-                using var command = connection.CreateCommand();
-
-                var transportMessage = message.TransportMessage;
-                var body = message.TransportMessage.Body;
-                var headers = SerializeHeaders(transportMessage.Headers);
-
-                command.CommandText = $"INSERT INTO {_tableName} ([MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@messageId, @sourceQueue, @destinationAddress, @headers, @body)";
-                command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = DBNull.Value;
-                command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = DBNull.Value;
-                command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = message.DestinationAddress;
-                command.Parameters.Add("headers", SqlDbType.NVarChar, headers.Length.RoundUpToNextPowerOfTwo()).Value = headers;
-                command.Parameters.Add("body", SqlDbType.VarBinary, body.Length.RoundUpToNextPowerOfTwo()).Value = body;
-
-                await command.ExecuteNonQueryAsync();
+                throw new ArgumentException(
+                    $"Cannot retrieve {maxMessageBatchSize} messages - please pass in a value >= 1",
+                    nameof(maxMessageBatchSize));
             }
 
-            await connection.Complete();
-            await scope.CompleteAsync();
-        }
-
-        const int MaxMessageBatchSize = 100;
-
-        /// <summary>
-        /// Gets the next message batch to be sent
-        /// </summary>
-        public async Task<OutboxMessageBatch> GetNextMessageBatch()
-        {
             // no 'using' here, because this will be passed to the outbox message batch
             var scope = new RebusTransactionScope();
 
@@ -148,7 +124,7 @@ CREATE TABLE {_tableName} (
 
                 try
                 {
-                    var messages = await GetOutboxMessages(connection);
+                    var messages = await GetOutboxMessages(connection, maxMessageBatchSize);
 
                     // bail out if no messages were found
                     if (!messages.Any()) return OutboxMessageBatch.Empty(Dispose);
@@ -176,6 +152,33 @@ CREATE TABLE {_tableName} (
             }
         }
 
+        async Task InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null)
+        {
+            using var scope = new RebusTransactionScope();
+            using var connection = _connectionProvider(scope.TransactionContext);
+
+            foreach (var message in outgoingMessages)
+            {
+                using var command = connection.CreateCommand();
+
+                var transportMessage = message.TransportMessage;
+                var body = message.TransportMessage.Body;
+                var headers = SerializeHeaders(transportMessage.Headers);
+
+                command.CommandText = $"INSERT INTO {_tableName} ([MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@messageId, @sourceQueue, @destinationAddress, @headers, @body)";
+                command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = DBNull.Value;
+                command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = DBNull.Value;
+                command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = message.DestinationAddress;
+                command.Parameters.Add("headers", SqlDbType.NVarChar, headers.Length.RoundUpToNextPowerOfTwo()).Value = headers;
+                command.Parameters.Add("body", SqlDbType.VarBinary, body.Length.RoundUpToNextPowerOfTwo()).Value = body;
+
+                await command.ExecuteNonQueryAsync();
+            }
+
+            await connection.Complete();
+            await scope.CompleteAsync();
+        }
+
         async Task CompleteMessages(IDbConnection connection, IEnumerable<OutboxMessage> messages)
         {
             using var command = connection.CreateCommand();
@@ -188,11 +191,11 @@ CREATE TABLE {_tableName} (
             await command.ExecuteNonQueryAsync();
         }
 
-        private async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection)
+        async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection, int maxMessageBatchSize)
         {
             using var command = connection.CreateCommand();
 
-            command.CommandText = $"SELECT TOP {MaxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 0 ORDER BY [Id]";
+            command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 0 ORDER BY [Id]";
 
             using var reader = await command.ExecuteReaderAsync();
 

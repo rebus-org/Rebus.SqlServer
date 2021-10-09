@@ -62,6 +62,33 @@ namespace Rebus.SqlServer.Tests.Outbox
         }
 
         [Test]
+        public async Task CanGetBatchesOfMessages_VaryingBatchSize()
+        {
+            static AbstractRebusTransport.OutgoingMessage CreateOutgoingMessage(string body)
+            {
+                var transportMessage = new TransportMessage(new Dictionary<string, string>(), Encoding.UTF8.GetBytes(body));
+                var outgoingMessage1 = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+                return outgoingMessage1;
+            }
+
+            var texts = Enumerable.Range(0, 100).Select(n => $"message {n:000}").ToList();
+            await _storage.Save(texts.Select(CreateOutgoingMessage));
+
+            using var batch1 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 10);
+            Assert.That(batch1.Count(), Is.EqualTo(10));
+
+            using var batch2 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 12);
+            Assert.That(batch2.Count(), Is.EqualTo(12));
+
+            using var batch3 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 77);
+            Assert.That(batch3.Count(), Is.EqualTo(77));
+
+            using var batch4 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 1);
+            Assert.That(batch4.Count(), Is.EqualTo(1));
+
+        }
+
+        [Test]
         public async Task CanGetBatchesOfMessages_TwoBatchesInParallel()
         {
             static AbstractRebusTransport.OutgoingMessage CreateOutgoingMessage(string body)

@@ -22,8 +22,8 @@ namespace Rebus.SqlServer.Outbox
         Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages);
 
         /// <summary>
-        /// Gets the next message batch to be sent
+        /// Gets the next message batch to be sent. Returns from 0 to <paramref name="maxMessageBatchSize"/> messages in the batch.
         /// </summary>
-        Task<OutboxMessageBatch> GetNextMessageBatch();
+        Task<OutboxMessageBatch> GetNextMessageBatch(int maxMessageBatchSize = 100);
     }
 }
