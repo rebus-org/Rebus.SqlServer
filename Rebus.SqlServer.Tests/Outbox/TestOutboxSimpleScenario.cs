@@ -5,7 +5,6 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Config.Outbox;
-using Rebus.Messages;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Transport;
@@ -66,29 +65,6 @@ namespace Rebus.SqlServer.Tests.Outbox
             }
 
             gotTheString.WaitOrDie(TimeSpan.FromSeconds(15));
-        }
-    }
-
-    static class ObstructionExtensions
-    {
-        public static void ThrowWhenSendingMessages(this OptionsConfigurer configurer)
-        {
-            configurer.Decorate<ITransport>(t => new ThrowWhenSendingTransportDecorator(t.Get<ITransport>()));
-        }
-
-        class ThrowWhenSendingTransportDecorator : ITransport
-        {
-            private readonly ITransport _transport;
-
-            public ThrowWhenSendingTransportDecorator(ITransport transport) => _transport = transport;
-
-            public void CreateQueue(string address) => _transport.CreateQueue(address);
-
-            public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context) => throw new ApplicationException("CANNOT SEND");
-
-            public Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken) => _transport.Receive(context, cancellationToken);
-
-            public string Address => _transport.Address;
         }
     }
 }

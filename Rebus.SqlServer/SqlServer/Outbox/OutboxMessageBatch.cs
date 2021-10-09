@@ -54,5 +54,8 @@ public class OutboxMessageBatch : IDisposable, IEnumerable<OutboxMessage>
 /// </summary>
 public record OutboxMessage(long Id, string DestinationAddress, Dictionary<string, string> Headers, byte[] Body)
 {
+    /// <summary>
+    /// Gets the <see cref="Headers"/> and <see cref="Body"/> wrapped in a <see cref="TransportMessage"/>
+    /// </summary>
     public TransportMessage ToTransportMessage() => new(Headers, Body);
 }

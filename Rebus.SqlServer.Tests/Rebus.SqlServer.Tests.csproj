@@ -2,6 +2,7 @@
 <Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <PropertyGroup>
     <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Rebus.SqlServer.Tests</RootNamespace>
     <AssemblyName>Rebus.SqlServer.Tests</AssemblyName>

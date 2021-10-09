@@ -85,7 +85,6 @@ namespace Rebus.SqlServer.Tests.Outbox
 
             using var batch4 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 1);
             Assert.That(batch4.Count(), Is.EqualTo(1));
-
         }
 
         [Test]

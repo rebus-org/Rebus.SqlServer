@@ -11,6 +11,16 @@ namespace Rebus.SqlServer
         /// <summary>
         /// Executes a task synchronously on the calling thread by installing a temporary synchronization context that queues continuations
         ///  </summary>
+        public static T GetSync<T>(Func<Task<T>> task)
+        {
+            var result = default(T);
+            RunSync(async () => result = await task());
+            return result;
+        }
+
+        /// <summary>
+        /// Executes a task synchronously on the calling thread by installing a temporary synchronization context that queues continuations
+        ///  </summary>
         public static void RunSync(Func<Task> task)
         {
             var currentContext = SynchronizationContext.Current;

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Rebus.Logging;
+using Rebus.Pipeline;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
 using Rebus.Threading;
@@ -31,36 +33,55 @@ namespace Rebus.Config.Outbox
                 if (!o.Has<IOutboxStorage>()) return;
 
                 o.Decorate<ITransport>(c => new OutboxTransportDecorator(c.Get<IRebusLoggerFactory>(), c.Get<ITransport>(), c.Get<IOutboxStorage>(), c.Get<IAsyncTaskFactory>()));
+
+                o.Decorate<IPipeline>(c => new PipelineStepConcatenator(c.Get<IPipeline>())
+                    .OnReceive(new EnableOutboxIncomingStep(), PipelineAbsolutePosition.Front));
             });
 
             return configurer;
         }
 
+        class EnableOutboxIncomingStep : IIncomingStep
+        {
+            public Task Process(IncomingStepContext context, Func<Task> next)
+            {
+                context.Load<ITransactionContext>().Items[OutboxTransportDecorator.OutboxEnabledKey] = null;
+                return next();
+            }
+        }
+
         /// <summary>
-        /// Configures the outbox to use SQL Server to store outgoing messages
+        /// Configures the outbox to use SQL Server to store outgoing messages. This overload will NOT enlist outbox actions in user transactions.
         /// </summary>
         public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
         {
-            configurer.Register(c =>
+            IDbConnection ConnectionProvider(ITransactionContext context)
             {
-                IDbConnection ConnectionProvider(ITransactionContext context)
+                var sqlConnection = new SqlConnection(connectionString);
+                sqlConnection.Open();
+                try
                 {
-                    var sqlConnection = new SqlConnection(connectionString);
-                    sqlConnection.Open();
-                    try
-                    {
-                        var transaction = sqlConnection.BeginTransaction();
-                        return new DbConnectionWrapper(sqlConnection, transaction, managedExternally: false);
-                    }
-                    catch
-                    {
-                        sqlConnection.Dispose();
-                        throw;
-                    }
+                    var transaction = sqlConnection.BeginTransaction();
+                    return new DbConnectionWrapper(sqlConnection, transaction, managedExternally: false);
                 }
+                catch
+                {
+                    sqlConnection.Dispose();
+                    throw;
+                }
+            }
 
-                return new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName));
-            });
+            configurer.Register(_ => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
+        }
+
+        /// <summary>
+        /// Configures the outbox to use SQL Server to store outgoing messages. The <paramref name="connectionProvider"/> gets to
+        /// return the <see cref="IDbConnection"/> the outbox should use, thus providing the ability to return a reference to the same
+        /// connection/transaction that the user's code is using.
+        /// </summary>
+        public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<ITransactionContext, IDbConnection> connectionProvider, string tableName)
+        {
+            configurer.Register(_ => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
         }
     }
 }
