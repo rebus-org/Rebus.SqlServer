@@ -114,8 +114,8 @@ CREATE TABLE {_tableName} (
                 command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = DBNull.Value;
                 command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = DBNull.Value;
                 command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = message.DestinationAddress;
-                command.Parameters.Add("headers", SqlDbType.NVarChar, GetLength(headers)).Value = headers;
-                command.Parameters.Add("body", SqlDbType.VarBinary, GetLength(headers)).Value = body;
+                command.Parameters.Add("headers", SqlDbType.NVarChar, headers.Length.RoundUpToNextPowerOfTwo()).Value = headers;
+                command.Parameters.Add("body", SqlDbType.VarBinary, body.Length.RoundUpToNextPowerOfTwo()).Value = body;
 
                 await command.ExecuteNonQueryAsync();
             }
