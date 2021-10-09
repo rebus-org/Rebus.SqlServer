@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Rebus.Bus;
 using Rebus.Logging;
 using Rebus.Messages;
+using Rebus.Pipeline;
 using Rebus.Threading;
 using Rebus.Transport;
 
@@ -46,7 +47,18 @@ namespace Rebus.SqlServer.Outbox
             {
                 var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
 
-                context.OnCommitted(async _ => await _outboxStorage.Save(queue));
+                // if we're currently handling a message, we get information about it here
+                if (context.Items.TryGetValue("stepContext", out var result) && result is IncomingStepContext stepContext)
+                {
+                    var messageId = stepContext.Load<TransportMessage>().GetMessageId();
+                    var sourceQueue = _transport.Address;
+
+                    context.OnCommitted(async _ => await _outboxStorage.Save(messageId, sourceQueue, queue));
+                }
+                else
+                {
+                    context.OnCommitted(async _ => await _outboxStorage.Save(queue));
+                }
 
                 context.OnCompleted(async => Task.Run(async () =>
                 {
