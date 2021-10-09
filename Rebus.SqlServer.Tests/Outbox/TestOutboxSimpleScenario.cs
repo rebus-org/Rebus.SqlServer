@@ -44,15 +44,15 @@ namespace Rebus.SqlServer.Tests.Outbox
         [Test]
         public async Task CanDoIt_UsingOutbox()
         {
-            using var activator = new BuiltinHandlerActivator();
-
             using var gotTheString = new ManualResetEvent(initialState: false);
+
+            using var activator = new BuiltinHandlerActivator();
 
             activator.Handle<string>(async msg => gotTheString.Set());
 
             var bus = Configure.With(activator)
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
-                .Options(o => o.ThrowWhenSendingMessages())
+                //.Options(o => o.ThrowWhenSendingMessages())
                 .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
                 .Start();
 
@@ -65,7 +65,7 @@ namespace Rebus.SqlServer.Tests.Outbox
                 await scope.CompleteAsync();
             }
 
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+            gotTheString.WaitOrDie(TimeSpan.FromSeconds(15));
         }
     }
 

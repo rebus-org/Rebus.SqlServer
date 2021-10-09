@@ -14,11 +14,16 @@ namespace Rebus.SqlServer.Outbox
         /// in the queue of this particular endpoint. If <paramref name="outgoingMessages"/> is an empty sequence, a note is made of the fact
         /// that the message with ID <paramref name="messageId"/> has been processed.
         /// </summary>
-        Task Save(string messageId, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages);
-        
+        Task Save(string messageId, string sourceQueue, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages);
+
         /// <summary>
         /// Stores the given <paramref name="outgoingMessages"/> to be sent.
         /// </summary>
         Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages);
+
+        /// <summary>
+        /// Gets the next message batch to be sent
+        /// </summary>
+        Task<OutboxMessageBatch> GetNextMessageBatch();
     }
 }
