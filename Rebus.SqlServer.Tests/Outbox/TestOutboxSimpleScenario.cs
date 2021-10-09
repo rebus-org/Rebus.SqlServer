@@ -18,7 +18,31 @@ namespace Rebus.SqlServer.Tests.Outbox
     public class TestOutboxSimpleScenario : FixtureBase
     {
         [Test]
-        public async Task CanDoIt()
+        public async Task CanDoIt_NotUsingOutbox()
+        {
+            using var activator = new BuiltinHandlerActivator();
+
+            using var gotTheString = new ManualResetEvent(initialState: false);
+
+            activator.Handle<string>(async msg => gotTheString.Set());
+
+            var bus = Configure.With(activator)
+                .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
+                .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
+                .Start();
+
+            using (var scope = new RebusTransactionScope())
+            {
+                await bus.SendLocal("HEJ MED DIG 🙂");
+
+                await scope.CompleteAsync();
+            }
+
+            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+        }
+
+        [Test]
+        public async Task CanDoIt_UsingOutbox()
         {
             using var activator = new BuiltinHandlerActivator();
 
@@ -34,6 +58,8 @@ namespace Rebus.SqlServer.Tests.Outbox
 
             using (var scope = new RebusTransactionScope())
             {
+                scope.UseOutbox();
+
                 await bus.SendLocal("HEJ MED DIG 🙂");
 
                 await scope.CompleteAsync();

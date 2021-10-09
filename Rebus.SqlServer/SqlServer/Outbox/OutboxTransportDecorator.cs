@@ -8,6 +8,8 @@ namespace Rebus.SqlServer.Outbox
 {
     class OutboxTransportDecorator : ITransport
     {
+        public const string OutboxEnabledKey = "rebus-outbox-enabled";
+
         private readonly ITransport _transport;
         private readonly IOutboxStorage _outboxStorage;
 
@@ -21,6 +23,12 @@ namespace Rebus.SqlServer.Outbox
 
         public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
+            if (!context.Items.ContainsKey(OutboxEnabledKey))
+            {
+                await _transport.Send(destinationAddress, message, context);
+                return;
+            }
+
             var outgoingMessages = context.GetOrAdd("outbox-messages", () =>
             {
                 var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
