@@ -50,15 +50,16 @@ namespace Rebus.SqlServer.Tests.Outbox
             activator.Handle<string>(async msg => gotTheString.Set());
 
             var bus = Configure.With(activator)
-                .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
-                //.Options(o => o.ThrowWhenSendingMessages())
+                .Transport(t =>
+                {
+                    t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter");
+                    t.ThrowSometimesWhenSendingMessages(successRate: 0.5);
+                })
                 .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
                 .Start();
 
             using (var scope = new RebusTransactionScope())
             {
-                scope.UseOutbox();
-
                 await bus.SendLocal("HEJ MED DIG 🙂");
 
                 await scope.CompleteAsync();

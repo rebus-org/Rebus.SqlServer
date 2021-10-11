@@ -7,7 +7,6 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Config.Outbox;
-using Rebus.Extensions;
 using Rebus.Persistence.InMem;
 using Rebus.Pipeline;
 using Rebus.SqlServer.Outbox;

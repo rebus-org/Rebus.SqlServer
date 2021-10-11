@@ -9,14 +9,14 @@ namespace Rebus.SqlServer.Tests.Outbox
 {
     static class ObstructionExtensions
     {
-        public static void ThrowSometimesWhenSendingMessages(this OptionsConfigurer configurer, double successRate = 0.5)
+        public static void ThrowSometimesWhenSendingMessages(this StandardConfigurer<ITransport> configurer, double successRate = 0.5)
         {
-            configurer.Decorate<ITransport>(t => new ThrowSometimesWhenSendingTransportDecorator(t.Get<ITransport>(), successRate));
+            configurer.Decorate(t => new ThrowSometimesWhenSendingTransportDecorator(t.Get<ITransport>(), successRate));
         }
 
         class ThrowSometimesWhenSendingTransportDecorator : ITransport
         {
-            readonly ThreadLocal<Random> _random = new();
+            readonly ThreadLocal<Random> _random = new(() => new Random());
             readonly ITransport _transport;
             readonly double _successRate;
 

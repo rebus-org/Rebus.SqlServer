@@ -11,15 +11,17 @@ public static class RebusTransactionScopeExtensions
 {
     /// <summary>
     /// Adds a key to the scope's transaction context's <see cref="ITransactionContext.Items"/> collection, signaling
-    /// that subsequent send/publish operations with the scope should be enlisted in the current database transaction by using Rebus' outbox.
+    /// that subsequent send/publish operations with the scope should NOT be enlisted in the current database transaction by using Rebus' outbox.
     /// </summary>
-    public static void UseOutbox(this RebusTransactionScope scope)
+    public static void BypassOutbox(this RebusTransactionScope scope)
     {
         if (scope == null)
         {
             throw new ArgumentNullException(nameof(scope));
         }
 
-        scope.TransactionContext.Items[OutboxTransportDecorator.OutboxEnabledKey] = "";
+        var transactionContext = scope.TransactionContext;
+
+        transactionContext.Items[OutboxTransportDecorator.BypassOutboxKey] = "";
     }
 }

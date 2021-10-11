@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,9 +15,28 @@ namespace Rebus.SqlServer.Outbox
 {
     class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
     {
-        public const string OutboxEnabledKey = "rebus-outbox-enabled";
+        public const string BypassOutboxKey = "rebus-bypass-outbox";
 
-        private readonly CancellationTokenSource _cancellationTokenSource = new();
+        static readonly Retrier SendRetrier = new(new[]
+        {
+            TimeSpan.FromSeconds(0.1),
+            TimeSpan.FromSeconds(0.1),
+            TimeSpan.FromSeconds(0.1),
+            TimeSpan.FromSeconds(0.1),
+            TimeSpan.FromSeconds(0.1),
+            TimeSpan.FromSeconds(0.5),
+            TimeSpan.FromSeconds(0.5),
+            TimeSpan.FromSeconds(0.5),
+            TimeSpan.FromSeconds(0.5),
+            TimeSpan.FromSeconds(0.5),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1),
+        });
+
+        readonly CancellationTokenSource _cancellationTokenSource = new();
         readonly IOutboxStorage _outboxStorage;
         readonly ITransport _transport;
         readonly ILog _logger;
@@ -37,13 +57,13 @@ namespace Rebus.SqlServer.Outbox
 
         public async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
-            if (!context.Items.ContainsKey(OutboxEnabledKey))
+            if (context.Items.ContainsKey(BypassOutboxKey))
             {
                 await _transport.Send(destinationAddress, message, context);
                 return;
             }
 
-            var outgoingMessages = context.GetOrAdd("outbox-messages", () =>
+            var outgoingMessages = context.GetOrAdd("rebus-outbox-messages", () =>
             {
                 var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
 
@@ -62,21 +82,16 @@ namespace Rebus.SqlServer.Outbox
 
                 context.OnCompleted(async => Task.Run(async () =>
                 {
-
+                    //await TryEagerSendingMessageBatch()
                 }));
 
                 return queue;
             });
 
             outgoingMessages.Enqueue(new AbstractRebusTransport.OutgoingMessage(message, destinationAddress));
-
-            //await _transport.Send(destinationAddress, message, context);
         }
 
-        public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
-        {
-            return await _transport.Receive(context, cancellationToken);
-        }
+        public Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken) => _transport.Receive(context, cancellationToken);
 
         public string Address => _transport.Address;
 
@@ -100,7 +115,9 @@ namespace Rebus.SqlServer.Outbox
         {
             _logger.Debug("Checking outbox storage for pending messages");
 
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            var cancellationToken = _cancellationTokenSource.Token;
+
+            while (!cancellationToken.IsCancellationRequested)
             {
                 using var batch = await _outboxStorage.GetNextMessageBatch();
 
@@ -110,20 +127,31 @@ namespace Rebus.SqlServer.Outbox
                     return;
                 }
 
-                _logger.Debug("Sending {count} pending messages", batch.Count());
-
-                using var scope = new RebusTransactionScope();
-
-                foreach (var message in batch)
-                {
-                    await _transport.Send(message.DestinationAddress, message.ToTransportMessage(), scope.TransactionContext);
-                }
-
-                await scope.CompleteAsync();
-                await batch.Complete();
-
-                _logger.Debug("Successfully sent {count} messages", batch.Count());
+                await ProcessMessageBatch(batch, cancellationToken);
             }
+        }
+
+        async Task ProcessMessageBatch(OutboxMessageBatch batch, CancellationToken cancellationToken)
+        {
+            _logger.Debug("Sending {count} pending messages", batch.Count());
+
+            using var scope = new RebusTransactionScope();
+
+            foreach (var message in batch)
+            {
+                var destinationAddress = message.DestinationAddress;
+                var transportMessage = message.ToTransportMessage();
+                var transactionContext = scope.TransactionContext;
+
+                Task SendMessage() => _transport.Send(destinationAddress, transportMessage, transactionContext);
+
+                await SendRetrier.ExecuteAsync(SendMessage, cancellationToken);
+            }
+
+            await scope.CompleteAsync();
+            await batch.Complete();
+
+            _logger.Debug("Successfully sent {count} messages", batch.Count());
         }
 
         async Task RunCleaner()

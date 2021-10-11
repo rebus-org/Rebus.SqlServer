@@ -34,20 +34,10 @@ namespace Rebus.Config.Outbox
 
                 o.Decorate<ITransport>(c => new OutboxTransportDecorator(c.Get<IRebusLoggerFactory>(), c.Get<ITransport>(), c.Get<IOutboxStorage>(), c.Get<IAsyncTaskFactory>()));
 
-                o.Decorate<IPipeline>(c => new PipelineStepConcatenator(c.Get<IPipeline>())
-                    .OnReceive(new EnableOutboxIncomingStep(), PipelineAbsolutePosition.Front));
+                o.Decorate<IPipeline>(c => new PipelineStepConcatenator(c.Get<IPipeline>()));
             });
 
             return configurer;
-        }
-
-        class EnableOutboxIncomingStep : IIncomingStep
-        {
-            public Task Process(IncomingStepContext context, Func<Task> next)
-            {
-                context.Load<ITransactionContext>().Items[OutboxTransportDecorator.OutboxEnabledKey] = null;
-                return next();
-            }
         }
 
         /// <summary>
