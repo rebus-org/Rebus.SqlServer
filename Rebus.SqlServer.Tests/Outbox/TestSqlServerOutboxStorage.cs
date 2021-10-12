@@ -7,7 +7,6 @@ using NUnit.Framework;
 using Rebus.Messages;
 using Rebus.SqlServer.Outbox;
 using Rebus.Tests.Contracts;
-using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Outbox
@@ -24,8 +23,8 @@ namespace Rebus.SqlServer.Tests.Outbox
             const string tableName = "Outbox";
 
             SqlTestHelper.DropAllTables();
-            
-            _storage = new SqlServerOutboxStorage(GetNewDbConnection, new TableName("dbo", tableName), new DefaultRebusTime());
+
+            _storage = new SqlServerOutboxStorage(GetNewDbConnection, new TableName("dbo", tableName));
             _storage.Initialize();
         }
 
@@ -55,7 +54,7 @@ namespace Rebus.SqlServer.Tests.Outbox
 
             using var batch1 = await _storage.GetNextMessageBatch();
             await batch1.Complete();
-            
+
             using var batch2 = await _storage.GetNextMessageBatch();
 
             Assert.That(batch1.Count(), Is.EqualTo(1));

@@ -14,22 +14,12 @@ namespace Rebus.SqlServer.Outbox
         /// in the queue of this particular endpoint. If <paramref name="outgoingMessages"/> is an empty sequence, a note is made of the fact
         /// that the message with ID <paramref name="messageId"/> has been processed.
         /// </summary>
-        Task<string> Save(string messageId, string sourceQueue, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages);
+        Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null);
 
         /// <summary>
-        /// Stores the given <paramref name="outgoingMessages"/> to be sent.
-        /// </summary>
-        Task<string> Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages);
-
-        /// <summary>
-        /// Gets the next message batch to be sent. Returns from 0 to <paramref name="maxMessageBatchSize"/> messages in the batch.
-        /// </summary>
-        Task<OutboxMessageBatch> GetNextMessageBatch(int maxMessageBatchSize = 100);
-
-        /// <summary>
-        /// Gets the next message batch to be sent by correlation ID. MIGHT return messages from other send operations in the rare
+        /// Gets the next message batch to be sent, possibly filtered by the given <paramref name="correlationId"/>. MIGHT return messages from other send operations in the rare
         /// case where there is a colission between correlation IDs. Returns from 0 to <paramref name="maxMessageBatchSize"/> messages in the batch.
         /// </summary>
-        Task<OutboxMessageBatch> GetNextMessageBatch(string correlationId, int maxMessageBatchSize = 100);
+        Task<OutboxMessageBatch> GetNextMessageBatch(string correlationId = null, int maxMessageBatchSize = 100);
     }
 }

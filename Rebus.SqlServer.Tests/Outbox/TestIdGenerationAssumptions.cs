@@ -6,19 +6,27 @@ using NUnit.Framework;
 namespace Rebus.SqlServer.Tests.Outbox;
 
 [TestFixture]
-public class TestGuidAssumptions
+public class TestIdGenerationAssumptions
 {
     [TestCase(4)]
     [TestCase(5)]
     [TestCase(6)]
     [TestCase(7)]
     [TestCase(8)]
+    [TestCase(16)]
     [Repeat(5)]
     public void CheckGuidPrefix(int length) => RunTest(() => Guid.NewGuid().ToString("N").Substring(0, length));
 
     [Test]
     [Repeat(5)]
     public void CheckTimestampHashCode() => RunTest(() => DateTime.Now.GetHashCode().ToString(CultureInfo.InvariantCulture));
+
+    [Test]
+    public void CheckLengthOfIntegers()
+    {
+        Console.WriteLine(int.MaxValue);
+        Console.WriteLine(int.MaxValue.ToString().Length);
+    }
 
     static void RunTest(Func<string> getNextId)
     {

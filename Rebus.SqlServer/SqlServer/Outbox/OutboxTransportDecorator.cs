@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Threading;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Outbox
@@ -65,6 +67,7 @@ namespace Rebus.SqlServer.Outbox
             var outgoingMessages = context.GetOrAdd("rebus-outbox-messages", () =>
             {
                 var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
+                var correlationId = Guid.NewGuid().ToString("N").Substring(0, 16);
 
                 // if we're currently handling a message, we get information about it here
                 if (context.Items.TryGetValue("stepContext", out var result) && result is IncomingStepContext stepContext)
@@ -74,39 +77,52 @@ namespace Rebus.SqlServer.Outbox
 
                     context.OnCommitted(async _ =>
                     {
-                        var correlationId = await _outboxStorage.Save(messageId, sourceQueue, queue);
-                        context.Items["rebus-outbox-correlation-id"] = correlationId;
+                        if (!queue.Any()) return;
+
+                        await _outboxStorage.Save(
+                            outgoingMessages: queue,
+                            messageId: messageId,
+                            sourceQueue: sourceQueue,
+                            correlationId
+                        );
                     });
                 }
                 else
                 {
                     context.OnCommitted(async _ =>
                     {
-                        var correlationId = await _outboxStorage.Save(queue);
-                        context.Items["rebus-outbox-correlation-id"] = correlationId;
+                        if (!queue.Any()) return;
+
+                        await _outboxStorage.Save(
+                            outgoingMessages: queue,
+                            correlationId: correlationId
+                        );
                     });
                 }
 
-                context.OnCompleted(async => Task.Run(async () =>
+                // here, we intentionally kick off an async task to try to eager-send the messages that were just sent
+#pragma warning disable CS4014
+                context.OnCompleted(_ =>
                 {
-                    if (!context.Items.TryGetValue("rebus-outbox-correlation-id", out var result)) return;
-                    if (!(result is string correlationId)) return;
+                    if (!queue.Any()) return Task.CompletedTask;
 
-                    try
+                    Task.Run(async () =>
                     {
-                        using var scope = new RebusTransactionScope();
+                        try
+                        {
+                            using var batch = await _outboxStorage.GetNextMessageBatch(correlationId);
 
-                        var batch = await _outboxStorage.GetNextMessageBatch(correlationId);
+                            await ProcessMessageBatch(batch, _cancellationTokenSource.Token);
+                        }
+                        catch (Exception)
+                        {
+                            // just leave sending to the background sender
+                        }
+                    });
 
-                        await ProcessMessageBatch(batch, _cancellationTokenSource.Token);
-
-                        await scope.CompleteAsync();
-                    }
-                    catch (Exception)
-                    {
-                        // just leave sending to the background sender
-                    }
-                }));
+                    return Task.CompletedTask;
+                });
+#pragma warning restore CS4014
 
                 return queue;
             });

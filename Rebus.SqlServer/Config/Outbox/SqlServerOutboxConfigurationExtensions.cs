@@ -33,7 +33,19 @@ namespace Rebus.Config.Outbox
                 // if no outbox storage was registered, no further calls must have been made... that's ok, so we just bail out here
                 if (!o.Has<IOutboxStorage>()) return;
 
-                o.Decorate<ITransport>(c => new OutboxTransportDecorator(c.Get<IRebusLoggerFactory>(), c.Get<ITransport>(), c.Get<IOutboxStorage>(), c.Get<IAsyncTaskFactory>()));
+                o.Decorate<ITransport>(c =>
+                {
+                    var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                    var transport = c.Get<ITransport>();
+                    var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                    var outboxStorage = c.Get<IOutboxStorage>();
+                    return new OutboxTransportDecorator(
+                        rebusLoggerFactory,
+                        transport,
+                        outboxStorage,
+                        asyncTaskFactory
+                    );
+                });
 
                 o.Decorate<IPipeline>(c => new PipelineStepConcatenator(c.Get<IPipeline>()));
             });
@@ -62,7 +74,7 @@ namespace Rebus.Config.Outbox
                 }
             }
 
-            configurer.Register(c => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName), c.Get<IRebusTime>()));
+            configurer.Register(c => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
         }
 
         /// <summary>
@@ -72,7 +84,7 @@ namespace Rebus.Config.Outbox
         /// </summary>
         public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<ITransactionContext, IDbConnection> connectionProvider, string tableName)
         {
-            configurer.Register(c => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName), c.Get<IRebusTime>()));
+            configurer.Register(c => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
         }
     }
 }

@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebus.Bus;
 using Rebus.Serialization;
-using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Outbox
@@ -19,16 +17,14 @@ namespace Rebus.SqlServer.Outbox
         static readonly HeaderSerializer HeaderSerializer = new();
         readonly Func<ITransactionContext, IDbConnection> _connectionProvider;
         readonly TableName _tableName;
-        readonly IRebusTime _rebusTime;
 
         /// <summary>
         /// Creates the outbox storage
         /// </summary>
-        public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName, IRebusTime rebusTime)
+        public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName)
         {
             _connectionProvider = connectionProvider;
             _tableName = tableName;
-            _rebusTime = rebusTime;
         }
 
         /// <summary>
@@ -50,7 +46,7 @@ namespace Rebus.SqlServer.Outbox
                     command.CommandText = $@"
 CREATE TABLE {_tableName} (
     [Id] bigint identity(1,1),
-    [CorrelationId] int not null,
+    [CorrelationId] nvarchar(16) null,
     [MessageId] nvarchar(255) null,
     [SourceQueue] nvarchar(255) null,
     [DestinationAddress] nvarchar(255) not null,
@@ -83,37 +79,20 @@ CREATE TABLE {_tableName} (
         /// in the queue of this particular endpoint. If <paramref name="outgoingMessages"/> is an empty sequence, a note is made of the fact
         /// that the message with ID <paramref name="messageId"/> has been processed.
         /// </summary>
-        public async Task<string> Save(string messageId, string sourceQueue, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
-        {
-            if (messageId == null) throw new ArgumentNullException(nameof(messageId));
-            if (sourceQueue == null) throw new ArgumentNullException(nameof(sourceQueue));
-            if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
-
-            return await InnerSave(outgoingMessages, messageId, sourceQueue);
-        }
-
-        /// <summary>
-        /// Stores the given <paramref name="outgoingMessages"/> to be sent.
-        /// </summary>
-        public async Task<string> Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
+        public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
         {
             if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
 
-            return await InnerSave(outgoingMessages);
+            await InnerSave(outgoingMessages, messageId, sourceQueue, correlationId);
         }
 
         /// <inheritdoc />
-        public async Task<OutboxMessageBatch> GetNextMessageBatch(int maxMessageBatchSize = 100)
+        public async Task<OutboxMessageBatch> GetNextMessageBatch(string correlationId = null, int maxMessageBatchSize = 100)
         {
-            return await InnerGetMessageBatch(maxMessageBatchSize);
+            return await InnerGetMessageBatch(maxMessageBatchSize, correlationId);
         }
 
-        public async Task<OutboxMessageBatch> GetNextMessageBatch(string correlationId, int maxMessageBatchSize = 100)
-        {
-            return await InnerGetMessageBatch(maxMessageBatchSize);
-        }
-
-        async Task<OutboxMessageBatch> InnerGetMessageBatch(int maxMessageBatchSize)
+        async Task<OutboxMessageBatch> InnerGetMessageBatch(int maxMessageBatchSize, string correlationId)
         {
             if (maxMessageBatchSize <= 0)
             {
@@ -139,7 +118,7 @@ CREATE TABLE {_tableName} (
 
                 try
                 {
-                    var messages = await GetOutboxMessages(connection, maxMessageBatchSize);
+                    var messages = await GetOutboxMessages(connection, maxMessageBatchSize, correlationId);
 
                     // bail out if no messages were found
                     if (!messages.Any()) return OutboxMessageBatch.Empty(Dispose);
@@ -167,11 +146,8 @@ CREATE TABLE {_tableName} (
             }
         }
 
-        async Task<string> InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null)
+        async Task InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId, string sourceQueue, string correlationId)
         {
-            // semi-unique correlation ID
-            var correlationId = _rebusTime.Now.Ticks.GetHashCode();
-
             using var scope = new RebusTransactionScope();
             using var connection = _connectionProvider(scope.TransactionContext);
 
@@ -184,7 +160,7 @@ CREATE TABLE {_tableName} (
                 var headers = SerializeHeaders(transportMessage.Headers);
 
                 command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @headers, @body)";
-                command.Parameters.Add("correlationId", SqlDbType.Int).Value = correlationId;
+                command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = (object)correlationId ?? DBNull.Value;
                 command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = (object)messageId ?? DBNull.Value;
                 command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = (object)sourceQueue ?? DBNull.Value;
                 command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = message.DestinationAddress;
@@ -196,8 +172,6 @@ CREATE TABLE {_tableName} (
 
             await connection.Complete();
             await scope.CompleteAsync();
-
-            return correlationId.ToString(CultureInfo.InvariantCulture);
         }
 
         async Task CompleteMessages(IDbConnection connection, IEnumerable<OutboxMessage> messages)
@@ -212,11 +186,20 @@ CREATE TABLE {_tableName} (
             await command.ExecuteNonQueryAsync();
         }
 
-        async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection, int maxMessageBatchSize)
+        async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection, int maxMessageBatchSize, string correlationId)
         {
             using var command = connection.CreateCommand();
 
-            command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 0 ORDER BY [Id]";
+
+            if (correlationId != null)
+            {
+                command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [CorrelationId] = @correlationId [Sent] = 0 ORDER BY [Id]";
+                command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = correlationId;
+            }
+            else
+            {
+                command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 0 ORDER BY [Id]";
+            }
 
             using var reader = await command.ExecuteReaderAsync();
 
