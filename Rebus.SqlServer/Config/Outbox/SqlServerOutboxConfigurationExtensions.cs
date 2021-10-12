@@ -6,6 +6,7 @@ using Rebus.Pipeline;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
 using Rebus.Threading;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.Config.Outbox
@@ -61,7 +62,7 @@ namespace Rebus.Config.Outbox
                 }
             }
 
-            configurer.Register(_ => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
+            configurer.Register(c => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName), c.Get<IRebusTime>()));
         }
 
         /// <summary>
@@ -71,7 +72,7 @@ namespace Rebus.Config.Outbox
         /// </summary>
         public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<ITransactionContext, IDbConnection> connectionProvider, string tableName)
         {
-            configurer.Register(_ => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
+            configurer.Register(c => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName), c.Get<IRebusTime>()));
         }
     }
 }

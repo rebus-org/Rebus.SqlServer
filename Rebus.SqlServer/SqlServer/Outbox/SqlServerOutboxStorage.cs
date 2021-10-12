@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebus.Bus;
 using Rebus.Serialization;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Outbox
@@ -17,14 +19,16 @@ namespace Rebus.SqlServer.Outbox
         static readonly HeaderSerializer HeaderSerializer = new();
         readonly Func<ITransactionContext, IDbConnection> _connectionProvider;
         readonly TableName _tableName;
+        readonly IRebusTime _rebusTime;
 
         /// <summary>
         /// Creates the outbox storage
         /// </summary>
-        public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName)
+        public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName, IRebusTime rebusTime)
         {
             _connectionProvider = connectionProvider;
             _tableName = tableName;
+            _rebusTime = rebusTime;
         }
 
         /// <summary>
@@ -46,6 +50,7 @@ namespace Rebus.SqlServer.Outbox
                     command.CommandText = $@"
 CREATE TABLE {_tableName} (
     [Id] bigint identity(1,1),
+    [CorrelationId] int not null,
     [MessageId] nvarchar(255) null,
     [SourceQueue] nvarchar(255) null,
     [DestinationAddress] nvarchar(255) not null,
@@ -78,27 +83,37 @@ CREATE TABLE {_tableName} (
         /// in the queue of this particular endpoint. If <paramref name="outgoingMessages"/> is an empty sequence, a note is made of the fact
         /// that the message with ID <paramref name="messageId"/> has been processed.
         /// </summary>
-        public async Task Save(string messageId, string sourceQueue, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
+        public async Task<string> Save(string messageId, string sourceQueue, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
         {
             if (messageId == null) throw new ArgumentNullException(nameof(messageId));
             if (sourceQueue == null) throw new ArgumentNullException(nameof(sourceQueue));
             if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
 
-            await InnerSave(outgoingMessages, messageId, sourceQueue);
+            return await InnerSave(outgoingMessages, messageId, sourceQueue);
         }
 
         /// <summary>
         /// Stores the given <paramref name="outgoingMessages"/> to be sent.
         /// </summary>
-        public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
+        public async Task<string> Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
         {
             if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
 
-            await InnerSave(outgoingMessages);
+            return await InnerSave(outgoingMessages);
         }
 
         /// <inheritdoc />
         public async Task<OutboxMessageBatch> GetNextMessageBatch(int maxMessageBatchSize = 100)
+        {
+            return await InnerGetMessageBatch(maxMessageBatchSize);
+        }
+
+        public async Task<OutboxMessageBatch> GetNextMessageBatch(string correlationId, int maxMessageBatchSize = 100)
+        {
+            return await InnerGetMessageBatch(maxMessageBatchSize);
+        }
+
+        async Task<OutboxMessageBatch> InnerGetMessageBatch(int maxMessageBatchSize)
         {
             if (maxMessageBatchSize <= 0)
             {
@@ -152,8 +167,11 @@ CREATE TABLE {_tableName} (
             }
         }
 
-        async Task InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null)
+        async Task<string> InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null)
         {
+            // semi-unique correlation ID
+            var correlationId = _rebusTime.Now.Ticks.GetHashCode();
+
             using var scope = new RebusTransactionScope();
             using var connection = _connectionProvider(scope.TransactionContext);
 
@@ -165,9 +183,10 @@ CREATE TABLE {_tableName} (
                 var body = message.TransportMessage.Body;
                 var headers = SerializeHeaders(transportMessage.Headers);
 
-                command.CommandText = $"INSERT INTO {_tableName} ([MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@messageId, @sourceQueue, @destinationAddress, @headers, @body)";
-                command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = DBNull.Value;
-                command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = DBNull.Value;
+                command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @headers, @body)";
+                command.Parameters.Add("correlationId", SqlDbType.Int).Value = correlationId;
+                command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = (object)messageId ?? DBNull.Value;
+                command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = (object)sourceQueue ?? DBNull.Value;
                 command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = message.DestinationAddress;
                 command.Parameters.Add("headers", SqlDbType.NVarChar, headers.Length.RoundUpToNextPowerOfTwo()).Value = headers;
                 command.Parameters.Add("body", SqlDbType.VarBinary, body.Length.RoundUpToNextPowerOfTwo()).Value = body;
@@ -177,6 +196,8 @@ CREATE TABLE {_tableName} (
 
             await connection.Complete();
             await scope.CompleteAsync();
+
+            return correlationId.ToString(CultureInfo.InvariantCulture);
         }
 
         async Task CompleteMessages(IDbConnection connection, IEnumerable<OutboxMessage> messages)

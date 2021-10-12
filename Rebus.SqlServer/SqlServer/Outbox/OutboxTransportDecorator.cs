@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -73,16 +72,40 @@ namespace Rebus.SqlServer.Outbox
                     var messageId = stepContext.Load<TransportMessage>().GetMessageId();
                     var sourceQueue = _transport.Address;
 
-                    context.OnCommitted(async _ => await _outboxStorage.Save(messageId, sourceQueue, queue));
+                    context.OnCommitted(async _ =>
+                    {
+                        var correlationId = await _outboxStorage.Save(messageId, sourceQueue, queue);
+                        context.Items["rebus-outbox-correlation-id"] = correlationId;
+                    });
                 }
                 else
                 {
-                    context.OnCommitted(async _ => await _outboxStorage.Save(queue));
+                    context.OnCommitted(async _ =>
+                    {
+                        var correlationId = await _outboxStorage.Save(queue);
+                        context.Items["rebus-outbox-correlation-id"] = correlationId;
+                    });
                 }
 
                 context.OnCompleted(async => Task.Run(async () =>
                 {
-                    //await TryEagerSendingMessageBatch()
+                    if (!context.Items.TryGetValue("rebus-outbox-correlation-id", out var result)) return;
+                    if (!(result is string correlationId)) return;
+
+                    try
+                    {
+                        using var scope = new RebusTransactionScope();
+
+                        var batch = await _outboxStorage.GetNextMessageBatch(correlationId);
+
+                        await ProcessMessageBatch(batch, _cancellationTokenSource.Token);
+
+                        await scope.CompleteAsync();
+                    }
+                    catch (Exception)
+                    {
+                        // just leave sending to the background sender
+                    }
                 }));
 
                 return queue;

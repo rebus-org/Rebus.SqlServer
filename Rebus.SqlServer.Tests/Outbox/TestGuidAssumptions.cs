@@ -20,7 +20,7 @@ public class TestGuidAssumptions
     [Repeat(5)]
     public void CheckTimestampHashCode() => RunTest(() => DateTime.Now.GetHashCode().ToString(CultureInfo.InvariantCulture));
 
-    private static void RunTest(Func<string> getNextId)
+    static void RunTest(Func<string> getNextId)
     {
         var ids = new HashSet<string>();
 
@@ -36,9 +36,9 @@ public class TestGuidAssumptions
 
             ids.Add(id);
 
-            if (ids.Count == 10 * 1000 * 1000)
+            if (ids.Count == 1000 * 1000)
             {
-                Console.WriteLine("OK that was 10M - quitting");
+                Console.WriteLine("OK that was 1M - quitting");
                 return;
             }
         }

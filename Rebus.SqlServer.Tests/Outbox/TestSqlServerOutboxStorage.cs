@@ -7,6 +7,7 @@ using NUnit.Framework;
 using Rebus.Messages;
 using Rebus.SqlServer.Outbox;
 using Rebus.Tests.Contracts;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Outbox
@@ -24,7 +25,7 @@ namespace Rebus.SqlServer.Tests.Outbox
 
             SqlTestHelper.DropAllTables();
             
-            _storage = new SqlServerOutboxStorage(GetNewDbConnection, new TableName("dbo", tableName));
+            _storage = new SqlServerOutboxStorage(GetNewDbConnection, new TableName("dbo", tableName), new DefaultRebusTime());
             _storage.Initialize();
         }
 
