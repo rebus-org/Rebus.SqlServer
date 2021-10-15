@@ -1,0 +1,35 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <p>...or type some text and click this button for fun:</p>
+    <p>
+        <input id="messagetext" type="text"/>
+        <button id="funbutton">Send text 👉 🚌</button>
+    </p>
+    <p id="statusmessages">
+
+    </p>
+</div>
+
+@section Scripts
+{
+    <script>
+        $(function() {
+            $("#funbutton").click(function() {
+                var text = $("#messagetext").val();
+
+                $.post({
+                    url: "send-message",
+                    contentType: "application/json",
+                    data: JSON.stringify({ message: text  })
+                });
+
+                $("#statusmessages").append("<p>Successfully sent the text '" + text + "'</p>");
+            });
+        });
+    </script>
+}

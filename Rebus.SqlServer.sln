@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29215.179
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31717.71
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "stuff", "stuff", "{1ABDD7C1-1F8D-402D-8692-3E4B66962DE0}"
 	ProjectSection(SolutionItems) = preProject
@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RebusOutboxWebApp", "RebusOutboxWebApp\RebusOutboxWebApp.csproj", "{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7EFCAF69-991E-4991-A03B-077BE4B9952A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
