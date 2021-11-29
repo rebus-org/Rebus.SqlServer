@@ -6,88 +6,87 @@ using Rebus.SqlServer.Timeouts;
 using Rebus.Time;
 using Rebus.Timeouts;
 
-namespace Rebus.Config
+namespace Rebus.Config;
+
+/// <summary>
+/// Configuration extensions for configuring SQL persistence for sagas, subscriptions, and timeouts.
+/// </summary>
+public static class SqlServerTimeoutsConfigurationExtensions
 {
     /// <summary>
-    /// Configuration extensions for configuring SQL persistence for sagas, subscriptions, and timeouts.
+    /// Configures Rebus to use SQL Server to store timeouts.
     /// </summary>
-    public static class SqlServerTimeoutsConfigurationExtensions
+    public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer,
+        string connectionString, string tableName, bool automaticallyCreateTables = true, bool enlistInAmbientTransaction = false)
     {
-        /// <summary>
-        /// Configures Rebus to use SQL Server to store timeouts.
-        /// </summary>
-        public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer,
-            string connectionString, string tableName, bool automaticallyCreateTables = true, bool enlistInAmbientTransaction = false)
+        if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+        if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
+        if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+        configurer.Register(c =>
         {
-            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
-            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
-            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+            var rebusTime = c.Get<IRebusTime>();
+            var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+            var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
+            var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
-            configurer.Register(c =>
+            if (automaticallyCreateTables)
             {
-                var rebusTime = c.Get<IRebusTime>();
-                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
-                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+                subscriptionStorage.EnsureTableIsCreated();
+            }
 
-                if (automaticallyCreateTables)
-                {
-                    subscriptionStorage.EnsureTableIsCreated();
-                }
+            return subscriptionStorage;
+        });
+    }
 
-                return subscriptionStorage;
-            });
-        }
+    /// <summary>
+    /// Configures Rebus to use SQL Server to store timeouts.
+    /// </summary>
+    public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer,
+        Func<Task<IDbConnection>> connectionFactory, string tableName, bool automaticallyCreateTables = true)
+    {
+        if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+        if (connectionFactory == null) throw new ArgumentNullException(nameof(connectionFactory));
+        if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-        /// <summary>
-        /// Configures Rebus to use SQL Server to store timeouts.
-        /// </summary>
-        public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer,
-            Func<Task<IDbConnection>> connectionFactory, string tableName, bool automaticallyCreateTables = true)
+        configurer.Register(c =>
         {
-            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
-            if (connectionFactory == null) throw new ArgumentNullException(nameof(connectionFactory));
-            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+            var rebusTime = c.Get<IRebusTime>();
+            var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+            var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
+            var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
-            configurer.Register(c =>
+            if (automaticallyCreateTables)
             {
-                var rebusTime = c.Get<IRebusTime>();
-                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
-                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+                subscriptionStorage.EnsureTableIsCreated();
+            }
 
-                if (automaticallyCreateTables)
-                {
-                    subscriptionStorage.EnsureTableIsCreated();
-                }
+            return subscriptionStorage;
+        });
+    }
 
-                return subscriptionStorage;
-            });
-        }
+    /// <summary>
+    /// Configures Rebus to use SQL Server to store timeouts.
+    /// </summary>
+    public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer, SqlServerTimeoutManagerOptions options, string tableName)
+    {
+        if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+        if (options == null) throw new ArgumentNullException(nameof(options));
+        if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-        /// <summary>
-        /// Configures Rebus to use SQL Server to store timeouts.
-        /// </summary>
-        public static void StoreInSqlServer(this StandardConfigurer<ITimeoutManager> configurer, SqlServerTimeoutManagerOptions options, string tableName)
+        configurer.Register(c =>
         {
-            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
-            if (options == null) throw new ArgumentNullException(nameof(options));
-            if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+            var rebusTime = c.Get<IRebusTime>();
+            var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+            var connectionProvider = options.ConnectionProviderFactory(c);
+            var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
-            configurer.Register(c =>
+            if (options.EnsureTablesAreCreated)
             {
-                var rebusTime = c.Get<IRebusTime>();
-                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var connectionProvider = options.ConnectionProviderFactory(c);
-                var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+                subscriptionStorage.EnsureTableIsCreated();
+            }
 
-                if (options.EnsureTablesAreCreated)
-                {
-                    subscriptionStorage.EnsureTableIsCreated();
-                }
-
-                return subscriptionStorage;
-            });
-        }
+            return subscriptionStorage;
+        });
     }
 }

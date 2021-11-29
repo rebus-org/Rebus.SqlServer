@@ -9,98 +9,97 @@ using Rebus.SqlServer.Sagas;
 using Rebus.SqlServer.Sagas.Serialization;
 using Rebus.Tests.Contracts;
 
-namespace Rebus.SqlServer.Tests.Sagas
+namespace Rebus.SqlServer.Tests.Sagas;
+
+[TestFixture]
+public class TestSqlServerSagaStoragePerformance : FixtureBase
 {
-    [TestFixture]
-    public class TestSqlServerSagaStoragePerformance : FixtureBase
+    SqlServerSagaStorage _storage;
+
+    protected override void SetUp()
     {
-        SqlServerSagaStorage _storage;
-
-        protected override void SetUp()
-        {
-            var loggerFactory = new ConsoleLoggerFactory(false);
-            var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
-            var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
-            var serializer = new DefaultSagaSerializer();
+        var loggerFactory = new ConsoleLoggerFactory(false);
+        var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
+        var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
+        var serializer = new DefaultSagaSerializer();
             
-            var dataTableName = TestConfig.GetName("sagas");
-            var indexTableName = TestConfig.GetName("sagaindex");
+        var dataTableName = TestConfig.GetName("sagas");
+        var indexTableName = TestConfig.GetName("sagaindex");
 
-            SqlTestHelper.DropTable(indexTableName);
-            SqlTestHelper.DropTable(dataTableName);
+        SqlTestHelper.DropTable(indexTableName);
+        SqlTestHelper.DropTable(dataTableName);
 
-            _storage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, loggerFactory, sagaTypeNamingStrategy, serializer);
+        _storage = new SqlServerSagaStorage(connectionProvider, dataTableName, indexTableName, loggerFactory, sagaTypeNamingStrategy, serializer);
 
-            _storage.EnsureTablesAreCreated();
-        }
+        _storage.EnsureTablesAreCreated();
+    }
 
-        [Test]
-        public async Task TimeToInsertBigSaga()
+    [Test]
+    public async Task TimeToInsertBigSaga()
+    {
+        var sagaData = GetSagaData();
+
+        var elapsed = await TakeTime(async () =>
         {
-            var sagaData = GetSagaData();
-
-            var elapsed = await TakeTime(async () =>
-            {
-                await _storage.Insert(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
-            });
-
-            Console.WriteLine($"Inserting saga data with {sagaData.BigString.Length} chars took {elapsed.TotalSeconds:0.0} s");
-        }
-
-        [Test]
-        public async Task TimeToLoadBigSaga()
-        {
-            var sagaData = GetSagaData();
-
             await _storage.Insert(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
+        });
 
-            var elapsed = await TakeTime(async () =>
-            {
-                var loadedData = await _storage.Find(typeof(BigStringSagaData), "Id", sagaData.Id.ToString());
+        Console.WriteLine($"Inserting saga data with {sagaData.BigString.Length} chars took {elapsed.TotalSeconds:0.0} s");
+    }
 
-                Console.WriteLine(loadedData.Id.ToString());
-            });
+    [Test]
+    public async Task TimeToLoadBigSaga()
+    {
+        var sagaData = GetSagaData();
 
-            Console.WriteLine($"Loading saga data with {sagaData.BigString.Length} chars took {elapsed.TotalSeconds:0.00} s");
-        }
+        await _storage.Insert(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
 
-        [Test]
-        public async Task TimeToUpdateBigSaga()
+        var elapsed = await TakeTime(async () =>
         {
-            var sagaData = GetSagaData();
+            var loadedData = await _storage.Find(typeof(BigStringSagaData), "Id", sagaData.Id.ToString());
 
-            await _storage.Insert(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
+            Console.WriteLine(loadedData.Id.ToString());
+        });
 
-            var elapsed = await TakeTime(async () =>
-            {
-                await _storage.Update(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
-            });
+        Console.WriteLine($"Loading saga data with {sagaData.BigString.Length} chars took {elapsed.TotalSeconds:0.00} s");
+    }
 
-            Console.WriteLine($"Updating saga data with {sagaData.BigString.Length} chars took {elapsed.TotalSeconds:0.0} s");
-        }
+    [Test]
+    public async Task TimeToUpdateBigSaga()
+    {
+        var sagaData = GetSagaData();
 
-        async Task<TimeSpan> TakeTime(Func<Task> asyncAction)
+        await _storage.Insert(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
+
+        var elapsed = await TakeTime(async () =>
         {
-            var stopwatch = Stopwatch.StartNew();
-            await asyncAction();
-            return stopwatch.Elapsed;
-        }
+            await _storage.Update(sagaData, Enumerable.Empty<ISagaCorrelationProperty>());
+        });
 
-        static BigStringSagaData GetSagaData()
-        {
-            return new BigStringSagaData
-            {
-                Id = Guid.NewGuid(),
-                Revision = 0,
-                BigString = string.Join(Environment.NewLine, Enumerable.Repeat("this is just a line of text", 100000))
-            };
-        }
+        Console.WriteLine($"Updating saga data with {sagaData.BigString.Length} chars took {elapsed.TotalSeconds:0.0} s");
+    }
 
-        class BigStringSagaData : ISagaData
+    async Task<TimeSpan> TakeTime(Func<Task> asyncAction)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        await asyncAction();
+        return stopwatch.Elapsed;
+    }
+
+    static BigStringSagaData GetSagaData()
+    {
+        return new BigStringSagaData
         {
-            public Guid Id { get; set; }
-            public int Revision { get; set; }
-            public string BigString { get; set; }
-        }
+            Id = Guid.NewGuid(),
+            Revision = 0,
+            BigString = string.Join(Environment.NewLine, Enumerable.Repeat("this is just a line of text", 100000))
+        };
+    }
+
+    class BigStringSagaData : ISagaData
+    {
+        public Guid Id { get; set; }
+        public int Revision { get; set; }
+        public string BigString { get; set; }
     }
 }

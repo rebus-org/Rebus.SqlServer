@@ -3,25 +3,24 @@ using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
 
-namespace Rebus.SqlServer.Tests.Bugs
+namespace Rebus.SqlServer.Tests.Bugs;
+
+[TestFixture]
+public class TestErrorMessageWhenUsingSqlTransportAndRegisteringTimeoutManager
 {
-    [TestFixture]
-    public class TestErrorMessageWhenUsingSqlTransportAndRegisteringTimeoutManager
+    [Test]
+    public void PrintException()
     {
-        [Test]
-        public void PrintException()
+        try
         {
-            try
-            {
-                Configure.With(new BuiltinHandlerActivator())
-                    .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), "whatever"))
-                    .Timeouts(t => t.StoreInSqlServer(SqlTestHelper.ConnectionString, "timeouts"))
-                    .Start();
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception);
-            }
+            Configure.With(new BuiltinHandlerActivator())
+                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), "whatever"))
+                .Timeouts(t => t.StoreInSqlServer(SqlTestHelper.ConnectionString, "timeouts"))
+                .Start();
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine(exception);
         }
     }
 }

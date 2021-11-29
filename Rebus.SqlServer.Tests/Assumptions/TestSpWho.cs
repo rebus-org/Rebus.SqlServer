@@ -2,26 +2,25 @@
 using System.Linq;
 using NUnit.Framework;
 
-namespace Rebus.SqlServer.Tests.Assumptions
+namespace Rebus.SqlServer.Tests.Assumptions;
+
+[TestFixture]
+[Ignore("run if you must")]
+public class TestSpWho
 {
-    [TestFixture]
-    [Ignore("run if you must")]
-    public class TestSpWho
+    [Test]
+    public void DropTableThatDoesNotExist()
     {
-        [Test]
-        public void DropTableThatDoesNotExist()
-        {
-            SqlTestHelper.DropTable("bimse");
-        }
+        SqlTestHelper.DropTable("bimse");
+    }
 
-        [Test]
-        public void CanGetActiveConnections()
-        {
-            var who = SqlTestHelper.ExecSpWho();
+    [Test]
+    public void CanGetActiveConnections()
+    {
+        var who = SqlTestHelper.ExecSpWho();
 
-            Console.WriteLine(string.Join(Environment.NewLine,
-                who.Select(d => string.Join(", ", d.Select(kvp => $"{kvp.Key} = {kvp.Value}")))));
+        Console.WriteLine(string.Join(Environment.NewLine,
+            who.Select(d => string.Join(", ", d.Select(kvp => $"{kvp.Key} = {kvp.Value}")))));
 
-        }
     }
 }

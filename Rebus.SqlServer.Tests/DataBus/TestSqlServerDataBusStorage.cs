@@ -12,31 +12,31 @@ using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Time;
 
-namespace Rebus.SqlServer.Tests.DataBus
+namespace Rebus.SqlServer.Tests.DataBus;
+
+[TestFixture]
+public class TestSqlServerDataBusStorage : FixtureBase
 {
-    [TestFixture]
-    public class TestSqlServerDataBusStorage : FixtureBase
+    SqlServerDataBusStorage _storage;
+
+    protected override void SetUp()
     {
-        SqlServerDataBusStorage _storage;
+        var rebusTime = new DefaultRebusTime();
+        var loggerFactory = new ConsoleLoggerFactory(false);
+        var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
 
-        protected override void SetUp()
-        {
-            var rebusTime = new DefaultRebusTime();
-            var loggerFactory = new ConsoleLoggerFactory(false);
-            var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
+        var tableName = TestConfig.GetName("data");
 
-            var tableName = TestConfig.GetName("data");
+        SqlTestHelper.DropTable(tableName);
 
-            SqlTestHelper.DropTable(tableName);
+        _storage = new SqlServerDataBusStorage(connectionProvider, tableName, true, loggerFactory, rebusTime, 240);
+        _storage.Initialize();
+    }
 
-            _storage = new SqlServerDataBusStorage(connectionProvider, tableName, true, loggerFactory, rebusTime, 240);
-            _storage.Initialize();
-        }
-
-        [Test]
-        public async Task CanReadDataInParallel()
-        {
-            var longString = string.Concat(Enumerable.Repeat(@"
+    [Test]
+    public async Task CanReadDataInParallel()
+    {
+        var longString = string.Concat(Enumerable.Repeat(@"
 
 Let me explain something to you. Um, I am not ""Mr.Lebowski"". 
 
@@ -48,56 +48,55 @@ You know, that or, uh, His Dudeness, or uh, Duder, or El Duderino if you're not 
 
 ", 100));
 
-            const string dataId = "known-id";
+        const string dataId = "known-id";
 
-            using (var source = new MemoryStream(Encoding.UTF8.GetBytes(longString)))
+        using (var source = new MemoryStream(Encoding.UTF8.GetBytes(longString)))
+        {
+            await _storage.Save(dataId, source);
+        }
+
+        var caughtExceptions = new ConcurrentQueue<Exception>();
+
+        Console.WriteLine("Reading the data many times in parallel");
+        var threads = Enumerable.Range(0, 10)
+            .Select(i =>
             {
-                await _storage.Save(dataId, source);
-            }
-
-            var caughtExceptions = new ConcurrentQueue<Exception>();
-
-            Console.WriteLine("Reading the data many times in parallel");
-            var threads = Enumerable.Range(0, 10)
-                .Select(i =>
+                var thread = new Thread(() =>
                 {
-                    var thread = new Thread(() =>
+                    100.Times(() =>
                     {
-                        100.Times(() =>
+                        Console.Write(".");
+                        try
                         {
-                            Console.Write(".");
-                            try
-                            {
-                                using var source = _storage.Read(dataId).Result;
-                                using var destination = new MemoryStream();
-                                source.CopyTo(destination);
-                            }
-                            catch (Exception exception)
-                            {
-                                caughtExceptions.Enqueue(exception);
-                            }
-                        });
+                            using var source = _storage.Read(dataId).Result;
+                            using var destination = new MemoryStream();
+                            source.CopyTo(destination);
+                        }
+                        catch (Exception exception)
+                        {
+                            caughtExceptions.Enqueue(exception);
+                        }
                     });
+                });
 
-                    return thread;
-                })
-                .ToList();
+                return thread;
+            })
+            .ToList();
 
-            Console.WriteLine("Starting threads");
-            threads.ForEach(t => t.Start());
+        Console.WriteLine("Starting threads");
+        threads.ForEach(t => t.Start());
 
-            Console.WriteLine("Waiting for them to finish");
-            threads.ForEach(t => t.Join());
+        Console.WriteLine("Waiting for them to finish");
+        threads.ForEach(t => t.Join());
 
-            Console.WriteLine("Finished :)");
+        Console.WriteLine("Finished :)");
 
-            if (caughtExceptions.Count > 0)
-            {
-                Assert.Fail($@"Caught {caughtExceptions.Count} exceptions - here's the first 5:
+        if (caughtExceptions.Count > 0)
+        {
+            Assert.Fail($@"Caught {caughtExceptions.Count} exceptions - here's the first 5:
 
 {string.Join(Environment.NewLine + Environment.NewLine, caughtExceptions.Take(5))}");
-            }
-
         }
+
     }
 }

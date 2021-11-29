@@ -4,38 +4,37 @@ using Rebus.SqlServer.Timeouts;
 using Rebus.Tests.Contracts.Timeouts;
 using Rebus.Timeouts;
 
-namespace Rebus.SqlServer.Tests.Timeouts
+namespace Rebus.SqlServer.Tests.Timeouts;
+
+public class SqlServerTimeoutManagerFactory : ITimeoutManagerFactory
 {
-    public class SqlServerTimeoutManagerFactory : ITimeoutManagerFactory
+    const string TableName = "RebusTimeouts";
+
+    readonly FakeRebusTime _fakeRebusTime = new FakeRebusTime();
+
+    public ITimeoutManager Create()
     {
-        const string TableName = "RebusTimeouts";
+        var consoleLoggerFactory = new ConsoleLoggerFactory(true);
+        var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
+        var timeoutManager = new SqlServerTimeoutManager(connectionProvider, TableName, consoleLoggerFactory, _fakeRebusTime);
 
-        readonly FakeRebusTime _fakeRebusTime = new FakeRebusTime();
+        timeoutManager.EnsureTableIsCreated();
 
-        public ITimeoutManager Create()
-        {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(true);
-            var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
-            var timeoutManager = new SqlServerTimeoutManager(connectionProvider, TableName, consoleLoggerFactory, _fakeRebusTime);
+        return timeoutManager;
+    }
 
-            timeoutManager.EnsureTableIsCreated();
+    public void Cleanup()
+    {
+        SqlTestHelper.DropTable(TableName);
+    }
 
-            return timeoutManager;
-        }
+    public string GetDebugInfo()
+    {
+        return "could not provide debug info for this particular timeout manager.... implement if needed :)";
+    }
 
-        public void Cleanup()
-        {
-            SqlTestHelper.DropTable(TableName);
-        }
-
-        public string GetDebugInfo()
-        {
-            return "could not provide debug info for this particular timeout manager.... implement if needed :)";
-        }
-
-        public void FakeIt(DateTimeOffset fakeTime)
-        {
-            _fakeRebusTime.SetNow(fakeTime);
-        }
+    public void FakeIt(DateTimeOffset fakeTime)
+    {
+        _fakeRebusTime.SetNow(fakeTime);
     }
 }

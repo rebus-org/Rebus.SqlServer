@@ -1,14 +1,13 @@
 ﻿using System;
 using Rebus.Time;
 
-namespace Rebus.SqlServer.Tests
+namespace Rebus.SqlServer.Tests;
+
+class FakeRebusTime : IRebusTime
 {
-    class FakeRebusTime : IRebusTime
-    {
-        Func<DateTimeOffset> _nowFactory = () => DateTimeOffset.Now;
+    Func<DateTimeOffset> _nowFactory = () => DateTimeOffset.Now;
 
-        public DateTimeOffset Now => _nowFactory();
+    public DateTimeOffset Now => _nowFactory();
 
-        public void SetNow(DateTimeOffset fakeTime) => _nowFactory = () => fakeTime;
-    }
+    public void SetNow(DateTimeOffset fakeTime) => _nowFactory = () => fakeTime;
 }

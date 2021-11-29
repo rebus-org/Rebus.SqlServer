@@ -11,59 +11,58 @@ using Rebus.Tests.Contracts.Extensions;
 using Rebus.Tests.Contracts.Utilities;
 // ReSharper disable ArgumentsStyleLiteral
 
-namespace Rebus.SqlServer.Tests.Transport
+namespace Rebus.SqlServer.Tests.Transport;
+
+[TestFixture]
+public class TestSqlServerTransportCleanup : FixtureBase
 {
-    [TestFixture]
-    public class TestSqlServerTransportCleanup : FixtureBase
+    BuiltinHandlerActivator _activator;
+    ListLoggerFactory _loggerFactory;
+    IBusStarter _starter;
+
+    protected override void SetUp()
     {
-        BuiltinHandlerActivator _activator;
-        ListLoggerFactory _loggerFactory;
-        IBusStarter _starter;
+        var queueName = TestConfig.GetName("connection_timeout");
 
-        protected override void SetUp()
+        _activator = new BuiltinHandlerActivator();
+
+        Using(_activator);
+
+        _loggerFactory = new ListLoggerFactory(outputToConsole: true);
+
+        _starter = Configure.With(_activator)
+            .Logging(l => l.Use(_loggerFactory))
+            .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), queueName))
+            .Create();
+    }
+
+    [Test]
+    public void DoesNotBarfInTheBackground()
+    {
+        var doneHandlingMessage = new ManualResetEvent(false);
+
+        _activator.Handle<string>(async str =>
         {
-            var queueName = TestConfig.GetName("connection_timeout");
-
-            _activator = new BuiltinHandlerActivator();
-
-            Using(_activator);
-
-            _loggerFactory = new ListLoggerFactory(outputToConsole: true);
-
-            _starter = Configure.With(_activator)
-                .Logging(l => l.Use(_loggerFactory))
-                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), queueName))
-                .Create();
-        }
-
-        [Test]
-        public void DoesNotBarfInTheBackground()
-        {
-            var doneHandlingMessage = new ManualResetEvent(false);
-
-            _activator.Handle<string>(async str =>
+            for (var count = 0; count < 5; count++)
             {
-                for (var count = 0; count < 5; count++)
-                {
-                    Console.WriteLine("waiting...");
-                    await Task.Delay(TimeSpan.FromSeconds(20));
-                }
+                Console.WriteLine("waiting...");
+                await Task.Delay(TimeSpan.FromSeconds(20));
+            }
 
-                Console.WriteLine("done waiting!");
+            Console.WriteLine("done waiting!");
 
-                doneHandlingMessage.Set();
-            });
+            doneHandlingMessage.Set();
+        });
 
-            var bus = _starter.Start();
-            bus.SendLocal("hej med dig min ven!").Wait();
+        var bus = _starter.Start();
+        bus.SendLocal("hej med dig min ven!").Wait();
 
-            doneHandlingMessage.WaitOrDie(TimeSpan.FromMinutes(2));
+        doneHandlingMessage.WaitOrDie(TimeSpan.FromMinutes(2));
 
-            var logLinesAboveInformation = _loggerFactory
-                .Where(l => l.Level >= LogLevel.Warn)
-                .ToList();
+        var logLinesAboveInformation = _loggerFactory
+            .Where(l => l.Level >= LogLevel.Warn)
+            .ToList();
 
-            Assert.That(!logLinesAboveInformation.Any(), "Expected no warnings - got this: {0}", string.Join(Environment.NewLine, logLinesAboveInformation));
-        }
+        Assert.That(!logLinesAboveInformation.Any(), "Expected no warnings - got this: {0}", string.Join(Environment.NewLine, logLinesAboveInformation));
     }
 }

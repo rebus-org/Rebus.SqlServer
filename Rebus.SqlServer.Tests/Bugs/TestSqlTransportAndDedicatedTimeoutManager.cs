@@ -9,46 +9,45 @@ using Rebus.Tests.Contracts.Extensions;
 using Rebus.Timeouts;
 #pragma warning disable 1998
 
-namespace Rebus.SqlServer.Tests.Bugs
+namespace Rebus.SqlServer.Tests.Bugs;
+
+[TestFixture]
+public class TestSqlTransportAndDedicatedTimeoutManager : FixtureBase
 {
-    [TestFixture]
-    public class TestSqlTransportAndDedicatedTimeoutManager : FixtureBase
+    protected override void SetUp()
     {
-        protected override void SetUp()
-        {
-            base.SetUp();
+        base.SetUp();
 
-            SqlTestHelper.DropAllTables();
+        SqlTestHelper.DropAllTables();
 
-            Using(new DisposableCallback(SqlTestHelper.DropAllTables));
-        }
+        Using(new DisposableCallback(SqlTestHelper.DropAllTables));
+    }
 
-        [Test]
-        public async Task ItWorks()
-        {
-            using var gotTheString = new ManualResetEvent(initialState: false);
+    [Test]
+    public async Task ItWorks()
+    {
+        using var gotTheString = new ManualResetEvent(initialState: false);
 
-            var connectionString = SqlTestHelper.ConnectionString;
+        var connectionString = SqlTestHelper.ConnectionString;
 
-            using var timeoutManager = new BuiltinHandlerActivator();
+        using var timeoutManager = new BuiltinHandlerActivator();
 
-            Configure.With(timeoutManager)
-                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(connectionString), "TimeoutManager").DisableNativeTimeoutManager())
-                .Timeouts(t => t.StoreInSqlServer(connectionString, "Timeouts"))
-                .Start();
+        Configure.With(timeoutManager)
+            .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(connectionString), "TimeoutManager").DisableNativeTimeoutManager())
+            .Timeouts(t => t.StoreInSqlServer(connectionString, "Timeouts"))
+            .Start();
 
-            using var ordinaryEndpoint = new BuiltinHandlerActivator();
+        using var ordinaryEndpoint = new BuiltinHandlerActivator();
 
-            ordinaryEndpoint.Handle<string>(async str => gotTheString.Set());
+        ordinaryEndpoint.Handle<string>(async str => gotTheString.Set());
 
-            Configure.With(ordinaryEndpoint)
-                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(connectionString), "OrdinaryEndpoint").DisableNativeTimeoutManager())
-                .Timeouts(t => t.UseExternalTimeoutManager("TimeoutManager"))
-                .Start();
+        Configure.With(ordinaryEndpoint)
+            .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(connectionString), "OrdinaryEndpoint").DisableNativeTimeoutManager())
+            .Timeouts(t => t.UseExternalTimeoutManager("TimeoutManager"))
+            .Start();
 
-            await ordinaryEndpoint.Bus.DeferLocal(TimeSpan.FromSeconds(2), "HEJ MED DIG MIN VEN 🤠");
+        await ordinaryEndpoint.Bus.DeferLocal(TimeSpan.FromSeconds(2), "HEJ MED DIG MIN VEN 🤠");
 
-            gotTheString.WaitOrDie(timeout: TimeSpan.FromSeconds(5), errorMessage: "Did not receive the expected string message within 5 s timeout");
-        }
+        gotTheString.WaitOrDie(timeout: TimeSpan.FromSeconds(5), errorMessage: "Did not receive the expected string message within 5 s timeout");
     }
 }

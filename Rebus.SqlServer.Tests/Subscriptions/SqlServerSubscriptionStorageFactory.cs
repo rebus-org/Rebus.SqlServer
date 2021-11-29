@@ -3,26 +3,25 @@ using Rebus.SqlServer.Subscriptions;
 using Rebus.Subscriptions;
 using Rebus.Tests.Contracts.Subscriptions;
 
-namespace Rebus.SqlServer.Tests.Subscriptions
+namespace Rebus.SqlServer.Tests.Subscriptions;
+
+public class SqlServerSubscriptionStorageFactory : ISubscriptionStorageFactory
 {
-    public class SqlServerSubscriptionStorageFactory : ISubscriptionStorageFactory
-    {
-        const string TableName = "RebusSubscriptions";
+    const string TableName = "RebusSubscriptions";
         
-        public ISubscriptionStorage Create()
-        {
-            var consoleLoggerFactory = new ConsoleLoggerFactory(true);
-            var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
-            var storage = new SqlServerSubscriptionStorage(connectionProvider, TableName, true, consoleLoggerFactory);
+    public ISubscriptionStorage Create()
+    {
+        var consoleLoggerFactory = new ConsoleLoggerFactory(true);
+        var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
+        var storage = new SqlServerSubscriptionStorage(connectionProvider, TableName, true, consoleLoggerFactory);
 
-            storage.EnsureTableIsCreated();
+        storage.EnsureTableIsCreated();
             
-            return storage;
-        }
+        return storage;
+    }
 
-        public void Cleanup()
-        {
-            SqlTestHelper.DropTable(TableName);
-        }
+    public void Cleanup()
+    {
+        SqlTestHelper.DropTable(TableName);
     }
 }

@@ -8,73 +8,73 @@ using Rebus.SqlServer.Sagas;
 using Rebus.SqlServer.Sagas.Serialization;
 using Rebus.Tests.Contracts;
 
-namespace Rebus.SqlServer.Tests.Sagas
+namespace Rebus.SqlServer.Tests.Sagas;
+
+[TestFixture]
+public class TestSqlServerSagaStorage : FixtureBase
 {
-    [TestFixture]
-    public class TestSqlServerSagaStorage : FixtureBase
+    SqlServerSagaStorage _storage;
+    string _dataTableName;
+    DbConnectionProvider _connectionProvider;
+    string _indexTableName;
+
+    protected override void SetUp()
     {
-        SqlServerSagaStorage _storage;
-        string _dataTableName;
-        DbConnectionProvider _connectionProvider;
-        string _indexTableName;
+        var loggerFactory = new ConsoleLoggerFactory(false);
+        _connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
+        var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
+        var serializer = new DefaultSagaSerializer();
 
-        protected override void SetUp()
-        {
-            var loggerFactory = new ConsoleLoggerFactory(false);
-            _connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, loggerFactory);
-            var sagaTypeNamingStrategy = new LegacySagaTypeNamingStrategy();
-            var serializer = new DefaultSagaSerializer();
+        _dataTableName = TestConfig.GetName("sagas");
+        _indexTableName = TestConfig.GetName("sagaindex");
 
-            _dataTableName = TestConfig.GetName("sagas");
-            _indexTableName = TestConfig.GetName("sagaindex");
+        SqlTestHelper.DropTable(_indexTableName);
+        SqlTestHelper.DropTable(_dataTableName);
 
-            SqlTestHelper.DropTable(_indexTableName);
-            SqlTestHelper.DropTable(_dataTableName);
+        _storage = new SqlServerSagaStorage(_connectionProvider, _dataTableName, _indexTableName, loggerFactory, sagaTypeNamingStrategy, serializer);
+    }
 
-            _storage = new SqlServerSagaStorage(_connectionProvider, _dataTableName, _indexTableName, loggerFactory, sagaTypeNamingStrategy, serializer);
-        }
+    [Test]
+    public async Task DoesNotThrowExceptionWhenInitializeOnOldSchema()
+    {
+        await CreatePreviousSchema();
 
-        [Test]
-        public async Task DoesNotThrowExceptionWhenInitializeOnOldSchema()
-        {
-            await CreatePreviousSchema();
+        _storage.Initialize();
 
-            _storage.Initialize();
+        _storage.EnsureTablesAreCreated();
+    }
 
-            _storage.EnsureTablesAreCreated();
-        }
+    [Test]
+    public async Task CanRoundtripSagaOnOldSchema()
+    {
+        var noProps = Enumerable.Empty<ISagaCorrelationProperty>();
 
-        [Test]
-        public async Task CanRoundtripSagaOnOldSchema()
-        {
-            var noProps = Enumerable.Empty<ISagaCorrelationProperty>();
+        await CreatePreviousSchema();
 
-            await CreatePreviousSchema();
+        _storage.Initialize();
 
-            _storage.Initialize();
+        var sagaData = new MySagaDizzle {Id=Guid.NewGuid(), Text = "whee!"};
 
-            var sagaData = new MySagaDizzle {Id=Guid.NewGuid(), Text = "whee!"};
+        await _storage.Insert(sagaData, noProps);
 
-            await _storage.Insert(sagaData, noProps);
+        var roundtrippedData = await _storage.Find(typeof(MySagaDizzle), "Id", sagaData.Id.ToString());
 
-            var roundtrippedData = await _storage.Find(typeof(MySagaDizzle), "Id", sagaData.Id.ToString());
+        Assert.That(roundtrippedData, Is.TypeOf<MySagaDizzle>());
+        var sagaData2 = (MySagaDizzle)roundtrippedData;
+        Assert.That(sagaData2.Text, Is.EqualTo(sagaData.Text));
+    }
 
-            Assert.That(roundtrippedData, Is.TypeOf<MySagaDizzle>());
-            var sagaData2 = (MySagaDizzle)roundtrippedData;
-            Assert.That(sagaData2.Text, Is.EqualTo(sagaData.Text));
-        }
+    class MySagaDizzle : ISagaData
+    {
+        public Guid Id { get; set; }
+        public int Revision { get; set; }
+        public string Text { get; set; }
+    }
 
-        class MySagaDizzle : ISagaData
-        {
-            public Guid Id { get; set; }
-            public int Revision { get; set; }
-            public string Text { get; set; }
-        }
-
-        async Task CreatePreviousSchema()
-        {
-            var createTableOldSchema =
-                $@"
+    async Task CreatePreviousSchema()
+    {
+        var createTableOldSchema =
+            $@"
 
 CREATE TABLE [dbo].[{_dataTableName}](
 	[id] [uniqueidentifier] NOT NULL,
@@ -88,8 +88,8 @@ CREATE TABLE [dbo].[{_dataTableName}](
 
 ";
 
-            var createTableOldSchema2 =
-                $@"
+        var createTableOldSchema2 =
+            $@"
 
 CREATE TABLE [dbo].[{_indexTableName}](
 	[saga_type] [nvarchar](40) NOT NULL,
@@ -104,21 +104,20 @@ CREATE TABLE [dbo].[{_indexTableName}](
  ))
 ";
 
-            Console.WriteLine($"Creating tables {_dataTableName} and {_indexTableName}");
+        Console.WriteLine($"Creating tables {_dataTableName} and {_indexTableName}");
 
-            using var connection = await _connectionProvider.GetConnection();
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = createTableOldSchema;
-                command.ExecuteNonQuery();
-            }
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = createTableOldSchema2;
-                command.ExecuteNonQuery();
-            }
-
-            await connection.Complete();
+        using var connection = await _connectionProvider.GetConnection();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = createTableOldSchema;
+            command.ExecuteNonQuery();
         }
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = createTableOldSchema2;
+            command.ExecuteNonQuery();
+        }
+
+        await connection.Complete();
     }
 }

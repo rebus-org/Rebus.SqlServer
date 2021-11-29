@@ -15,90 +15,89 @@ using Rebus.Tests.Contracts.Extensions;
 
 #pragma warning disable 1998
 
-namespace Rebus.SqlServer.Tests.Bugs
+namespace Rebus.SqlServer.Tests.Bugs;
+
+[TestFixture]
+public class TestNativeDeferToSomeoneElse : FixtureBase
 {
-    [TestFixture]
-    public class TestNativeDeferToSomeoneElse : FixtureBase
+    static readonly string ConnectionString = SqlTestHelper.ConnectionString;
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task ItWorks_SetDestinationHeaderFromTheOutside(bool usePipelineStep)
     {
-        static readonly string ConnectionString = SqlTestHelper.ConnectionString;
+        var receiver = new BuiltinHandlerActivator();
 
-        [TestCase(true)]
-        [TestCase(false)]
-        public async Task ItWorks_SetDestinationHeaderFromTheOutside(bool usePipelineStep)
-        {
-            var receiver = new BuiltinHandlerActivator();
+        Using(receiver);
 
-            Using(receiver);
+        var receiverStarter = Configure.With(receiver)
+            .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
+            .Create();
 
-            var receiverStarter = Configure.With(receiver)
-                .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
-                .Create();
-
-            var senderBus = Configure.With(new BuiltinHandlerActivator())
-                .Transport(x => x.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(ConnectionString)))
-                .Routing(r => r.TypeBased().Map<string>("receiver"))
-                .Options(o =>
+        var senderBus = Configure.With(new BuiltinHandlerActivator())
+            .Transport(x => x.UseSqlServerAsOneWayClient(new SqlServerTransportOptions(ConnectionString)))
+            .Routing(r => r.TypeBased().Map<string>("receiver"))
+            .Options(o =>
+            {
+                if (usePipelineStep)
                 {
-                    if (usePipelineStep)
+                    o.Decorate<IPipeline>(c =>
                     {
-                        o.Decorate<IPipeline>(c =>
-                        {
-                            var pipeline = c.Get<IPipeline>();
-                            var step = new AutoDeferredRecipientStep(c.Get<IRouter>());
+                        var pipeline = c.Get<IPipeline>();
+                        var step = new AutoDeferredRecipientStep(c.Get<IRouter>());
 
-                            return new PipelineStepConcatenator(pipeline)
-                                .OnSend(step, PipelineAbsolutePosition.Front);
-                        });
-                    }
-                })
-                .Start();
+                        return new PipelineStepConcatenator(pipeline)
+                            .OnSend(step, PipelineAbsolutePosition.Front);
+                    });
+                }
+            })
+            .Start();
 
-            Using(senderBus);
+        Using(senderBus);
 
-            var gotTheString = new ManualResetEvent(false);
+        var gotTheString = new ManualResetEvent(false);
 
-            receiver.Handle<string>(async message => gotTheString.Set());
-            receiverStarter.Start();
+        receiver.Handle<string>(async message => gotTheString.Set());
+        receiverStarter.Start();
 
-            var optionalHeaders = usePipelineStep
-                ? new Dictionary<string, string>()
-                : new Dictionary<string, string> { { Headers.DeferredRecipient, "receiver" } };
+        var optionalHeaders = usePipelineStep
+            ? new Dictionary<string, string>()
+            : new Dictionary<string, string> { { Headers.DeferredRecipient, "receiver" } };
 
-            await senderBus.Defer(TimeSpan.FromSeconds(1), "HEEELOOOOOO", optionalHeaders);
+        await senderBus.Defer(TimeSpan.FromSeconds(1), "HEEELOOOOOO", optionalHeaders);
 
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+    }
+
+    class AutoDeferredRecipientStep : IOutgoingStep
+    {
+        readonly IRouter _router;
+
+        public AutoDeferredRecipientStep(IRouter router)
+        {
+            _router = router;
         }
 
-        class AutoDeferredRecipientStep : IOutgoingStep
+        public async Task Process(OutgoingStepContext context, Func<Task> next)
         {
-            readonly IRouter _router;
-
-            public AutoDeferredRecipientStep(IRouter router)
+            var message = context.Load<Message>();
+            if (message.Headers.TryGetValue(Headers.DeferredUntil, out _))
             {
-                _router = router;
-            }
-
-            public async Task Process(OutgoingStepContext context, Func<Task> next)
-            {
-                var message = context.Load<Message>();
-                if (message.Headers.TryGetValue(Headers.DeferredUntil, out _))
+                if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out var temp)
+                    || temp == null)
                 {
-                    if (!message.Headers.TryGetValue(Headers.DeferredRecipient, out var temp)
-                        || temp == null)
+                    try
                     {
-                        try
-                        {
-                            message.Headers[Headers.DeferredRecipient] = await _router.GetDestinationAddress(message);
-                        }
-                        catch (Exception exception)
-                        {
-                            throw new RebusApplicationException(exception, "Could not automatically set recipient for deferred message");
-                        }
+                        message.Headers[Headers.DeferredRecipient] = await _router.GetDestinationAddress(message);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new RebusApplicationException(exception, "Could not automatically set recipient for deferred message");
                     }
                 }
-
-                await next();
             }
+
+            await next();
         }
     }
 }

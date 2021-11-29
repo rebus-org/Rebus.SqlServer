@@ -11,61 +11,60 @@ using Rebus.Transport;
 using Rebus.Transport.InMem;
 #pragma warning disable 1998
 
-namespace Rebus.SqlServer.Tests.Outbox
+namespace Rebus.SqlServer.Tests.Outbox;
+
+[TestFixture]
+public class TestOutboxSimpleScenario : FixtureBase
 {
-    [TestFixture]
-    public class TestOutboxSimpleScenario : FixtureBase
+    [Test]
+    public async Task CanDoIt_NotUsingOutbox()
     {
-        [Test]
-        public async Task CanDoIt_NotUsingOutbox()
+        using var activator = new BuiltinHandlerActivator();
+
+        using var gotTheString = new ManualResetEvent(initialState: false);
+
+        activator.Handle<string>(async msg => gotTheString.Set());
+
+        var bus = Configure.With(activator)
+            .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
+            .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
+            .Start();
+
+        using (var scope = new RebusTransactionScope())
         {
-            using var activator = new BuiltinHandlerActivator();
+            await bus.SendLocal("HEJ MED DIG 🙂");
 
-            using var gotTheString = new ManualResetEvent(initialState: false);
-
-            activator.Handle<string>(async msg => gotTheString.Set());
-
-            var bus = Configure.With(activator)
-                .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
-                .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
-                .Start();
-
-            using (var scope = new RebusTransactionScope())
-            {
-                await bus.SendLocal("HEJ MED DIG 🙂");
-
-                await scope.CompleteAsync();
-            }
-
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+            await scope.CompleteAsync();
         }
 
-        [Test]
-        public async Task CanDoIt_UsingOutbox()
-        {
-            using var gotTheString = new ManualResetEvent(initialState: false);
+        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+    }
 
-            using var activator = new BuiltinHandlerActivator();
+    [Test]
+    public async Task CanDoIt_UsingOutbox()
+    {
+        using var gotTheString = new ManualResetEvent(initialState: false);
 
-            activator.Handle<string>(async msg => gotTheString.Set());
+        using var activator = new BuiltinHandlerActivator();
 
-            var bus = Configure.With(activator)
-                .Transport(t =>
-                {
-                    t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter");
-                    t.ThrowSometimesWhenSendingMessages(successRate: 0.5);
-                })
-                .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
-                .Start();
+        activator.Handle<string>(async msg => gotTheString.Set());
 
-            using (var scope = new RebusTransactionScope())
+        var bus = Configure.With(activator)
+            .Transport(t =>
             {
-                await bus.SendLocal("HEJ MED DIG 🙂");
+                t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter");
+                t.ThrowSometimesWhenSendingMessages(successRate: 0.5);
+            })
+            .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
+            .Start();
 
-                await scope.CompleteAsync();
-            }
+        using (var scope = new RebusTransactionScope())
+        {
+            await bus.SendLocal("HEJ MED DIG 🙂");
 
-            gotTheString.WaitOrDie(TimeSpan.FromSeconds(15));
+            await scope.CompleteAsync();
         }
+
+        gotTheString.WaitOrDie(TimeSpan.FromSeconds(15));
     }
 }

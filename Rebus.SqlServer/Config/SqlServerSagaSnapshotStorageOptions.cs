@@ -4,39 +4,38 @@ using Rebus.Logging;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Sagas;
 
-namespace Rebus.Config
+namespace Rebus.Config;
+
+/// <summary>
+/// Describes options used to configure <seealso cref="SqlServerSagaSnapshotStorage"/>
+/// </summary>
+public class SqlServerSagaSnapshotStorageOptions : SqlServerOptions
 {
     /// <summary>
-    /// Describes options used to configure <seealso cref="SqlServerSagaSnapshotStorage"/>
+    /// Creates the options with the given cnnection provider factory
     /// </summary>
-    public class SqlServerSagaSnapshotStorageOptions : SqlServerOptions
+    public SqlServerSagaSnapshotStorageOptions(Func<IResolutionContext, IDbConnectionProvider> connectionProviderFactory)
     {
-        /// <summary>
-        /// Creates the options with the given cnnection provider factory
-        /// </summary>
-        public SqlServerSagaSnapshotStorageOptions(Func<IResolutionContext, IDbConnectionProvider> connectionProviderFactory)
-        {
-            ConnectionProviderFactory = connectionProviderFactory ?? throw new ArgumentNullException(nameof(connectionProviderFactory));
-        }
+        ConnectionProviderFactory = connectionProviderFactory ?? throw new ArgumentNullException(nameof(connectionProviderFactory));
+    }
 
-        /// <summary>
-        /// Creates the options with the given <paramref name="connectionProvider"/>
-        /// </summary>
-        public SqlServerSagaSnapshotStorageOptions(IDbConnectionProvider connectionProvider)
-        {
-            if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
+    /// <summary>
+    /// Creates the options with the given <paramref name="connectionProvider"/>
+    /// </summary>
+    public SqlServerSagaSnapshotStorageOptions(IDbConnectionProvider connectionProvider)
+    {
+        if (connectionProvider == null) throw new ArgumentNullException(nameof(connectionProvider));
 
-            ConnectionProviderFactory = context => connectionProvider;
-        }
+        ConnectionProviderFactory = context => connectionProvider;
+    }
 
-        /// <summary>
-        /// Creates an instance of the options via <paramref name="connectionString"/>
-        /// </summary>
-        public SqlServerSagaSnapshotStorageOptions(string connectionString, bool enlistInAmbientTransactions = false)
-        {
-            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
+    /// <summary>
+    /// Creates an instance of the options via <paramref name="connectionString"/>
+    /// </summary>
+    public SqlServerSagaSnapshotStorageOptions(string connectionString, bool enlistInAmbientTransactions = false)
+    {
+        if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
 
-            ConnectionProviderFactory = context => new DbConnectionProvider(connectionString, context.Get<IRebusLoggerFactory>(), enlistInAmbientTransactions);
-        }
+        ConnectionProviderFactory = context => new DbConnectionProvider(connectionString, context.Get<IRebusLoggerFactory>(), enlistInAmbientTransactions);
     }
 }
