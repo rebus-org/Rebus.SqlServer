@@ -17,11 +17,12 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8B2F7563-E5BE-40CE-B5C5-1882C67230DE}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		appveyor.yml = appveyor.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RebusOutboxWebApp", "RebusOutboxWebApp\RebusOutboxWebApp.csproj", "{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RebusOutboxWebApp", "RebusOutboxWebApp\RebusOutboxWebApp.csproj", "{7964F5E3-49BA-4CDF-8D15-0F39C58E2829}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RebusOutboxWebAppEfCore", "RebusOutboxWebAppEfCore\RebusOutboxWebAppEfCore.csproj", "{68CAA45F-E8F8-4908-9FD1-57E2B18737D5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RebusOutboxWebAppEfCore", "RebusOutboxWebAppEfCore\RebusOutboxWebAppEfCore.csproj", "{68CAA45F-E8F8-4908-9FD1-57E2B18737D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

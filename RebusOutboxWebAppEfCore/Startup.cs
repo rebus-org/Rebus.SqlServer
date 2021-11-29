@@ -2,6 +2,7 @@
 using System.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +37,8 @@ namespace RebusOutboxWebAppEfCore
 
             static IDbConnection GetDbConnection(ITransactionContext transactionContext, IServiceProvider provider)
             {
+                var http = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
+
                 var scope = provider.CreateScope();
                 transactionContext.OnDisposed(_ => scope.Dispose());
                 var context = scope.ServiceProvider.GetRequiredService<WebAppDbContext>();

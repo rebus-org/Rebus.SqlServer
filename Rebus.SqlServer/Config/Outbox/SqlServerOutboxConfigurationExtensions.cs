@@ -61,9 +61,9 @@ public static class SqlServerOutboxConfigurationExtensions
         IDbConnection ConnectionProvider(ITransactionContext context)
         {
             var sqlConnection = new SqlConnection(connectionString);
-            sqlConnection.Open();
             try
             {
+                sqlConnection.Open();
                 var transaction = sqlConnection.BeginTransaction();
                 return new DbConnectionWrapper(sqlConnection, transaction, managedExternally: false);
             }
@@ -74,7 +74,7 @@ public static class SqlServerOutboxConfigurationExtensions
             }
         }
 
-        configurer.Register(c => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
+        configurer.Register(_ => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
     }
 
     /// <summary>
@@ -84,6 +84,6 @@ public static class SqlServerOutboxConfigurationExtensions
     /// </summary>
     public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<ITransactionContext, IDbConnection> connectionProvider, string tableName)
     {
-        configurer.Register(c => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
+        configurer.Register(_ => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
     }
 }

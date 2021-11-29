@@ -3,11 +3,7 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <LangVersion>latest</LangVersion>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Rebus.SqlServer.Tests</RootNamespace>
-    <AssemblyName>Rebus.SqlServer.Tests</AssemblyName>
-    <TargetFrameworks>netcoreapp3.1</TargetFrameworks>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TargetFrameworks>net6.0</TargetFrameworks>
     <Authors>mookid8000</Authors>
     <PackageLicenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</PackageLicenseUrl>
     <PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>
@@ -17,29 +13,11 @@
     <RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>RELEASE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj" />
-    <PackageReference Include="microsoft.net.test.sdk" Version="16.11.0" />
+    <PackageReference Include="microsoft.net.test.sdk" Version="17.0.0" />
     <PackageReference Include="nunit" Version="3.13.2" />
-    <PackageReference Include="nunit3testadapter" Version="4.0.0">
+    <PackageReference Include="nunit3testadapter" Version="4.1.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

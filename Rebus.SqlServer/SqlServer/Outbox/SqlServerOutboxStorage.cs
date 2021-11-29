@@ -217,7 +217,5 @@ CREATE TABLE {_tableName} (
         return messages;
     }
 
-    static int GetLength(string str) => str.Length;
-
     static string SerializeHeaders(Dictionary<string, string> headers) => HeaderSerializer.SerializeToString(headers);
 }

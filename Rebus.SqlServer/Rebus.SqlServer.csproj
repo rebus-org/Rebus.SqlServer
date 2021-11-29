@@ -11,34 +11,15 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>
     <PackageDescription>Microsoft SQL Server-based persistence for Rebus</PackageDescription>
-    <Copyright>Copyright 2012-2018</Copyright>
+    <Copyright>Copyright 2012</Copyright>
     <PackageTags>rebus queue messaging service bus sql-server sqlserver mssql sql</PackageTags>
     <PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
     <RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\Rebus.SqlServer.xml</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>RELEASE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <DocumentationFile>bin\Release\Rebus.SqlServer.xml</DocumentationFile>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="microsoft.data.sqlclient" Version="2.0.0" />
+    <PackageReference Include="microsoft.data.sqlclient" Version="4.0.0" />
     <PackageReference Include="rebus" Version="6.0.0" />
   </ItemGroup>
   <ItemGroup>
