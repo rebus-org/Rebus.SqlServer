@@ -10,7 +10,7 @@ namespace Rebus.SqlServer.Outbox;
 /// <summary>
 /// Wraps a batch of <see cref="OutboxMessage"/>s along with a function that "completes" the batch (i.e. ensures that it will not be handled again -... e.g. by deleting it, or marking it as completed)
 /// </summary>
-public class OutboxMessageBatch : IDisposable, IEnumerable<OutboxMessage>
+public class OutboxMessageBatch : IDisposable, IEnumerable<OutboxMessage>, IReadOnlyList<OutboxMessage>
 {
     /// <summary>
     /// Gets an empty outbox message batch that doesn't complete anything and only performs some kind of cleanup when done
@@ -40,6 +40,16 @@ public class OutboxMessageBatch : IDisposable, IEnumerable<OutboxMessage>
     /// Performs any cleanup actions necessary
     /// </summary>
     public void Dispose() => _disposeFunction();
+
+    /// <summary>
+    /// Gets how many
+    /// </summary>
+    public int Count => _messages.Count;
+
+    /// <summary>
+    /// Gets by index
+    /// </summary>
+    public OutboxMessage this[int index] => _messages[index];
 
     /// <summary>
     /// Gets an enumerator for the wrapped sequence of <see cref="OutboxMessage"/>s

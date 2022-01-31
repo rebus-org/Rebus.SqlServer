@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Rebus.Config;
 using Rebus.Config.Outbox;
 using Rebus.Routing.TypeBased;
-using Rebus.ServiceProvider;
 using Rebus.Transport.InMem;
 using RebusOutboxWebApp.Handlers;
 using RebusOutboxWebApp.Messages;
@@ -27,9 +27,9 @@ namespace RebusOutboxWebApp
             services.AddControllersWithViews();
 
             services.AddRebus(
-                (configure, provider) => configure
+                (configure, _) => configure
                     .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "outbox-test"))
-                    .Outbox(o => o.UseSqlServer("server=.; database=rebusoutboxwebapp; trusted_connection=true", "Outbox"))
+                    .Outbox(o => o.UseSqlServer("server=.; database=rebusoutboxwebapp; trusted_connection=true; encrypt=false", "Outbox"))
                     .Routing(r => r.TypeBased().Map<SendMessageCommand>("outbox-test"))
             );
 
@@ -62,8 +62,6 @@ namespace RebusOutboxWebApp
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
-
-            app.ApplicationServices.UseRebus();
         }
     }
 }

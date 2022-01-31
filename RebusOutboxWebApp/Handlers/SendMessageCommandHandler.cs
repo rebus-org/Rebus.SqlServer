@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Rebus.Handlers;
 using RebusOutboxWebApp.Messages;
+#pragma warning disable CS1998
 
 namespace RebusOutboxWebApp.Handlers
 {

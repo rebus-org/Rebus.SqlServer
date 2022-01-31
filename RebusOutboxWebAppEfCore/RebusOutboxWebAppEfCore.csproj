@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="5.0.11" />
     <PackageReference Include="microsoft.entityframeworkcore.sqlserver" Version="5.0.11" />
-    <PackageReference Include="rebus.serviceprovider" Version="6.4.1" />
+    <PackageReference Include="rebus.serviceprovider" Version="8.0.0-b03" />
   </ItemGroup>
 
   <ItemGroup>

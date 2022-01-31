@@ -8,9 +8,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Rebus.Config;
 using Rebus.Config.Outbox;
 using Rebus.Routing.TypeBased;
-using Rebus.ServiceProvider;
 using Rebus.SqlServer;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
@@ -95,8 +95,6 @@ namespace RebusOutboxWebAppEfCore
                     name: "default",
                     pattern: "{controller=Home}/{action=Index}/{id?}");
             });
-
-            app.ApplicationServices.UseRebus();
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Globalization;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,7 +9,6 @@ using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Threading;
-using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Outbox;
@@ -64,7 +63,7 @@ class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
             return;
         }
 
-        var outgoingMessages = context.GetOrAdd("rebus-outbox-messages", () =>
+        ConcurrentQueue<AbstractRebusTransport.OutgoingMessage> SendOutgoingMessages()
         {
             var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
             var correlationId = Guid.NewGuid().ToString("N").Substring(0, 16);
@@ -75,34 +74,30 @@ class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
                 var messageId = stepContext.Load<TransportMessage>().GetMessageId();
                 var sourceQueue = _transport.Address;
 
-                context.OnCommitted(async _ =>
+                async Task CommitAction(ITransactionContext _)
                 {
-                    if (!queue.Any()) return;
+                    if (!queue.Any()) return; //< don't do anything if no outgoing messages were sent
 
-                    await _outboxStorage.Save(
-                        outgoingMessages: queue,
-                        messageId: messageId,
-                        sourceQueue: sourceQueue,
-                        correlationId
-                    );
-                });
+                    await _outboxStorage.Save(outgoingMessages: queue, messageId: messageId, sourceQueue: sourceQueue, correlationId);
+                }
+
+                context.OnCommitted(CommitAction);
             }
             else
             {
-                context.OnCommitted(async _ =>
+                async Task CommitAction(ITransactionContext _)
                 {
-                    if (!queue.Any()) return;
+                    if (!queue.Any()) return; //< don't do anything if no outgoing messages were sent
 
-                    await _outboxStorage.Save(
-                        outgoingMessages: queue,
-                        correlationId: correlationId
-                    );
-                });
+                    await _outboxStorage.Save(outgoingMessages: queue, correlationId: correlationId);
+                }
+
+                context.OnCommitted(CommitAction);
             }
 
             // here, we intentionally kick off an async task to try to eager-send the messages that were just sent
 #pragma warning disable CS4014
-            context.OnCompleted(_ =>
+            Task CompletedAction(ITransactionContext _)
             {
                 if (!queue.Any()) return Task.CompletedTask;
 
@@ -113,6 +108,8 @@ class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
                         using var batch = await _outboxStorage.GetNextMessageBatch(correlationId);
 
                         await ProcessMessageBatch(batch, _cancellationTokenSource.Token);
+
+                        await batch.Complete();
                     }
                     catch (Exception)
                     {
@@ -121,11 +118,15 @@ class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
                 });
 
                 return Task.CompletedTask;
-            });
+            }
+
+            context.OnCompleted(CompletedAction);
 #pragma warning restore CS4014
 
             return queue;
-        });
+        }
+
+        var outgoingMessages = context.GetOrAdd("rebus-outbox-messages", SendOutgoingMessages);
 
         outgoingMessages.Enqueue(new AbstractRebusTransport.OutgoingMessage(message, destinationAddress));
     }
@@ -167,12 +168,14 @@ class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
             }
 
             await ProcessMessageBatch(batch, cancellationToken);
+
+            await batch.Complete();
         }
     }
 
-    async Task ProcessMessageBatch(OutboxMessageBatch batch, CancellationToken cancellationToken)
+    async Task ProcessMessageBatch(IReadOnlyCollection<OutboxMessage> batch, CancellationToken cancellationToken)
     {
-        _logger.Debug("Sending {count} pending messages", batch.Count());
+        _logger.Debug("Sending {count} pending messages", batch.Count);
 
         using var scope = new RebusTransactionScope();
 
@@ -188,9 +191,8 @@ class OutboxTransportDecorator : ITransport, IInitializable, IDisposable
         }
 
         await scope.CompleteAsync();
-        await batch.Complete();
 
-        _logger.Debug("Successfully sent {count} messages", batch.Count());
+        _logger.Debug("Successfully sent {count} messages", batch.Count);
     }
 
     async Task RunCleaner()
