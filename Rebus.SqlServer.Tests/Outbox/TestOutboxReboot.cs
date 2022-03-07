@@ -43,13 +43,15 @@ public class TestOutboxReboot : FixtureBase
     [Description("One scenario where the SQL outbox works: Outside of Rebus handlers, e.g. in a web app, it's great to be able to send even though the bus is offline")]
     public async Task CanUseOutboxOutsideOfRebusHandler()
     {
+        var settings = new FlakySenderTransportDecoratorSettings();
+
         using var counter = new SharedCounter(initialValue: 1);
-
         using var server = CreateServer("server", a => a.Handle<SomeMessage>(async _ => counter.Decrement()));
+        using var client = CreateOneWayClient(r => r.TypeBased().Map<SomeMessage>("server"), settings);
 
-        using var client = CreateOneWayClient(r => r.TypeBased().Map<SomeMessage>("server"));
-
-
+        // set success rate pretty low, so we're sure that it's currently not possible to use the
+        // real transport - this is a job for the outbox! 
+        settings.SuccessRate = 0;
 
         // pretending we're in a web app - we have these two bad boys at work:
         await using var connection = new SqlConnection(ConnectionString);
@@ -62,7 +64,10 @@ public class TestOutboxReboot : FixtureBase
         await client.Send(new SomeMessage());
         await scope.CompleteAsync();
 
-        // wait for server to receive it
+        // we would not have gotten this far without the outbox - now let's pretend that the transport has recovered
+        settings.SuccessRate = 1;
+
+        // wait for server to receive the event
         counter.WaitForResetEvent();
     }
 
@@ -79,13 +84,66 @@ public class TestOutboxReboot : FixtureBase
         return activator;
     }
 
-    IBus CreateOneWayClient(Action<StandardConfigurer<IRouter>> routing = null)
+    IBus CreateOneWayClient(Action<StandardConfigurer<IRouter>> routing = null, FlakySenderTransportDecoratorSettings flakySenderTransportDecoratorSettings = null)
     {
         return Configure.With(new BuiltinHandlerActivator())
-            .Transport(t => t.UseInMemoryTransportAsOneWayClient(_network))
+            .Transport(t =>
+            {
+                t.UseInMemoryTransportAsOneWayClient(_network);
+
+                if (flakySenderTransportDecoratorSettings != null)
+                {
+                    t.Decorate(c => new FlakySenderTransportDecorator(c.Get<ITransport>(),
+                        flakySenderTransportDecoratorSettings));
+                }
+            })
             .Routing(r => routing?.Invoke(r))
             .Outbox(o => o.UseSqlServerAsOneWayClient())
             .Start();
+    }
+
+    class FlakySenderTransportDecoratorSettings
+    {
+        public double SuccessRate { get; set; } = 1;
+    }
+
+    class FlakySenderTransportDecorator : ITransport
+    {
+        readonly ITransport _transport;
+        readonly FlakySenderTransportDecoratorSettings _flakySenderTransportDecoratorSettings;
+
+        public FlakySenderTransportDecorator(ITransport transport,
+            FlakySenderTransportDecoratorSettings flakySenderTransportDecoratorSettings)
+        {
+            _transport = transport;
+            _flakySenderTransportDecoratorSettings = flakySenderTransportDecoratorSettings;
+        }
+
+        public void CreateQueue(string address) => _transport.CreateQueue(address);
+
+        public Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
+        {
+            if (Random.Shared.NextDouble() > _flakySenderTransportDecoratorSettings.SuccessRate)
+            {
+                throw new RandomUnluckyException();
+            }
+
+            return _transport.Send(destinationAddress, message, context);
+        }
+
+        public Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
+        {
+            return _transport.Receive(context, cancellationToken);
+        }
+
+        public string Address { get; }
+    }
+
+    class RandomUnluckyException : ApplicationException
+    {
+        public RandomUnluckyException() : base("You were unfortunate")
+        {
+        }
     }
 }
 
