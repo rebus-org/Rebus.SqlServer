@@ -188,8 +188,7 @@ CREATE TABLE {_tableName} (
             var body = message.TransportMessage.Body;
             var headers = SerializeHeaders(transportMessage.Headers);
 
-            command.CommandText =
-                $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @headers, @body)";
+            command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @headers, @body)";
             command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = (object)correlationId ?? DBNull.Value;
             command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = (object)messageId ?? DBNull.Value;
             command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = (object)sourceQueue ?? DBNull.Value;
@@ -216,8 +215,7 @@ CREATE TABLE {_tableName} (
     async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection, int maxMessageBatchSize, string correlationId)
     {
         using var command = connection.CreateCommand();
-
-
+        
         if (correlationId != null)
         {
             command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [CorrelationId] = @correlationId [Sent] = 0 ORDER BY [Id]";
