@@ -11,7 +11,6 @@ using Rebus.Messages;
 using Rebus.Routing;
 using Rebus.Routing.TypeBased;
 using Rebus.Tests.Contracts;
-using Rebus.Tests.Contracts.Utilities;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
 
@@ -50,14 +49,14 @@ public class TestOutboxReboot : FixtureBase
         Assert.Throws<InvalidOperationException>(() => scope.UseOutbox(connection, transaction));
     }
 
-    [Test]
-    [Description("One scenario where the SQL outbox works: Outside of Rebus handlers, e.g. in a web app, it's great to be able to send even though the bus is offline")]
-    public async Task CanUseOutboxOutsideOfRebusHandler()
+    [TestCase(true, true)]
+    [TestCase(false, false)]
+    public async Task CanUseOutboxOutsideOfRebusHandler_Commit(bool commitTransaction, bool expectMessageToBeReceived)
     {
         var settings = new FlakySenderTransportDecoratorSettings();
 
-        using var counter = new SharedCounter(initialValue: 1);
-        using var server = CreateServer("server", a => a.Handle<SomeMessage>(async _ => counter.Decrement()));
+        using var messageWasReceived = new ManualResetEvent(initialState: false);
+        using var server = CreateServer("server", a => a.Handle<SomeMessage>(async _ => messageWasReceived.Set()));
         using var client = CreateOneWayClient(r => r.TypeBased().Map<SomeMessage>("server"), settings);
 
         // set success rate pretty low, so we're sure that it's currently not possible to use the
@@ -75,11 +74,18 @@ public class TestOutboxReboot : FixtureBase
         await client.Send(new SomeMessage());
         await scope.CompleteAsync();
 
+        if (commitTransaction)
+        {
+            // this is what we were all waiting for!
+            await transaction.CommitAsync();
+        }
+
         // we would not have gotten this far without the outbox - now let's pretend that the transport has recovered
         settings.SuccessRate = 1;
 
         // wait for server to receive the event
-        counter.WaitForResetEvent();
+        Assert.That(messageWasReceived.WaitOne(TimeSpan.FromSeconds(5)), Is.EqualTo(expectMessageToBeReceived), 
+            $"When commitTransaction={commitTransaction} we {(expectMessageToBeReceived ? "expected the message to be sent and thus received" : "did NOT expect the message to be sent and therefore also not received")}");
     }
 
     IDisposable CreateServer(string queueName, Action<BuiltinHandlerActivator> handlers = null)

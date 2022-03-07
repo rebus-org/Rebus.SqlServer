@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Rebus.Logging;
 using Rebus.Pipeline;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
 using Rebus.Threading;
-using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.Config.Outbox;
