@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Rebus.Bus;
 using Rebus.Serialization;
 using Rebus.Transport;
@@ -32,18 +33,31 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     /// </summary>
     public void Initialize()
     {
+        // if the connection provider is NULL, it's a one-way client's outbox storage
+        if (_connectionProvider == null) return;
+
         async Task InitializeAsync()
         {
             using var scope = new RebusTransactionScope();
             using var connection = _connectionProvider(scope.TransactionContext);
 
-            if (connection.GetTableNames().Contains(_tableName)) return;
+            if (await EnsureTableIsCreatedAsync(connection)) return;
 
-            try
-            {
-                using var command = connection.CreateCommand();
+            await scope.CompleteAsync();
+        }
 
-                command.CommandText = $@"
+        AsyncHelpers.RunSync(InitializeAsync);
+    }
+
+    async Task<bool> EnsureTableIsCreatedAsync(IDbConnection connection)
+    {
+        if (connection.GetTableNames().Contains(_tableName)) return true;
+
+        try
+        {
+            using var command = connection.CreateCommand();
+
+            command.CommandText = $@"
 CREATE TABLE {_tableName} (
     [Id] bigint identity(1,1),
     [CorrelationId] nvarchar(16) null,
@@ -57,21 +71,18 @@ CREATE TABLE {_tableName} (
 )
 ";
 
-                await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync();
 
-                await connection.Complete();
-            }
-            catch (Exception)
-            {
-                if (connection.GetTableNames().Contains(_tableName)) return;
+            await connection.Complete();
+        }
+        catch (Exception)
+        {
+            if (connection.GetTableNames().Contains(_tableName)) return true;
 
-                throw;
-            }
-
-            await scope.CompleteAsync();
+            throw;
         }
 
-        AsyncHelpers.RunSync(InitializeAsync);
+        return false;
     }
 
     /// <summary>
@@ -84,6 +95,17 @@ CREATE TABLE {_tableName} (
         if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
 
         await InnerSave(outgoingMessages, messageId, sourceQueue, correlationId);
+    }
+
+    /// <summary>
+    /// Stores the given <paramref name="outgoingMessages"/> using the given <paramref name="dbConnection"/>.
+    /// </summary>
+    public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, IDbConnection dbConnection)
+    {
+        if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
+        if (dbConnection == null) throw new ArgumentNullException(nameof(dbConnection));
+
+        await SaveUsingConnection(dbConnection, outgoingMessages);
     }
 
     /// <inheritdoc />
@@ -151,6 +173,14 @@ CREATE TABLE {_tableName} (
         using var scope = new RebusTransactionScope();
         using var connection = _connectionProvider(scope.TransactionContext);
 
+        await SaveUsingConnection(connection, outgoingMessages, messageId, sourceQueue, correlationId);
+
+        await connection.Complete();
+        await scope.CompleteAsync();
+    }
+
+    async Task SaveUsingConnection(IDbConnection connection, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
+    {
         foreach (var message in outgoingMessages)
         {
             using var command = connection.CreateCommand();
@@ -159,7 +189,8 @@ CREATE TABLE {_tableName} (
             var body = message.TransportMessage.Body;
             var headers = SerializeHeaders(transportMessage.Headers);
 
-            command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @headers, @body)";
+            command.CommandText =
+                $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Headers], [Body]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @headers, @body)";
             command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = (object)correlationId ?? DBNull.Value;
             command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = (object)messageId ?? DBNull.Value;
             command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = (object)sourceQueue ?? DBNull.Value;
@@ -169,9 +200,6 @@ CREATE TABLE {_tableName} (
 
             await command.ExecuteNonQueryAsync();
         }
-
-        await connection.Complete();
-        await scope.CompleteAsync();
     }
 
     async Task CompleteMessages(IDbConnection connection, IEnumerable<OutboxMessage> messages)

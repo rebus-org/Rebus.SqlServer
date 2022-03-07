@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,6 +39,19 @@ public class TestOutboxReboot : FixtureBase
     }
 
     record SomeMessage;
+
+    [Test]
+    public async Task CannotUseOutboxTwice()
+    {
+        await using var connection = new SqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        await using var transaction = connection.BeginTransaction();
+
+        using var scope = new RebusTransactionScope();
+        scope.UseOutbox(connection, transaction);
+
+        Assert.Throws<InvalidOperationException>(() => scope.UseOutbox(connection, transaction));
+    }
 
     [Test]
     [Description("One scenario where the SQL outbox works: Outside of Rebus handlers, e.g. in a web app, it's great to be able to send even though the bus is offline")]
@@ -98,7 +112,7 @@ public class TestOutboxReboot : FixtureBase
                 }
             })
             .Routing(r => routing?.Invoke(r))
-            .Outbox(o => o.UseSqlServerAsOneWayClient())
+            .Outbox(o => o.UseSqlServerAsOneWayClient("RebusOutbox"))
             .Start();
     }
 
@@ -149,13 +163,26 @@ public class TestOutboxReboot : FixtureBase
 
 public static class OutboxExtensions
 {
-    public static void UseSqlServerAsOneWayClient(this StandardConfigurer<IOutboxStorage> configurer)
+    public static void UseSqlServerAsOneWayClient(this StandardConfigurer<IOutboxStorage> configurer, string tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+        if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+        UseSqlServerAsOneWayClient(configurer, TableName.Parse(tableName));
+    }
+
+    public static void UseSqlServerAsOneWayClient(this StandardConfigurer<IOutboxStorage> configurer, TableName tableName)
+    {
+        if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+        if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+        configurer
+            .OtherService<IOutboxStorage>()
+            .Register(c => new SqlServerOutboxStorage(null, tableName));
 
         configurer
             .OtherService<ITransport>()
-            .Decorate(c => new OutboxClientTransportDecorator(c.Get<ITransport>()));
+            .Decorate(c => new OutboxClientTransportDecorator(c.Get<ITransport>(), c.Get<IOutboxStorage>()));
     }
 
     public static void UseOutbox(this RebusTransactionScope rebusTransactionScope, SqlConnection connection, SqlTransaction transaction)
@@ -164,30 +191,53 @@ public static class OutboxExtensions
         if (connection == null) throw new ArgumentNullException(nameof(connection));
         if (transaction == null) throw new ArgumentNullException(nameof(transaction));
 
+        var context = rebusTransactionScope.TransactionContext;
 
+        if (!context.Items.TryAdd(CurrentOutboxConnectionKey, new OutboxConnection(connection, transaction)))
+        {
+            throw new InvalidOperationException("Cannot add the given connection/transaction to the current Rebus transaction, because a connection/transaction has already been added!");
+        }
     }
+
+    const string CurrentOutboxConnectionKey = "current-outbox-connection";
 
     class OutboxClientTransportDecorator : ITransport
     {
         const string OutgoingMessagesKey = "outbox-outgoing-messages";
         readonly ITransport _transport;
+        readonly IOutboxStorage _outboxStorage;
 
-        public OutboxClientTransportDecorator(ITransport transport) => _transport = transport ?? throw new ArgumentNullException(nameof(transport));
+        public OutboxClientTransportDecorator(ITransport transport, IOutboxStorage outboxStorage)
+        {
+            _transport = transport ?? throw new ArgumentNullException(nameof(transport));
+            _outboxStorage = outboxStorage ?? throw new ArgumentNullException(nameof(outboxStorage));
+        }
 
         public void CreateQueue(string address) => _transport.CreateQueue(address);
 
         public Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
         {
-            return _transport.Send(destinationAddress, message, context);
+            var connection = context.GetOrNull<OutboxConnection>(CurrentOutboxConnectionKey);
+
+            if (connection == null)
+            {
+                return _transport.Send(destinationAddress, message, context);
+            }
+
+            var dbConnection = new DbConnectionWrapper(connection.Connection, connection.Transaction, managedExternally: true);
 
             var outgoingMessages = context.GetOrAdd(OutgoingMessagesKey, () =>
             {
                 var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
 
+                context.OnCommitted(async _ => await _outboxStorage.Save(queue, dbConnection));
+
                 return queue;
             });
 
             outgoingMessages.Enqueue(new AbstractRebusTransport.OutgoingMessage(message, destinationAddress));
+
+            return Task.CompletedTask;
         }
 
         public Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken) => _transport.Receive(context, cancellationToken);

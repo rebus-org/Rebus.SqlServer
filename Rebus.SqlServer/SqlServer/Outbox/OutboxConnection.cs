@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Data.SqlClient;
+// ReSharper disable ArgumentsStyleLiteral
 
 namespace Rebus.SqlServer.Outbox;
 
@@ -12,7 +13,7 @@ public class OutboxConnection
     /// Gets the connection
     /// </summary>
     public SqlConnection Connection { get; }
-    
+
     /// <summary>
     /// Gets the current transaction
     /// </summary>
