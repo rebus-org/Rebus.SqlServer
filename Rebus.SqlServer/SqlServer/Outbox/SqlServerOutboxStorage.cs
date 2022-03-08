@@ -23,8 +23,8 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     /// </summary>
     public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName)
     {
-        _connectionProvider = connectionProvider;
-        _tableName = tableName;
+        _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
+        _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
     }
 
     /// <summary>
@@ -32,31 +32,18 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     /// </summary>
     public void Initialize()
     {
-        // if the connection provider is NULL, it's a one-way client's outbox storage
-        if (_connectionProvider == null) return;
-
         async Task InitializeAsync()
         {
             using var scope = new RebusTransactionScope();
             using var connection = _connectionProvider(scope.TransactionContext);
 
-            if (await EnsureTableIsCreatedAsync(connection)) return;
+            if (connection.GetTableNames().Contains(_tableName)) return;
 
-            await scope.CompleteAsync();
-        }
+            try
+            {
+                using var command = connection.CreateCommand();
 
-        AsyncHelpers.RunSync(InitializeAsync);
-    }
-
-    async Task<bool> EnsureTableIsCreatedAsync(IDbConnection connection)
-    {
-        if (connection.GetTableNames().Contains(_tableName)) return true;
-
-        try
-        {
-            using var command = connection.CreateCommand();
-
-            command.CommandText = $@"
+                command.CommandText = $@"
 CREATE TABLE {_tableName} (
     [Id] bigint identity(1,1),
     [CorrelationId] nvarchar(16) null,
@@ -70,18 +57,22 @@ CREATE TABLE {_tableName} (
 )
 ";
 
-            await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync();
 
-            await connection.Complete();
+                await connection.Complete();
+            }
+            catch (Exception)
+            {
+                if (!connection.GetTableNames().Contains(_tableName))
+                {
+                    throw;
+                }
+            }
+
+            await scope.CompleteAsync();
         }
-        catch (Exception)
-        {
-            if (connection.GetTableNames().Contains(_tableName)) return true;
 
-            throw;
-        }
-
-        return false;
+        AsyncHelpers.RunSync(InitializeAsync);
     }
 
     /// <summary>
@@ -215,7 +206,7 @@ CREATE TABLE {_tableName} (
     async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection, int maxMessageBatchSize, string correlationId)
     {
         using var command = connection.CreateCommand();
-        
+
         if (correlationId != null)
         {
             command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [CorrelationId] = @correlationId [Sent] = 0 ORDER BY [Id]";

@@ -1,7 +1,9 @@
 ﻿using System;
 using Microsoft.Data.SqlClient;
+using Rebus.Logging;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
+using Rebus.Threading;
 using Rebus.Transport;
 
 namespace Rebus.Config.Outbox;
@@ -27,6 +29,23 @@ public static class SqlServerOutboxConfigurationExtensions
 
             // if no outbox storage was registered, no further calls must have been made... that's ok, so we just bail out here
             if (!o.Has<IOutboxStorage>()) return;
+
+            o.Decorate<ITransport>(c => new OutboxClientTransportDecorator(c.Get<ITransport>(), c.Get<IOutboxStorage>()));
+
+            o.Register(c =>
+            {
+                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var outboxStorage = c.Get<IOutboxStorage>();
+                var transport = c.Get<ITransport>();
+                return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport);
+            });
+
+            o.Decorate(c =>
+            {
+                _ = c.Get<OutboxForwarder>();
+                return c.Get<Options>();
+            });
 
             //o.Decorate<ITransport>(c =>
             //{
