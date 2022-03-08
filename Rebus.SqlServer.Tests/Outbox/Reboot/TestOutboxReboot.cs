@@ -31,6 +31,8 @@ public class TestOutboxReboot : FixtureBase
     {
         base.SetUp();
 
+        SqlTestHelper.DropTable("RebusOutbox");
+
         _network = new InMemNetwork();
     }
 
@@ -64,27 +66,29 @@ public class TestOutboxReboot : FixtureBase
         settings.SuccessRate = 0;
 
         // pretending we're in a web app - we have these two bad boys at work:
-        await using var connection = new SqlConnection(ConnectionString);
-        await connection.OpenAsync();
-        await using var transaction = connection.BeginTransaction();
-
-        // this is how we would use the outbox for outgoing messages
-        using var scope = new RebusTransactionScope();
-        scope.UseOutbox(connection, transaction);
-        await client.Send(new SomeMessage());
-        await scope.CompleteAsync();
-
-        if (commitTransaction)
+        await using (var connection = new SqlConnection(ConnectionString))
         {
-            // this is what we were all waiting for!
-            await transaction.CommitAsync();
+            await connection.OpenAsync();
+            await using var transaction = connection.BeginTransaction();
+
+            // this is how we would use the outbox for outgoing messages
+            using var scope = new RebusTransactionScope();
+            scope.UseOutbox(connection, transaction);
+            await client.Send(new SomeMessage());
+            await scope.CompleteAsync();
+
+            if (commitTransaction)
+            {
+                // this is what we were all waiting for!
+                await transaction.CommitAsync();
+            }
         }
 
         // we would not have gotten this far without the outbox - now let's pretend that the transport has recovered
         settings.SuccessRate = 1;
 
         // wait for server to receive the event
-        Assert.That(messageWasReceived.WaitOne(TimeSpan.FromSeconds(5)), Is.EqualTo(expectMessageToBeReceived), 
+        Assert.That(messageWasReceived.WaitOne(TimeSpan.FromSeconds(15)), Is.EqualTo(expectMessageToBeReceived),
             $"When commitTransaction={commitTransaction} we {(expectMessageToBeReceived ? "expected the message to be sent and thus received" : "did NOT expect the message to be sent and therefore also not received")}");
     }
 
