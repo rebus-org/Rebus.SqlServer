@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
@@ -16,16 +15,16 @@ namespace Rebus.SqlServer.Tests.Outbox.Reboot;
 
 public static class OutboxExtensions
 {
-    public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
+    public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
         if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-        UseSqlServer(configurer, connectionString, TableName.Parse(tableName));
+        StoreInSqlServer(configurer, connectionString, TableName.Parse(tableName));
     }
 
-    public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, TableName tableName)
+    public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, TableName tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
@@ -52,7 +51,7 @@ public static class OutboxExtensions
 
         configurer
             .OtherService<IOutboxStorage>()
-            .Register(c => new SqlServerOutboxStorage(ConnectionProvider, tableName));
+            .Register(_ => new SqlServerOutboxStorage(ConnectionProvider, tableName));
 
         configurer
             .OtherService<ITransport>()
@@ -78,6 +77,14 @@ public static class OutboxExtensions
             });
     }
 
+    /// <summary>
+    /// Enables the use of
+    /// </summary>
+    /// <param name="rebusTransactionScope"></param>
+    /// <param name="connection"></param>
+    /// <param name="transaction"></param>
+    /// <exception cref="ArgumentNullException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     public static void UseOutbox(this RebusTransactionScope rebusTransactionScope, SqlConnection connection, SqlTransaction transaction)
     {
         if (rebusTransactionScope == null) throw new ArgumentNullException(nameof(rebusTransactionScope));

@@ -7,7 +7,6 @@ using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Config.Outbox;
-using Rebus.Messages;
 using Rebus.Persistence.InMem;
 using Rebus.Routing;
 using Rebus.Routing.TypeBased;
@@ -168,51 +167,7 @@ public class TestOutbox_OutsideOfRebusHandler : FixtureBase
             })
             .Routing(r => routing?.Invoke(r))
             .Subscriptions(s => s.StoreInMemory(_subscriberStore))
-            .Outbox(o => o.UseSqlServer(ConnectionString, "RebusOutbox"))
+            .Outbox(o => o.StoreInSqlServer(ConnectionString, "RebusOutbox"))
             .Start();
-    }
-
-    class FlakySenderTransportDecoratorSettings
-    {
-        public double SuccessRate { get; set; } = 1;
-    }
-
-    class FlakySenderTransportDecorator : ITransport
-    {
-        readonly ITransport _transport;
-        readonly FlakySenderTransportDecoratorSettings _flakySenderTransportDecoratorSettings;
-
-        public FlakySenderTransportDecorator(ITransport transport,
-            FlakySenderTransportDecoratorSettings flakySenderTransportDecoratorSettings)
-        {
-            _transport = transport;
-            _flakySenderTransportDecoratorSettings = flakySenderTransportDecoratorSettings;
-        }
-
-        public void CreateQueue(string address) => _transport.CreateQueue(address);
-
-        public Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
-        {
-            if (Random.Shared.NextDouble() > _flakySenderTransportDecoratorSettings.SuccessRate)
-            {
-                throw new RandomUnluckyException();
-            }
-
-            return _transport.Send(destinationAddress, message, context);
-        }
-
-        public Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
-        {
-            return _transport.Receive(context, cancellationToken);
-        }
-
-        public string Address { get; }
-    }
-
-    class RandomUnluckyException : ApplicationException
-    {
-        public RandomUnluckyException() : base("You were unfortunate")
-        {
-        }
     }
 }

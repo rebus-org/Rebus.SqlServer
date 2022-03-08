@@ -27,7 +27,7 @@
 
 //        var bus = Configure.With(activator)
 //            .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
-//            .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
+//            .Outbox(o => o.StoreInSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
 //            .Start();
 
 //        using (var scope = new RebusTransactionScope())
@@ -55,7 +55,7 @@
 //                t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter");
 //                t.ThrowSometimesWhenSendingMessages(successRate: 0.5);
 //            })
-//            .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
+//            .Outbox(o => o.StoreInSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
 //            .Start();
 
 //        using (var scope = new RebusTransactionScope())

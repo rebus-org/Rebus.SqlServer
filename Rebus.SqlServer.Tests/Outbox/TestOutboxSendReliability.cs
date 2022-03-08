@@ -31,7 +31,7 @@
 //                t.UseInMemoryTransport(new InMemNetwork(), "unreliableness");
 //                t.ThrowSometimesWhenSendingMessages(successRate: 0.5);
 //            })
-//            .Outbox(o => o.UseSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
+//            .Outbox(o => o.StoreInSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
 //            .Start();
 
 //        Task.Run(async () =>

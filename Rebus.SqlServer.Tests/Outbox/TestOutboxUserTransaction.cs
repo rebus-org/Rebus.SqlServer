@@ -72,7 +72,7 @@
 
 //        var bus = Configure.With(activator)
 //            .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "test-queue"))
-//            .Outbox(o => o.UseSqlServer(GetDbConnectionFromTransactionContext, "Outbox"))
+//            .Outbox(o => o.StoreInSqlServer(GetDbConnectionFromTransactionContext, "Outbox"))
 //            .Subscriptions(s => s.StoreInMemory(new InMemorySubscriberStore()))
 //            .Start();
 
