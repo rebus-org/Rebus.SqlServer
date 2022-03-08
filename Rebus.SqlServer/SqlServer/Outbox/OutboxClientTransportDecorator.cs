@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Rebus.Config.Outbox;
 using Rebus.Messages;
 using Rebus.Transport;
+// ReSharper disable ArgumentsStyleLiteral
 
 namespace Rebus.SqlServer.Outbox;
 

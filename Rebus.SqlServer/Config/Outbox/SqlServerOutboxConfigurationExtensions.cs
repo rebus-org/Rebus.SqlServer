@@ -1,6 +1,8 @@
 ﻿using System;
 using Microsoft.Data.SqlClient;
 using Rebus.Logging;
+using Rebus.Pipeline;
+using Rebus.Retry.Simple;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
 using Rebus.Threading;
@@ -45,6 +47,14 @@ public static class SqlServerOutboxConfigurationExtensions
             {
                 _ = c.Get<OutboxForwarder>();
                 return c.Get<Options>();
+            });
+
+            o.Decorate<IPipeline>(c =>
+            {
+                var pipeline = c.Get<IPipeline>();
+                var step = new OutboxIncomingStep();
+                return new PipelineStepInjector(pipeline)
+                    .OnReceive(step, PipelineRelativePosition.After, typeof(SimpleRetryStrategyStep));
             });
 
             //o.Decorate<ITransport>(c =>
