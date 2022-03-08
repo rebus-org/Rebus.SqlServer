@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Rebus.Config;
+using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.SqlServer.Outbox;
+using Rebus.Threading;
 using Rebus.Transport;
 // ReSharper disable ArgumentsStyleLiteral
 
@@ -54,6 +57,25 @@ public static class OutboxExtensions
         configurer
             .OtherService<ITransport>()
             .Decorate(c => new OutboxClientTransportDecorator(c.Get<ITransport>(), c.Get<IOutboxStorage>()));
+
+        configurer
+            .OtherService<OutboxForwarder>()
+            .Register(c =>
+            {
+                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                var outboxStorage = c.Get<IOutboxStorage>();
+                var transport = c.Get<ITransport>();
+                return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport);
+            });
+
+        configurer
+            .OtherService<Options>()
+            .Decorate(c =>
+            {
+                _ = c.Get<OutboxForwarder>();
+                return c.Get<Options>();
+            });
     }
 
     public static void UseOutbox(this RebusTransactionScope rebusTransactionScope, SqlConnection connection, SqlTransaction transaction)

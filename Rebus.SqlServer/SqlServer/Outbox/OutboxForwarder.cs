@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebus.Bus;
 using Rebus.Logging;
 using Rebus.Threading;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Outbox;
 
-class OutboxForwarder : IDisposable
+class OutboxForwarder : IDisposable, IInitializable
 {
     static readonly Retrier SendRetrier = new(new[]
     {
@@ -47,7 +48,7 @@ class OutboxForwarder : IDisposable
         _logger = rebusLoggerFactory.GetLogger<OutboxForwarder>();
     }
 
-    public void Start()
+    public void Initialize()
     {
         _forwarder.Start();
         _cleaner.Start();
