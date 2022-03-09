@@ -10,6 +10,8 @@ namespace Rebus.Config.Outbox;
 
 public static class OutboxExtensions
 {
+    internal const string CurrentOutboxConnectionKey = "current-outbox-connection";
+
     public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
@@ -70,6 +72,4 @@ public static class OutboxExtensions
             throw new InvalidOperationException("Cannot add the given connection/transaction to the current Rebus transaction, because a connection/transaction has already been added!");
         }
     }
-
-    public const string CurrentOutboxConnectionKey = "current-outbox-connection";
 }

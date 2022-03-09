@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Rebus.Config.Outbox;
 using Rebus.Pipeline;
 using Rebus.Transport;
 
@@ -17,9 +18,8 @@ class OutboxIncomingStep : IIncomingStep
     public async Task Process(IncomingStepContext context, Func<Task> next)
     {
         var dbConnection = _outboxConnectionProvider.GetDbConnection();
-
         var transactionContext = context.Load<ITransactionContext>();
 
-        transactionContext.Use
+        transactionContext.Items[OutboxExtensions.CurrentOutboxConnectionKey] = dbConnection;
     }
 }

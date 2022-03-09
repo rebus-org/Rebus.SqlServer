@@ -52,7 +52,8 @@ public static class SqlServerOutboxConfigurationExtensions
             o.Decorate<IPipeline>(c =>
             {
                 var pipeline = c.Get<IPipeline>();
-                var step = new OutboxIncomingStep();
+                var outboxConnectionProvider = c.Get<IOutboxConnectionProvider>();
+                var step = new OutboxIncomingStep(outboxConnectionProvider);
                 return new PipelineStepInjector(pipeline)
                     .OnReceive(step, PipelineRelativePosition.After, typeof(SimpleRetryStrategyStep));
             });
