@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,24 +38,22 @@ namespace RebusOutboxWebAppEfCore
 
             static IDbConnection GetDbConnection(ITransactionContext transactionContext, IServiceProvider provider)
             {
-                var http = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
+                //var http = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
 
                 var scope = provider.CreateScope();
                 transactionContext.OnDisposed(_ => scope.Dispose());
                 var context = scope.ServiceProvider.GetRequiredService<WebAppDbContext>();
-                var dbConnection = context.Database.GetDbConnection();
-                if (dbConnection.State != ConnectionState.Open)
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
                 {
                     context.Database.OpenConnection();
                 }
-                
-                transactionContext.OnDisposed(_ => dbConnection.Dispose());
 
-                var transaction = dbConnection.BeginTransaction();
-                transactionContext.OnDisposed(_ => transaction.Dispose());
-                transactionContext.OnCommitted(_ => transaction.CommitAsync());
+                var transaction = context.Database.CurrentTransaction?.GetDbTransaction();
 
-                return new DbConnectionWrapper((SqlConnection)dbConnection, (SqlTransaction)transaction, managedExternally: false);
+                transactionContext.OnDisposed(_ => connection.Dispose());
+
+                return new DbConnectionWrapper((SqlConnection)connection, (SqlTransaction)transaction, managedExternally: false);
             }
 
             services.AddRebus(

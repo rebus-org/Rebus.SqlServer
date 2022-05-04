@@ -23,8 +23,8 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     /// </summary>
     public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName)
     {
-        _connectionProvider = connectionProvider;
-        _tableName = tableName;
+        _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
+        _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
     }
 
     /// <summary>

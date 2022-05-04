@@ -1,31 +1,31 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
-  <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Rebus</RootNamespace>
-    <AssemblyName>Rebus.SqlServer</AssemblyName>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <Authors>mookid8000</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>
-    <PackageDescription>Microsoft SQL Server-based persistence for Rebus</PackageDescription>
-    <Copyright>Copyright 2012</Copyright>
-    <PackageTags>rebus queue messaging service bus sql-server sqlserver mssql sql</PackageTags>
-    <PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
-    <RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <GenerateDocumentationFile>True</GenerateDocumentationFile>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="microsoft.data.sqlclient" Version="4.0.0" />
-    <PackageReference Include="rebus" Version="6.0.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\artwork\little_rebusbus2_copy-500x500.png">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
-  </ItemGroup>
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <RootNamespace>Rebus</RootNamespace>
+        <AssemblyName>Rebus.SqlServer</AssemblyName>
+        <TargetFrameworks>netstandard2.0</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
+        <Authors>mookid8000</Authors>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>
+        <PackageDescription>Microsoft SQL Server-based persistence for Rebus</PackageDescription>
+        <Copyright>Copyright 2012 Rebus FM ApS</Copyright>
+        <PackageTags>rebus queue messaging service bus sql-server sqlserver mssql sql</PackageTags>
+        <PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
+        <RepositoryUrl>https://github.com/rebus-org/Rebus.SqlServer</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="microsoft.data.sqlclient" Version="4.0.0" />
+        <PackageReference Include="rebus" Version="6.0.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="..\artwork\little_rebusbus2_copy-500x500.png">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+        </None>
+    </ItemGroup>
 </Project>
