@@ -119,8 +119,11 @@
 ## 7.1.7
 * Fix disposal of data reader when read attempt does not find anything and must throw
 
-## 7.2.0-b3
+## 7.2.0
 * Make it possible to disable native message defer functionality of SQL transport, thus making it possible to run a dedicated SQL timeout manager (like with any other transport) together with the SQL transport
+* Migrate old receive index to new, improved index - thanks [Simplicitdk]
+
+## 7.3.0-b1
 * Add outbox 🙂
 
 
@@ -136,5 +139,7 @@
 [nativenolde]: https://github.com/nativenolde
 [rsivanov]: https://github.com/rsivanov
 [seankearon]: https://github.com/seankearon
+[Simplicitdk]: https://github.com/Simplicitdk
 [thomasdc]: https://github.com/thomasdc
 [tompazourek]: https://github.com/tompazourek
+
