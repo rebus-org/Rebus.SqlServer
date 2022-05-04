@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Rebus.SqlServer.Outbox;
+namespace Rebus.SqlServer;
 
 /// <summary>
 /// Mini-Polly 🙂

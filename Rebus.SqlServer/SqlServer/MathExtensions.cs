@@ -1,6 +1,8 @@
 ﻿using System;
 
-namespace Rebus.SqlServer.Outbox;
+// ReSharper disable ArgumentsStyleLiteral
+
+namespace Rebus.SqlServer;
 
 static class MathExtensions
 {

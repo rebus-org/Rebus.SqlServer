@@ -3,14 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Rebus.Messages;
 
 namespace Rebus.SqlServer.Outbox;
 
 /// <summary>
 /// Wraps a batch of <see cref="OutboxMessage"/>s along with a function that "completes" the batch (i.e. ensures that it will not be handled again -... e.g. by deleting it, or marking it as completed)
 /// </summary>
-public class OutboxMessageBatch : IDisposable, IEnumerable<OutboxMessage>, IReadOnlyList<OutboxMessage>
+public class OutboxMessageBatch : IDisposable, IReadOnlyList<OutboxMessage>
 {
     /// <summary>
     /// Gets an empty outbox message batch that doesn't complete anything and only performs some kind of cleanup when done
@@ -57,15 +56,4 @@ public class OutboxMessageBatch : IDisposable, IEnumerable<OutboxMessage>, IRead
     public IEnumerator<OutboxMessage> GetEnumerator() => _messages.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
-
-/// <summary>
-/// Represents one single message to be delivered to the transport
-/// </summary>
-public record OutboxMessage(long Id, string DestinationAddress, Dictionary<string, string> Headers, byte[] Body)
-{
-    /// <summary>
-    /// Gets the <see cref="Headers"/> and <see cref="Body"/> wrapped in a <see cref="TransportMessage"/>
-    /// </summary>
-    public TransportMessage ToTransportMessage() => new(Headers, Body);
 }

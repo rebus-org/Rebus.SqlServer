@@ -63,9 +63,10 @@ CREATE TABLE {_tableName} (
             }
             catch (Exception)
             {
-                if (connection.GetTableNames().Contains(_tableName)) return;
-
-                throw;
+                if (!connection.GetTableNames().Contains(_tableName))
+                {
+                    throw;
+                }
             }
 
             await scope.CompleteAsync();
@@ -84,6 +85,17 @@ CREATE TABLE {_tableName} (
         if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
 
         await InnerSave(outgoingMessages, messageId, sourceQueue, correlationId);
+    }
+
+    /// <summary>
+    /// Stores the given <paramref name="outgoingMessages"/> using the given <paramref name="dbConnection"/>.
+    /// </summary>
+    public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, IDbConnection dbConnection)
+    {
+        if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
+        if (dbConnection == null) throw new ArgumentNullException(nameof(dbConnection));
+
+        await SaveUsingConnection(dbConnection, outgoingMessages);
     }
 
     /// <inheritdoc />
@@ -151,6 +163,14 @@ CREATE TABLE {_tableName} (
         using var scope = new RebusTransactionScope();
         using var connection = _connectionProvider(scope.TransactionContext);
 
+        await SaveUsingConnection(connection, outgoingMessages, messageId, sourceQueue, correlationId);
+
+        await connection.Complete();
+        await scope.CompleteAsync();
+    }
+
+    async Task SaveUsingConnection(IDbConnection connection, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
+    {
         foreach (var message in outgoingMessages)
         {
             using var command = connection.CreateCommand();
@@ -169,9 +189,6 @@ CREATE TABLE {_tableName} (
 
             await command.ExecuteNonQueryAsync();
         }
-
-        await connection.Complete();
-        await scope.CompleteAsync();
     }
 
     async Task CompleteMessages(IDbConnection connection, IEnumerable<OutboxMessage> messages)
@@ -189,7 +206,6 @@ CREATE TABLE {_tableName} (
     async Task<List<OutboxMessage>> GetOutboxMessages(IDbConnection connection, int maxMessageBatchSize, string correlationId)
     {
         using var command = connection.CreateCommand();
-
 
         if (correlationId != null)
         {

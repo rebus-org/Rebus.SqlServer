@@ -2,6 +2,7 @@
 using Microsoft.Data.SqlClient;
 using Rebus.Logging;
 using Rebus.Pipeline;
+using Rebus.Retry.Simple;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
 using Rebus.Threading;
@@ -31,57 +32,83 @@ public static class SqlServerOutboxConfigurationExtensions
             // if no outbox storage was registered, no further calls must have been made... that's ok, so we just bail out here
             if (!o.Has<IOutboxStorage>()) return;
 
-            o.Decorate<ITransport>(c =>
+            o.Decorate<ITransport>(c => new OutboxClientTransportDecorator(c.Get<ITransport>(), c.Get<IOutboxStorage>()));
+
+            o.Register(c =>
             {
-                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var transport = c.Get<ITransport>();
                 var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var outboxStorage = c.Get<IOutboxStorage>();
-                return new OutboxTransportDecorator(
-                    rebusLoggerFactory,
-                    transport,
-                    outboxStorage,
-                    asyncTaskFactory
-                );
+                var transport = c.Get<ITransport>();
+                return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport);
             });
 
-            o.Decorate<IPipeline>(c => new PipelineStepConcatenator(c.Get<IPipeline>()));
+            o.Decorate(c =>
+            {
+                _ = c.Get<OutboxForwarder>();
+                return c.Get<Options>();
+            });
+
+            o.Decorate<IPipeline>(c =>
+            {
+                var pipeline = c.Get<IPipeline>();
+                var outboxConnectionProvider = c.Get<IOutboxConnectionProvider>();
+                var step = new OutboxIncomingStep(outboxConnectionProvider);
+                return new PipelineStepInjector(pipeline)
+                    .OnReceive(step, PipelineRelativePosition.After, typeof(SimpleRetryStrategyStep));
+            });
+
+            //o.Decorate<ITransport>(c =>
+            //{
+            //    var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+            //    var transport = c.Get<ITransport>();
+            //    var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+            //    var outboxStorage = c.Get<IOutboxStorage>();
+            //    return new OutboxTransportDecorator(
+            //        rebusLoggerFactory,
+            //        transport,
+            //        outboxStorage,
+            //        asyncTaskFactory
+            //    );
+            //});
+
+            //o.Decorate<IPipeline>(c => new PipelineStepConcatenator(c.Get<IPipeline>()));
         });
 
         return configurer;
     }
 
-    /// <summary>
-    /// Configures the outbox to use SQL Server to store outgoing messages. This overload will NOT enlist outbox actions in user transactions.
-    /// </summary>
-    public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
-    {
-        IDbConnection ConnectionProvider(ITransactionContext context)
-        {
-            var sqlConnection = new SqlConnection(connectionString);
-            try
-            {
-                sqlConnection.Open();
-                var transaction = sqlConnection.BeginTransaction();
-                return new DbConnectionWrapper(sqlConnection, transaction, managedExternally: false);
-            }
-            catch
-            {
-                sqlConnection.Dispose();
-                throw;
-            }
-        }
+    ///// <summary>
+    ///// Configures the outbox to use SQL Server to store outgoing messages. This overload will NOT enlist outbox actions in user transactions.
+    ///// </summary>
+    //public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
+    //{
+    //    IDbConnection ConnectionProvider(ITransactionContext context)
+    //    {
+    //        var sqlConnection = new SqlConnection(connectionString);
+    //        try
+    //        {
+    //            sqlConnection.Open();
+    //            var transaction = sqlConnection.BeginTransaction();
+    //            return new DbConnectionWrapper(sqlConnection, transaction, managedExternally: false);
+    //        }
+    //        catch
+    //        {
+    //            sqlConnection.Dispose();
+    //            throw;
+    //        }
+    //    }
 
-        configurer.Register(_ => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
-    }
+    //    configurer.Register(_ => new SqlServerOutboxStorage(ConnectionProvider, TableName.Parse(tableName)));
+    //}
 
-    /// <summary>
-    /// Configures the outbox to use SQL Server to store outgoing messages. The <paramref name="connectionProvider"/> gets to
-    /// return the <see cref="IDbConnection"/> the outbox should use, thus providing the ability to return a reference to the same
-    /// connection/transaction that the user's code is using.
-    /// </summary>
-    public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<ITransactionContext, IDbConnection> connectionProvider, string tableName)
-    {
-        configurer.Register(_ => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
-    }
+    ///// <summary>
+    ///// Configures the outbox to use SQL Server to store outgoing messages. The <paramref name="connectionProvider"/> gets to
+    ///// return the <see cref="IDbConnection"/> the outbox should use, thus providing the ability to return a reference to the same
+    ///// connection/transaction that the user's code is using.
+    ///// </summary>
+    //public static void UseSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<ITransactionContext, IDbConnection> connectionProvider, string tableName)
+    //{
+    //    configurer.Register(_ => new SqlServerOutboxStorage(connectionProvider, TableName.Parse(tableName)));
+    //}
 }

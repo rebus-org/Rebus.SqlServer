@@ -8,13 +8,14 @@ using Rebus.Messages;
 using Rebus.SqlServer.Outbox;
 using Rebus.Tests.Contracts;
 using Rebus.Transport;
+// ReSharper disable ArgumentsStyleLiteral
 
 namespace Rebus.SqlServer.Tests.Outbox;
 
 [TestFixture]
 public class TestSqlServerOutboxStorage : FixtureBase
 {
-    private SqlServerOutboxStorage _storage;
+    SqlServerOutboxStorage _storage;
 
     protected override void SetUp()
     {
@@ -42,6 +43,47 @@ public class TestSqlServerOutboxStorage : FixtureBase
         var outboxMessage = outboxMessageBatch.First();
         Assert.That(outboxMessage.DestinationAddress, Is.EqualTo("wherever"));
         Assert.That(outboxMessage.Body, Is.EqualTo(new byte[] { 1, 2, 3 }));
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task CanStoreBatchOfMessages_ManagedExternally(bool commitAndExpectTheMessagesToBeThere)
+    {
+        await using (var connection = new SqlConnection(SqlTestHelper.ConnectionString))
+        {
+            await connection.OpenAsync();
+
+            await using var transaction = connection.BeginTransaction();
+
+            var dbConnection = new DbConnectionWrapper(connection, transaction, managedExternally: true);
+
+            var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
+            var outgoingMessage = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+
+            await _storage.Save(new[] { outgoingMessage }, dbConnection);
+
+            if (commitAndExpectTheMessagesToBeThere)
+            {
+                await transaction.CommitAsync();
+            }
+        }
+
+        if (commitAndExpectTheMessagesToBeThere)
+        {
+            using var batch1 = await _storage.GetNextMessageBatch();
+            await batch1.Complete();
+
+            using var batch2 = await _storage.GetNextMessageBatch();
+
+            Assert.That(batch1.Count, Is.EqualTo(1));
+            Assert.That(batch2.Count, Is.EqualTo(0));
+        }
+        else
+        {
+            using var batch = await _storage.GetNextMessageBatch();
+
+            Assert.That(batch.Count, Is.EqualTo(0));
+        }
     }
 
     [Test]
