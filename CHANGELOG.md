@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 ## 2.0.0-b01
 * Test release
@@ -119,8 +119,10 @@
 ## 7.1.7
 * Fix disposal of data reader when read attempt does not find anything and must throw
 
-## 7.2.0-b2
+## 7.2.0-b3
 * Make it possible to disable native message defer functionality of SQL transport, thus making it possible to run a dedicated SQL timeout manager (like with any other transport) together with the SQL transport
+* Add outbox 🙂
+
 
 ----
 

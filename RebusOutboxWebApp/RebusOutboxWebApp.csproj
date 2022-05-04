@@ -15,6 +15,7 @@
   <ItemGroup>
     <Folder Include="Messages\" />
     <Folder Include="Handlers\" />
+    <Folder Include="Extensions\" />
   </ItemGroup>
 
 </Project>

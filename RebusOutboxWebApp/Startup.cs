@@ -7,6 +7,7 @@ using Rebus.Config;
 using Rebus.Config.Outbox;
 using Rebus.Routing.TypeBased;
 using Rebus.Transport.InMem;
+using RebusOutboxWebApp.Extensions;
 using RebusOutboxWebApp.Handlers;
 using RebusOutboxWebApp.Messages;
 
@@ -14,6 +15,9 @@ namespace RebusOutboxWebApp
 {
     public class Startup
     {
+        const string OutboxConnectionString = "server=.; database=rebusoutboxwebapp; trusted_connection=true; encrypt=false";
+        const string OutboxTableName = "Outbox";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -29,7 +33,7 @@ namespace RebusOutboxWebApp
             services.AddRebus(
                 (configure, _) => configure
                     .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "outbox-test"))
-                    .Outbox(o => o.UseSqlServer("server=.; database=rebusoutboxwebapp; trusted_connection=true; encrypt=false", "Outbox"))
+                    .Outbox(o => o.StoreInSqlServer(OutboxConnectionString, OutboxTableName))
                     .Routing(r => r.TypeBased().Map<SendMessageCommand>("outbox-test"))
             );
 
@@ -55,6 +59,8 @@ namespace RebusOutboxWebApp
             app.UseRouting();
 
             app.UseAuthorization();
+
+            app.UseRebusOutbox(OutboxConnectionString);
 
             app.UseEndpoints(endpoints =>
             {
