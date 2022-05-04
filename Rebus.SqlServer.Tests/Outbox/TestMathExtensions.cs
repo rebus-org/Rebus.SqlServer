@@ -1,5 +1,4 @@
 ﻿using NUnit.Framework;
-using Rebus.SqlServer.Outbox;
 
 namespace Rebus.SqlServer.Tests.Outbox;
 

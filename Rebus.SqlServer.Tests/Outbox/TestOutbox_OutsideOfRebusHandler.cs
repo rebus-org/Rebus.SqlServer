@@ -18,7 +18,7 @@ using Rebus.Transport.InMem;
 // ReSharper disable AccessToDisposedClosure
 #pragma warning disable CS1998
 
-namespace Rebus.SqlServer.Tests.Outbox.Reboot;
+namespace Rebus.SqlServer.Tests.Outbox;
 
 [TestFixture]
 public class TestOutbox_OutsideOfRebusHandler : FixtureBase

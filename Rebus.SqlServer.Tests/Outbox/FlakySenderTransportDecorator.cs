@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Rebus.Messages;
 using Rebus.Transport;
 
-namespace Rebus.SqlServer.Tests.Outbox.Reboot;
+namespace Rebus.SqlServer.Tests.Outbox;
 
 class FlakySenderTransportDecorator : ITransport
 {

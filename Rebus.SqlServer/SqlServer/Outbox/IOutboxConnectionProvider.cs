@@ -2,5 +2,5 @@
 
 interface IOutboxConnectionProvider
 {
-    IDbConnection GetDbConnection();
+    OutboxConnection GetDbConnection();
 }

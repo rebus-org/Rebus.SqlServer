@@ -1,4 +1,4 @@
-﻿namespace Rebus.SqlServer.Tests.Outbox.Reboot;
+﻿namespace Rebus.SqlServer.Tests.Outbox;
 
 class FlakySenderTransportDecoratorSettings
 {

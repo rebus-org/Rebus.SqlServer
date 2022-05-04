@@ -14,11 +14,12 @@ using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
+
 // ReSharper disable ArgumentsStyleLiteral
 // ReSharper disable AccessToDisposedClosure
 #pragma warning disable CS1998
 
-namespace Rebus.SqlServer.Tests.Outbox.Reboot;
+namespace Rebus.SqlServer.Tests.Outbox;
 
 [TestFixture]
 public class TestOutbox_InsideRebusHandler : FixtureBase

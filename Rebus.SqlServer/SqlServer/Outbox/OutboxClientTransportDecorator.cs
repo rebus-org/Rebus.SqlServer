@@ -25,7 +25,7 @@ class OutboxClientTransportDecorator : ITransport
 
     public Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
     {
-        var connection = context.GetOrNull<IDbConnection>(OutboxExtensions.CurrentOutboxConnectionKey);
+        var connection = context.GetOrNull<OutboxConnection>(OutboxExtensions.CurrentOutboxConnectionKey);
 
         if (connection == null)
         {
@@ -35,7 +35,8 @@ class OutboxClientTransportDecorator : ITransport
         var outgoingMessages = context.GetOrAdd(OutgoingMessagesKey, () =>
         {
             var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
-            context.OnCommitted(async _ => await _outboxStorage.Save(queue, connection));
+            var dbConnectionWrapper = new DbConnectionWrapper(connection.Connection, connection.Transaction, managedExternally: true);
+            context.OnCommitted(async _ => await _outboxStorage.Save(queue, dbConnectionWrapper));
             return queue;
         });
 

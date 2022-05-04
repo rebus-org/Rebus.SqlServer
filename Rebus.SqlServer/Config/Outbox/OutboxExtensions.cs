@@ -8,10 +8,16 @@ using Rebus.Transport;
 
 namespace Rebus.Config.Outbox;
 
+/// <summary>
+/// Configuration extensions for SQL Server-based outbox
+/// </summary>
 public static class OutboxExtensions
 {
     internal const string CurrentOutboxConnectionKey = "current-outbox-connection";
 
+    /// <summary>
+    /// Configures SQL Server as the outbox storage
+    /// </summary>
     public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
@@ -21,6 +27,9 @@ public static class OutboxExtensions
         StoreInSqlServer(configurer, connectionString, TableName.Parse(tableName));
     }
 
+    /// <summary>
+    /// Configures SQL Server as the outbox storage
+    /// </summary>
     public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, TableName tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
@@ -29,6 +38,12 @@ public static class OutboxExtensions
 
         IDbConnection ConnectionProvider(ITransactionContext context)
         {
+            // if we find a connection in the context, use that (and accept that its lifestyle is managed somewhere else):
+            if (context.Items.TryGetValue(CurrentOutboxConnectionKey, out var result) && result is OutboxConnection outboxConnection)
+            {
+                return new DbConnectionWrapper(outboxConnection.Connection, outboxConnection.Transaction, managedExternally: true);
+            }
+
             var connection = new SqlConnection(connectionString);
 
             connection.Open();
@@ -49,16 +64,15 @@ public static class OutboxExtensions
         configurer
             .OtherService<IOutboxStorage>()
             .Register(_ => new SqlServerOutboxStorage(ConnectionProvider, tableName));
+
+        configurer.OtherService<IOutboxConnectionProvider>()
+            .Register(_ => new OutboxConnectionProvider(connectionString));
     }
 
     /// <summary>
-    /// Enables the use of
+    /// Enables the use of outbox on the <see cref="RebusTransactionScope"/>. Will enlist all outgoing message operations in the
+    /// <paramref name="connection"/>/<paramref name="transaction"/> passed to the method.
     /// </summary>
-    /// <param name="rebusTransactionScope"></param>
-    /// <param name="connection"></param>
-    /// <param name="transaction"></param>
-    /// <exception cref="ArgumentNullException"></exception>
-    /// <exception cref="InvalidOperationException"></exception>
     public static void UseOutbox(this RebusTransactionScope rebusTransactionScope, SqlConnection connection, SqlTransaction transaction)
     {
         if (rebusTransactionScope == null) throw new ArgumentNullException(nameof(rebusTransactionScope));
