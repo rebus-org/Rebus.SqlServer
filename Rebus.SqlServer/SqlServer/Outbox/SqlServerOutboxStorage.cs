@@ -14,6 +14,7 @@ namespace Rebus.SqlServer.Outbox;
 /// </summary>
 public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
 {
+    const string MagicCorrelationId = "<MAGIC-CORR-ID>";
     static readonly HeaderSerializer HeaderSerializer = new();
     readonly Func<ITransactionContext, IDbConnection> _connectionProvider;
     readonly TableName _tableName;
@@ -90,7 +91,7 @@ CREATE TABLE {_tableName} (
     /// <summary>
     /// Stores the given <paramref name="outgoingMessages"/> using the given <paramref name="dbConnection"/>.
     /// </summary>
-    public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, IDbConnection dbConnection)
+    public async Task Save(IDbConnection dbConnection, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages)
     {
         if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
         if (dbConnection == null) throw new ArgumentNullException(nameof(dbConnection));
@@ -102,6 +103,22 @@ CREATE TABLE {_tableName} (
     public async Task<OutboxMessageBatch> GetNextMessageBatch(string correlationId = null, int maxMessageBatchSize = 100)
     {
         return await InnerGetMessageBatch(maxMessageBatchSize, correlationId);
+    }
+
+    public async Task<bool> HasProcessedMessage(IDbConnection connection, string sourceQueue, string messageId)
+    {
+        using var command = connection.CreateCommand();
+
+        command.CommandText = $"SELECT TOP 1 [Id] FROM {_tableName} WHERE [SourceQueue] = @sourceQueue AND [MessageId] = @messageId";
+        command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, size: 255).Value = sourceQueue;
+        command.Parameters.Add("messageId", SqlDbType.NVarChar, size: 255).Value = messageId;
+
+        return await command.ExecuteScalarAsync() is long;
+    }
+
+    public async Task MarkMessageAsProcessed(IDbConnection connection, string sourceQueue, string messageId)
+    {
+        await SaveUsingConnection(connection, null, messageId, sourceQueue, MagicCorrelationId);
     }
 
     async Task<OutboxMessageBatch> InnerGetMessageBatch(int maxMessageBatchSize, string correlationId)
@@ -124,8 +141,8 @@ CREATE TABLE {_tableName} (
             // this must be done when cleanining up
             void Dispose()
             {
-                connection.Dispose();
                 scope.Dispose();
+                connection.Dispose();
             }
 
             try
@@ -171,6 +188,20 @@ CREATE TABLE {_tableName} (
 
     async Task SaveUsingConnection(IDbConnection connection, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
     {
+        if (correlationId == MagicCorrelationId)
+        {
+            using var command = connection.CreateCommand();
+
+            command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress)";
+            command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = correlationId;
+            command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = messageId;
+            command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = sourceQueue;
+            command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = "";
+
+            await command.ExecuteNonQueryAsync();
+            return;
+        }
+
         foreach (var message in outgoingMessages)
         {
             using var command = connection.CreateCommand();
@@ -214,7 +245,7 @@ CREATE TABLE {_tableName} (
         }
         else
         {
-            command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 0 ORDER BY [Id]";
+            command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body], [CorrelationId] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 0 ORDER BY [Id]";
         }
 
         using var reader = await command.ExecuteReaderAsync();
@@ -224,6 +255,11 @@ CREATE TABLE {_tableName} (
         while (await reader.ReadAsync())
         {
             var id = (long)reader["id"];
+
+            // skip message handled markers
+            var messageCorrelationId = correlationId ?? reader["correlationId"] as string;
+            if (string.Equals(messageCorrelationId, MagicCorrelationId)) continue;
+
             var destinationAddress = (string)reader["destinationAddress"];
             var headers = HeaderSerializer.DeserializeFromString((string)reader["headers"]);
             var body = (byte[])reader["body"];

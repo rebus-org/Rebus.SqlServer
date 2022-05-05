@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
 using Rebus.Config;
+using Rebus.Config.Outbox;
 using Rebus.Tests.Contracts;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
@@ -19,6 +20,8 @@ public class TestOutboxIdempotency : FixtureBase
     [Test]
     public async Task DoesNotProcessSameMessageTwice()
     {
+        SqlTestHelper.DropTable("Outbox");
+
         using var countdown = new CountdownEvent(initialCount: 2);
         using var adapter = new BuiltinHandlerActivator();
 
@@ -27,6 +30,7 @@ public class TestOutboxIdempotency : FixtureBase
         var bus = Configure.With(adapter)
             .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "idempotency"))
             .Options(o => o.Decorate<ITransport>(c => new FlakyAckerTransportDecorator(c.Get<ITransport>(), ackFailures: 1)))
+            .Outbox(o => o.StoreInSqlServer(SqlTestHelper.ConnectionString, "Outbox"))
             .Start();
 
         await bus.SendLocal(new MyMessage());

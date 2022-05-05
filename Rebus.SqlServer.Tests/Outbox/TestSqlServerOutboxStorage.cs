@@ -30,6 +30,57 @@ public class TestSqlServerOutboxStorage : FixtureBase
     }
 
     [Test]
+    public async Task CanRememberMessages()
+    {
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+            await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-1");
+            await connection.Complete();
+            await scope.CompleteAsync();
+        }
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+            await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-2");
+            await connection.Complete();
+            await scope.CompleteAsync();
+        }
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+            await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-3");
+            //await connection.Complete(); //< NO COMPLETE!
+            await scope.CompleteAsync(); 
+        }
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+            await _storage.MarkMessageAsProcessed(connection, "queue-2", "message-3"); //< ANOTHER QUEUE!
+            await connection.Complete();
+            await scope.CompleteAsync();
+        }
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+
+            var message1Processed = await _storage.HasProcessedMessage(connection, "queue-1", "message-1");
+            var message2Processed = await _storage.HasProcessedMessage(connection, "queue-1", "message-2");
+            var message3Processed = await _storage.HasProcessedMessage(connection, "queue-1", "message-3");
+            var message3ProcessedInAnotherQueue = await _storage.HasProcessedMessage(connection, "queue-2", "message-3");
+
+            Assert.That(message1Processed, Is.True);
+            Assert.That(message2Processed, Is.True);
+            Assert.That(message3Processed, Is.False);
+            Assert.That(message3ProcessedInAnotherQueue, Is.True);
+        }
+    }
+
+    [Test]
     public async Task CanStoreBatchOfMessages_Roundtrip()
     {
         var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
@@ -39,7 +90,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
 
         using var outboxMessageBatch = await _storage.GetNextMessageBatch();
 
-        Assert.That(outboxMessageBatch.Count(), Is.EqualTo(1));
+        Assert.That(outboxMessageBatch.Count, Is.EqualTo(1));
         var outboxMessage = outboxMessageBatch.First();
         Assert.That(outboxMessage.DestinationAddress, Is.EqualTo("wherever"));
         Assert.That(outboxMessage.Body, Is.EqualTo(new byte[] { 1, 2, 3 }));
@@ -60,7 +111,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
             var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
             var outgoingMessage = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
 
-            await _storage.Save(new[] { outgoingMessage }, dbConnection);
+            await _storage.Save(dbConnection, new[] { outgoingMessage });
 
             if (commitAndExpectTheMessagesToBeThere)
             {
@@ -99,8 +150,27 @@ public class TestSqlServerOutboxStorage : FixtureBase
 
         using var batch2 = await _storage.GetNextMessageBatch();
 
-        Assert.That(batch1.Count(), Is.EqualTo(1));
-        Assert.That(batch2.Count(), Is.EqualTo(0));
+        Assert.That(batch1.Count, Is.EqualTo(1));
+        Assert.That(batch2.Count, Is.EqualTo(0));
+    }
+    
+    [Test]
+    public async Task CanStoreBatchOfMessages_Complete_MagicMessageMarkerDoesNotInterfere()
+    {
+        using var scope = new RebusTransactionScope();
+        using var connection = GetNewDbConnection(scope.TransactionContext);
+
+        var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
+        var outgoingMessage = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+
+        await _storage.Save(connection, new[] { outgoingMessage });
+        await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-1");
+
+        await connection.Complete();
+
+        using var batch = await _storage.GetNextMessageBatch();
+
+        Assert.That(batch.Count, Is.EqualTo(1));
     }
 
     [Test]
@@ -117,16 +187,16 @@ public class TestSqlServerOutboxStorage : FixtureBase
         await _storage.Save(texts.Select(CreateOutgoingMessage));
 
         using var batch1 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 10);
-        Assert.That(batch1.Count(), Is.EqualTo(10));
+        Assert.That(batch1.Count, Is.EqualTo(10));
 
         using var batch2 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 12);
-        Assert.That(batch2.Count(), Is.EqualTo(12));
+        Assert.That(batch2.Count, Is.EqualTo(12));
 
         using var batch3 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 77);
-        Assert.That(batch3.Count(), Is.EqualTo(77));
+        Assert.That(batch3.Count, Is.EqualTo(77));
 
         using var batch4 = await _storage.GetNextMessageBatch(maxMessageBatchSize: 1);
-        Assert.That(batch4.Count(), Is.EqualTo(1));
+        Assert.That(batch4.Count, Is.EqualTo(1));
     }
 
     [Test]
@@ -144,10 +214,10 @@ public class TestSqlServerOutboxStorage : FixtureBase
         await _storage.Save(texts.Select(CreateOutgoingMessage));
 
         using var batch1 = await _storage.GetNextMessageBatch();
-        Assert.That(batch1.Count(), Is.EqualTo(100));
+        Assert.That(batch1.Count, Is.EqualTo(100));
 
         using var batch2 = await _storage.GetNextMessageBatch();
-        Assert.That(batch2.Count(), Is.EqualTo(100));
+        Assert.That(batch2.Count, Is.EqualTo(100));
 
         var roundtrippedTexts = batch1.Concat(batch2).Select(b => Encoding.UTF8.GetString(b.Body)).ToList();
 

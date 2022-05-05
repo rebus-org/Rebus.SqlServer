@@ -36,7 +36,7 @@ class OutboxClientTransportDecorator : ITransport
         {
             var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
             var dbConnectionWrapper = new DbConnectionWrapper(connection.Connection, connection.Transaction, managedExternally: true);
-            context.OnCommitted(async _ => await _outboxStorage.Save(queue, dbConnectionWrapper));
+            context.OnCommitted(async _ => await _outboxStorage.Save(dbConnectionWrapper, queue));
             return queue;
         });
 
