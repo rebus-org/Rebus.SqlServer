@@ -2,6 +2,7 @@
 using Microsoft.Data.SqlClient;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
+using Rebus.Time;
 using Rebus.Transport;
 
 // ReSharper disable ArgumentsStyleLiteral
@@ -18,23 +19,25 @@ public static class OutboxExtensions
     /// <summary>
     /// Configures SQL Server as the outbox storage
     /// </summary>
-    public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
+    public static OutboxOptionsBuilder StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, string tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
         if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-        StoreInSqlServer(configurer, connectionString, TableName.Parse(tableName));
+        return StoreInSqlServer(configurer, connectionString, TableName.Parse(tableName));
     }
 
     /// <summary>
     /// Configures SQL Server as the outbox storage
     /// </summary>
-    public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, TableName tableName)
+    public static OutboxOptionsBuilder StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, string connectionString, TableName tableName)
     {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
         if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+        var options = new OutboxOptionsBuilder();
 
         IDbConnection ConnectionProvider(ITransactionContext context)
         {
@@ -62,11 +65,22 @@ public static class OutboxExtensions
         }
 
         configurer
-            .OtherService<IOutboxStorage>()
-            .Register(_ => new SqlServerOutboxStorage(ConnectionProvider, tableName));
+            .OtherService<OutboxOptionsBuilder>()
+            .Register(_ => options);
 
-        configurer.OtherService<IOutboxConnectionProvider>()
+        configurer
+            .OtherService<IOutboxStorage>()
+            .Register(c =>
+            {
+                var rebusTime = c.Get<IRebusTime>();
+                return new SqlServerOutboxStorage(ConnectionProvider, tableName, options, rebusTime);
+            });
+
+        configurer
+            .OtherService<IOutboxConnectionProvider>()
             .Register(_ => new OutboxConnectionProvider(connectionString));
+
+        return options;
     }
 
     /// <summary>

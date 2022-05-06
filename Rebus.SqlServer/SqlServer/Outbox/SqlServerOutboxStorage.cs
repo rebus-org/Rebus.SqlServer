@@ -4,7 +4,10 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebus.Bus;
+using Rebus.Config.Outbox;
+using Rebus.Extensions;
 using Rebus.Serialization;
+using Rebus.Time;
 using Rebus.Transport;
 
 namespace Rebus.SqlServer.Outbox;
@@ -18,14 +21,21 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     static readonly HeaderSerializer HeaderSerializer = new();
     readonly Func<ITransactionContext, IDbConnection> _connectionProvider;
     readonly TableName _tableName;
+    readonly OutboxOptionsBuilder _options;
+    readonly IRebusTime _rebusTime;
 
     /// <summary>
     /// Creates the outbox storage
     /// </summary>
-    public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName)
+    public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName, OutboxOptionsBuilder options, IRebusTime rebusTime)
     {
         _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
         _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+        _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
+
+        // trigger validation
+        _options.GetIdempotencyTimeout();
     }
 
     /// <summary>
@@ -54,6 +64,7 @@ CREATE TABLE {_tableName} (
     [Headers] nvarchar(max) null,
     [Body] varbinary(max) null,
     [Sent] bit not null default(0),
+    [Time] datetimeoffset(3),
     primary key ([Id])
 )
 ";
@@ -105,6 +116,7 @@ CREATE TABLE {_tableName} (
         return await InnerGetMessageBatch(maxMessageBatchSize, correlationId);
     }
 
+    /// <inheritdoc />
     public async Task<bool> HasProcessedMessage(IDbConnection connection, string sourceQueue, string messageId)
     {
         using var command = connection.CreateCommand();
@@ -116,9 +128,56 @@ CREATE TABLE {_tableName} (
         return await command.ExecuteScalarAsync() is long;
     }
 
+    /// <inheritdoc />
     public async Task MarkMessageAsProcessed(IDbConnection connection, string sourceQueue, string messageId)
     {
         await SaveUsingConnection(connection, null, messageId, sourceQueue, MagicCorrelationId);
+    }
+
+    /// <inheritdoc />
+    public async Task CleanUp()
+    {
+        var idempotencyTimeCutoff = _rebusTime.Now - _options.GetIdempotencyTimeout();
+
+        using var scope = new RebusTransactionScope();
+        using var connection = _connectionProvider(scope.TransactionContext);
+
+        async Task<IReadOnlyList<long>> GetIdsOfRowsToBeDeleted()
+        {
+            using var command = connection.CreateCommand();
+
+            command.CommandText = $"SELECT TOP 1000 [Id] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [Sent] = 1 OR ([CorrelationId] = @correlationId AND [Time] < @cutoff)";
+            command.Parameters.Add("correlationId", SqlDbType.NVarChar, size: 15).Value = MagicCorrelationId;
+            command.Parameters.Add("cutoff", SqlDbType.DateTimeOffset).Value = idempotencyTimeCutoff;
+
+            using var reader = await command.ExecuteReaderAsync();
+
+            var results = new List<long>();
+
+            while (await reader.ReadAsync())
+            {
+                results.Add((long)reader["id"]);
+            }
+
+            return results;
+        }
+
+        var idsOfRowsToBeDeleted = await GetIdsOfRowsToBeDeleted();
+
+        async Task DeleteRows(IEnumerable<long> ids)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = $"DELETE FROM {_tableName} WHERE [Id] IN ({string.Join(",", ids)})";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        foreach (var batch in idsOfRowsToBeDeleted.Batch(100))
+        {
+            await DeleteRows(batch);
+        }
+
+        await connection.Complete();
+        await scope.CompleteAsync();
     }
 
     async Task<OutboxMessageBatch> InnerGetMessageBatch(int maxMessageBatchSize, string correlationId)
@@ -188,15 +247,17 @@ CREATE TABLE {_tableName} (
 
     async Task SaveUsingConnection(IDbConnection connection, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
     {
+        // if it's an idempotency marker, do this
         if (correlationId == MagicCorrelationId)
         {
             using var command = connection.CreateCommand();
 
-            command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress)";
+            command.CommandText = $"INSERT INTO {_tableName} ([CorrelationId], [MessageId], [SourceQueue], [DestinationAddress], [Time]) VALUES (@correlationId, @messageId, @sourceQueue, @destinationAddress, @time)";
             command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = correlationId;
             command.Parameters.Add("messageId", SqlDbType.NVarChar, 255).Value = messageId;
             command.Parameters.Add("sourceQueue", SqlDbType.NVarChar, 255).Value = sourceQueue;
             command.Parameters.Add("destinationAddress", SqlDbType.NVarChar, 255).Value = "";
+            command.Parameters.Add("@time", SqlDbType.DateTimeOffset).Value = _rebusTime.Now;
 
             await command.ExecuteNonQueryAsync();
             return;

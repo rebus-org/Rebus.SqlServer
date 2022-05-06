@@ -38,7 +38,8 @@ public static class SqlServerOutboxConfigurationExtensions
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
                 var outboxStorage = c.Get<IOutboxStorage>();
                 var transport = c.Get<ITransport>();
-                return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport);
+                var options = c.Get<OutboxOptionsBuilder>();
+                return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport, options);
             });
 
             o.Decorate(c =>

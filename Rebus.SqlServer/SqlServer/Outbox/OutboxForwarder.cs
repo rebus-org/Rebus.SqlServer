@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Rebus.Bus;
+using Rebus.Config.Outbox;
 using Rebus.Logging;
 using Rebus.Threading;
 using Rebus.Transport;
@@ -38,13 +39,15 @@ class OutboxForwarder : IDisposable, IInitializable
     readonly IAsyncTask _cleaner;
     readonly ILog _logger;
 
-    public OutboxForwarder(IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory, IOutboxStorage outboxStorage, ITransport transport)
+    public OutboxForwarder(IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory,
+        IOutboxStorage outboxStorage, ITransport transport, OutboxOptionsBuilder options)
     {
         if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
+        if (options == null) throw new ArgumentNullException(nameof(options));
         _outboxStorage = outboxStorage;
         _transport = transport;
-        _forwarder = asyncTaskFactory.Create("OutboxForwarder", RunForwarder, intervalSeconds: 1);
-        _cleaner = asyncTaskFactory.Create("OutboxCleaner", RunCleaner, intervalSeconds: 120);
+        _forwarder = asyncTaskFactory.Create("OutboxForwarder", RunForwarder, intervalSeconds: options.GetMessageForwarderDelaySeconds());
+        _cleaner = asyncTaskFactory.Create("OutboxCleaner", RunCleaner, intervalSeconds: options.GetCleanupDelaySeconds());
         _logger = rebusLoggerFactory.GetLogger<OutboxForwarder>();
     }
 
@@ -101,6 +104,8 @@ class OutboxForwarder : IDisposable, IInitializable
     async Task RunCleaner()
     {
         _logger.Debug("Checking outbox storage for messages to be deleted");
+
+        await _outboxStorage.CleanUp();
     }
 
     public void TryEagerSend(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string correlationId)

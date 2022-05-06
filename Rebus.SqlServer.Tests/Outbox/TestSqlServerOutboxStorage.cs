@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using NUnit.Framework;
+using Rebus.Config.Outbox;
 using Rebus.Messages;
 using Rebus.SqlServer.Outbox;
 using Rebus.Tests.Contracts;
@@ -16,6 +18,8 @@ namespace Rebus.SqlServer.Tests.Outbox;
 public class TestSqlServerOutboxStorage : FixtureBase
 {
     SqlServerOutboxStorage _storage;
+    FakeRebusTime _fakeRebusTime;
+    OutboxOptionsBuilder _options;
 
     protected override void SetUp()
     {
@@ -25,8 +29,54 @@ public class TestSqlServerOutboxStorage : FixtureBase
 
         SqlTestHelper.DropAllTables();
 
-        _storage = new SqlServerOutboxStorage(GetNewDbConnection, new TableName("dbo", tableName));
+        _fakeRebusTime = new FakeRebusTime();
+        _options = new OutboxOptionsBuilder();
+        _storage = new SqlServerOutboxStorage(GetNewDbConnection, new TableName("dbo", tableName), _options, _fakeRebusTime);
         _storage.Initialize();
+    }
+
+    [Test]
+    public async Task IdempotencyMarkersAreRemovedWhenTheyExpire()
+    {
+        _options.SetIdempotencyTimeout(TimeSpan.FromHours(1.5));
+
+        var now = DateTimeOffset.Now;
+
+        _fakeRebusTime.SetNow(now);
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+            await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-1");
+            await connection.Complete();
+            await scope.CompleteAsync();
+        }
+
+        _fakeRebusTime.SetNow(now.AddHours(1));
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+            await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-2");
+            await connection.Complete();
+            await scope.CompleteAsync();
+        }
+
+        _fakeRebusTime.SetNow(now.AddHours(2));
+
+        // we expect the first marker to have been cleaned up
+        await _storage.CleanUp();
+
+        using (var scope = new RebusTransactionScope())
+        {
+            using var connection = GetNewDbConnection(scope.TransactionContext);
+
+            var message1Processed = await _storage.HasProcessedMessage(connection, "queue-1", "message-1");
+            var message2Processed = await _storage.HasProcessedMessage(connection, "queue-1", "message-2");
+
+            Assert.That(message1Processed, Is.False);
+            Assert.That(message2Processed, Is.True);
+        }
     }
 
     [Test]
@@ -53,7 +103,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
             using var connection = GetNewDbConnection(scope.TransactionContext);
             await _storage.MarkMessageAsProcessed(connection, "queue-1", "message-3");
             //await connection.Complete(); //< NO COMPLETE!
-            await scope.CompleteAsync(); 
+            await scope.CompleteAsync();
         }
 
         using (var scope = new RebusTransactionScope())
@@ -153,7 +203,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
         Assert.That(batch1.Count, Is.EqualTo(1));
         Assert.That(batch2.Count, Is.EqualTo(0));
     }
-    
+
     [Test]
     public async Task CanStoreBatchOfMessages_Complete_MagicMessageMarkerDoesNotInterfere()
     {

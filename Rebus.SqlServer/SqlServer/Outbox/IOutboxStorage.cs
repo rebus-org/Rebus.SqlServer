@@ -36,4 +36,9 @@ public interface IOutboxStorage
     /// Marks the message with the given <paramref name="messageId"/> as processed by <paramref name="sourceQueue"/>
     /// </summary>
     Task MarkMessageAsProcessed(IDbConnection connection, string sourceQueue, string messageId);
+
+    /// <summary>
+    /// Cleans up the outbox by removing messages that have already been sent and removing idempotency markers that have exceeded the idempotency timeout.
+    /// </summary>
+    Task CleanUp();
 }
