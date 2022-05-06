@@ -15,12 +15,12 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Rebus.SqlServer\Rebus.SqlServer.csproj" />
 		<PackageReference Include="microsoft.net.test.sdk" Version="17.1.0" />
-		<PackageReference Include="nunit" Version="3.13.2" />
+		<PackageReference Include="nunit" Version="3.13.3" />
 		<PackageReference Include="nunit3testadapter" Version="4.2.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="rebus" Version="6.6.5" />
-		<PackageReference Include="rebus.tests.contracts" Version="6.0.0" />
+		<PackageReference Include="rebus.tests.contracts" Version="6.5.0" />
 	</ItemGroup>
 </Project>

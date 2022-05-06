@@ -36,7 +36,7 @@ class OutboxIncomingStep : IIncomingStep
         if (await _outboxStorage.HasProcessedMessage(connection, _transport.Address, messageId)) return;
 
         await _outboxStorage.MarkMessageAsProcessed(connection, _transport.Address, messageId);
-
+        
         transactionContext.Items[OutboxExtensions.CurrentOutboxConnectionKey] = outboxConnection;
 
         transactionContext.OnCommitted(async _ => outboxConnection.Transaction.Commit());

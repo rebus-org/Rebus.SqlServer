@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -10,6 +11,7 @@ using Rebus.Persistence.InMem;
 using Rebus.Pipeline;
 using Rebus.Routing;
 using Rebus.Routing.TypeBased;
+using Rebus.SqlServer.Outbox;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Transport;
