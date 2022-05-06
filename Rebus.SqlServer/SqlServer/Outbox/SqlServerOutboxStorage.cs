@@ -24,6 +24,15 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     readonly OutboxOptionsBuilder _options;
     readonly IRebusTime _rebusTime;
 
+    static readonly Retrier DeleteRetrier = new Retrier(new []
+    {
+        TimeSpan.FromSeconds(1), 
+        TimeSpan.FromSeconds(1), 
+        TimeSpan.FromSeconds(1), 
+        TimeSpan.FromSeconds(1), 
+        TimeSpan.FromSeconds(1), 
+    });
+
     /// <summary>
     /// Creates the outbox storage
     /// </summary>
@@ -173,7 +182,7 @@ CREATE TABLE {_tableName} (
 
         foreach (var batch in idsOfRowsToBeDeleted.Batch(100))
         {
-            await DeleteRows(batch);
+            await DeleteRetrier.ExecuteAsync(() => DeleteRows(batch));
         }
 
         await connection.Complete();

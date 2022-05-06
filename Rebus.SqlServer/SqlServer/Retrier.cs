@@ -32,7 +32,7 @@ class Retrier
                 await execute();
                 return;
             }
-            catch (Exception exception)
+            catch (Exception)
             {
                 if (index == _delays.Count)
                 {
