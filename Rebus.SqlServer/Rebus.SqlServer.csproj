@@ -12,7 +12,7 @@
 		<Copyright>Copyright 2012 Rebus FM ApS</Copyright>
 		<PackageTags>rebus queue messaging service bus sql-server sqlserver mssql sql</PackageTags>
 		<PackageIcon>little_rebusbus2_copy-500x500.png</PackageIcon>
-		<RepositoryUrl>https://github.com/rebus-org/Rebus</RepositoryUrl>
+		<RepositoryUrl>https://github.com/rebus-org/Rebus.SqlServer</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
