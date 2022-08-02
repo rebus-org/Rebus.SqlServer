@@ -118,14 +118,14 @@ public class SqlServerLeaseTransport : SqlServerTransport
     /// <returns>A <seealso cref="TransportMessage"/> or <c>null</c> if no message can be dequeued</returns>
     protected override async Task<TransportMessage> ReceiveInternal(ITransactionContext context, CancellationToken cancellationToken)
     {
-        TransportMessage transportMessage = null;
+        TransportMessage transportMessage;
 
-        using (var connection = await ConnectionProvider.GetConnection())
+        using var connection = await ConnectionProvider.GetConnection();
+
+        using (var selectCommand = connection.CreateCommand())
         {
-            using (var selectCommand = connection.CreateCommand())
-            {
-                selectCommand.CommandType = CommandType.Text;
-                selectCommand.CommandText = $@"
+            selectCommand.CommandType = CommandType.Text;
+            selectCommand.CommandText = $@"
 ;WITH TopCTE AS (
 	SELECT	TOP 1
 			[id],
@@ -152,32 +152,30 @@ SET		[leaseduntil] = DATEADD(ms, @leasemilliseconds, DATEADD(ss, @leasetotalseco
 		[leasedat] = sysdatetimeoffset(),
 		[leasedby] = @leasedby
 OUTPUT	inserted.*";
-                selectCommand.Parameters.Add("@leasetotalseconds", SqlDbType.Int).Value = (int)_leaseInterval.TotalSeconds;
-                selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.Int).Value = _leaseInterval.Milliseconds;
-                selectCommand.Parameters.Add("@leasetolerancetotalseconds", SqlDbType.Int).Value = (int)_leaseTolerance.TotalSeconds;
-                selectCommand.Parameters.Add("@leasetolerancemilliseconds", SqlDbType.Int).Value = _leaseTolerance.Milliseconds;
-                selectCommand.Parameters.Add("@leasedby", SqlDbType.VarChar, LeasedByColumnSize).Value = _leasedByFactory();
+            selectCommand.Parameters.Add("@leasetotalseconds", SqlDbType.Int).Value = (int)_leaseInterval.TotalSeconds;
+            selectCommand.Parameters.Add("@leasemilliseconds", SqlDbType.Int).Value = _leaseInterval.Milliseconds;
+            selectCommand.Parameters.Add("@leasetolerancetotalseconds", SqlDbType.Int).Value = (int)_leaseTolerance.TotalSeconds;
+            selectCommand.Parameters.Add("@leasetolerancemilliseconds", SqlDbType.Int).Value = _leaseTolerance.Milliseconds;
+            selectCommand.Parameters.Add("@leasedby", SqlDbType.VarChar, LeasedByColumnSize).Value = _leasedByFactory();
 
-                try
-                {
-                    using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        transportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
-                        if (transportMessage == null) return null;
+            try
+            {
+                using var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
 
-                        var messageId = (long)reader["id"];
-                        ApplyTransactionSemantics(context, messageId, cancellationToken);
-                    }
-                }
-                catch (Exception exception) when (cancellationToken.IsCancellationRequested)
-                {
-                    // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
-                    throw new TaskCanceledException("Receive operation was cancelled", exception);
-                }
+                transportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
+                if (transportMessage == null) return null;
+
+                var messageId = (long)reader["id"];
+                ApplyTransactionSemantics(context, messageId, cancellationToken);
             }
-
-            await connection.Complete();
+            catch (Exception exception) when (cancellationToken.IsCancellationRequested)
+            {
+                // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
+                throw new TaskCanceledException("Receive operation was cancelled", exception);
+            }
         }
+
+        await connection.Complete();
 
         return transportMessage;
     }
@@ -258,41 +256,39 @@ END
     private void ApplyTransactionSemantics(ITransactionContext context, long messageId, CancellationToken cancellationToken)
     {
         AutomaticLeaseRenewer renewal = null;
-        if (_automaticLeaseRenewal == true)
+
+        if (_automaticLeaseRenewal)
         {
             renewal = new AutomaticLeaseRenewer(
                 this, ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalInterval, _leaseInterval, cancellationToken);
         }
 
-        context.OnAborted(
-            ctx =>
+        context.OnAborted(_ =>
+        {
+            renewal?.Dispose();
+            try
             {
-                renewal?.Dispose();
-                try
-                {
-                    AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName, messageId, null, cancellationToken));
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "While Resetting Lease");
-                }
+                AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName,
+                    messageId, null, cancellationToken));
             }
-        );
+            catch (Exception ex)
+            {
+                Log.Error(ex, "While Resetting Lease");
+            }
+        });
 
-        context.OnCommitted(
-            async ctx =>
+        context.OnCompleted(async _ =>
+        {
+            renewal?.Dispose();
+            try
             {
-                renewal?.Dispose();
-                try
-                {
-                    await DeleteMessage(messageId, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "While Deleteing Message");
-                }
+                await DeleteMessage(messageId, cancellationToken);
             }
-        );
+            catch (Exception ex)
+            {
+                Log.Error(ex, "While Deleteing Message");
+            }
+        });
     }
 
     /// <summary>
@@ -303,22 +299,21 @@ END
     protected virtual async Task DeleteMessage(long messageId, CancellationToken cancellationToken)
     {
         // Delete the message
-        using (var deleteConnection = await ConnectionProvider.GetConnection())
+        using var deleteConnection = await ConnectionProvider.GetConnection();
+        
+        using (var deleteCommand = deleteConnection.CreateCommand())
         {
-            using (var deleteCommand = deleteConnection.CreateCommand())
-            {
-                deleteCommand.CommandType = CommandType.Text;
-                deleteCommand.CommandText = $@"
+            deleteCommand.CommandType = CommandType.Text;
+            deleteCommand.CommandText = $@"
 DELETE
 FROM	{ReceiveTableName.QualifiedName} WITH (ROWLOCK)
 WHERE	id = @id
 ";
-                deleteCommand.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
-                await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
-            }
-
-            await deleteConnection.Complete();
+            deleteCommand.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
+            await deleteCommand.ExecuteNonQueryAsync(cancellationToken);
         }
+
+        await deleteConnection.Complete();
     }
 
     /// <summary>
@@ -333,20 +328,19 @@ WHERE	id = @id
 
                 async Task SendOutgoingMessages(ITransactionContext _)
                 {
-                    using (var connection = await ConnectionProvider.GetConnection())
+                    using var connection = await ConnectionProvider.GetConnection();
+                    
+                    while (outgoingMessages.IsEmpty == false)
                     {
-                        while (outgoingMessages.IsEmpty == false)
+                        if (outgoingMessages.TryDequeue(out var addressed) == false)
                         {
-                            if (outgoingMessages.TryDequeue(out var addressed) == false)
-                            {
-                                break;
-                            }
-
-                            await InnerSend(addressed.DestinationAddress, addressed.Message, connection);
+                            break;
                         }
 
-                        await connection.Complete();
+                        await InnerSend(addressed.DestinationAddress, addressed.Message, connection);
                     }
+
+                    await connection.Complete();
                 }
 
                 context.OnCommitted(SendOutgoingMessages);
@@ -366,42 +360,41 @@ WHERE	id = @id
     /// <param name="cancellationToken">Token to abort processing</param>
     protected virtual async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, TimeSpan? leaseInterval, CancellationToken cancellationToken)
     {
-        using (var connection = await connectionProvider.GetConnection())
+        using var connection = await connectionProvider.GetConnection();
+        
+        using (var command = connection.CreateCommand())
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandType = CommandType.Text;
+            command.CommandType = CommandType.Text;
 
-                if (leaseInterval.HasValue)
-                {
-                    command.CommandText = $@"
+            if (leaseInterval.HasValue)
+            {
+                command.CommandText = $@"
 UPDATE	{tableName} WITH (ROWLOCK)
 SET		leaseduntil =	dateadd(ms, @leaseintervalmilliseconds, dateadd(ss, @leaseintervaltotalseconds, sysdatetimeoffset())),
 		leasedby	=	leasedby,
 		leasedat	=	leasedat
 WHERE	id = @id
 ";
-                    command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
-                    command.Parameters.Add("@leaseintervaltotalseconds", SqlDbType.Int).Value = (int)leaseInterval.Value.TotalSeconds;
-                    command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.Int).Value = leaseInterval.Value.Milliseconds;
-                }
-                else
-                {
-                    command.CommandText = $@"
+                command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
+                command.Parameters.Add("@leaseintervaltotalseconds", SqlDbType.Int).Value = (int)leaseInterval.Value.TotalSeconds;
+                command.Parameters.Add("@leaseintervalmilliseconds", SqlDbType.Int).Value = leaseInterval.Value.Milliseconds;
+            }
+            else
+            {
+                command.CommandText = $@"
 UPDATE	{tableName} WITH (ROWLOCK)
 SET		leaseduntil =	NULL,
 		leasedby	=	NULL,
 		leasedat	=	NULL
 WHERE	id = @id
 ";
-                    command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
-                }
-
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                command.Parameters.Add("@id", SqlDbType.BigInt).Value = messageId;
             }
 
-            await connection.Complete();
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        await connection.Complete();
     }
 
     /// <summary>

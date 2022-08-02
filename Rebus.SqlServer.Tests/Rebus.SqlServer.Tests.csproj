@@ -21,6 +21,6 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="rebus" Version="6.6.2" />
-		<PackageReference Include="rebus.tests.contracts" Version="6.0.0" />
+		<PackageReference Include="rebus.tests.contracts" Version="6.5.0" />
 	</ItemGroup>
 </Project>

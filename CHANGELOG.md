@@ -123,7 +123,7 @@
 * Make it possible to disable native message defer functionality of SQL transport, thus making it possible to run a dedicated SQL timeout manager (like with any other transport) together with the SQL transport
 * Migrate old receive index to new, improved index - thanks [Simplicitdk]
 
-## 7.3.0-b1
+## 7.3.0-b4
 * Add outbox 🙂
 
 

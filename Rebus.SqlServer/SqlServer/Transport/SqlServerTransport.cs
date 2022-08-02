@@ -24,7 +24,7 @@ namespace Rebus.SqlServer.Transport;
 /// </summary>
 public class SqlServerTransport : ITransport, IInitializable, IDisposable
 {
-    static readonly HeaderSerializer HeaderSerializer = new HeaderSerializer();
+    static readonly HeaderSerializer HeaderSerializer = new();
 
     /// <summary>
     /// When a message is sent to this address, it will be deferred into the future!
@@ -70,7 +70,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     /// </summary>
     protected readonly ILog Log;
         
-    readonly AsyncBottleneck _bottleneck = new AsyncBottleneck(20);
+    readonly AsyncBottleneck _bottleneck = new(20);
     readonly IAsyncTask _expiredMessagesCleanupTask;
     readonly bool _nativeTimeoutManagerDisabled;
     readonly bool _autoDeleteQueue;
@@ -150,23 +150,23 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
 
     async Task InnerEnsureTableIsCreatedAsync(TableName tableName)
     {
-        using (var connection = await ConnectionProvider.GetConnection())
+        using var connection = await ConnectionProvider.GetConnection();
+        
+        var tableNames = connection.GetTableNames();
+
+        if (tableNames.Contains(tableName))
         {
-            var tableNames = connection.GetTableNames();
+            Log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
+            await connection.Complete();
+            return;
+        }
 
-            if (tableNames.Contains(tableName))
-            {
-                Log.Info("Database already contains a table named {tableName} - will not create anything", tableName.QualifiedName);
-                await connection.Complete();
-                return;
-            }
+        Log.Info("Table {tableName} does not exist - it will be created now", tableName.QualifiedName);
 
-            Log.Info("Table {tableName} does not exist - it will be created now", tableName.QualifiedName);
+        var receiveIndexName = $"IDX_RECEIVE_{tableName.Schema}_{tableName.Name}";
+        var expirationIndexName = $"IDX_EXPIRATION_{tableName.Schema}_{tableName.Name}";
 
-            var receiveIndexName = $"IDX_RECEIVE_{tableName.Schema}_{tableName.Name}";
-            var expirationIndexName = $"IDX_EXPIRATION_{tableName.Schema}_{tableName.Name}";
-
-            ExecuteCommands(connection, $@"
+        ExecuteCommands(connection, $@"
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{tableName.Schema}')
 	EXEC('CREATE SCHEMA [{tableName.Schema}]')
 
@@ -219,10 +219,9 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
 ");
 
-            var additional = AdditionalSchemaModifications(tableName);
-            ExecuteCommands(connection, additional);
-            await connection.Complete();
-        }
+        var additional = AdditionalSchemaModifications(tableName);
+        ExecuteCommands(connection, additional);
+        await connection.Complete();
     }
 
     /// <summary>
@@ -266,27 +265,26 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
 
     async Task InnerEnsureTableIsDroppedAsync(TableName tableName)
     {
-        using (var connection = await ConnectionProvider.GetConnection())
+        using var connection = await ConnectionProvider.GetConnection();
+        
+        var tableNames = connection.GetTableNames();
+
+        if (!tableNames.Contains(tableName))
         {
-            var tableNames = connection.GetTableNames();
+            Log.Info("A table named {tableName} doesn't exist", tableName.QualifiedName);
+            await connection.Complete();
+            return;
+        }
 
-            if (!tableNames.Contains(tableName))
-            {
-                Log.Info("A table named {tableName} doesn't exist", tableName.QualifiedName);
-                await connection.Complete();
-                return;
-            }
+        Log.Info("Table {tableName} exists - it will be dropped now", tableName.QualifiedName);
 
-            Log.Info("Table {tableName} exists - it will be dropped now", tableName.QualifiedName);
-
-            ExecuteCommands(connection, $@"
+        ExecuteCommands(connection, $@"
 IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableName.Schema}' AND TABLE_NAME = '{tableName.Name}')
     DROP TABLE {tableName.QualifiedName};");
 
-            var additional = AdditionalSchemaModificationsOnDeleteQueue();
-            ExecuteCommands(connection, additional);
-            await connection.Complete();
-        }
+        var additional = AdditionalSchemaModificationsOnDeleteQueue();
+        ExecuteCommands(connection, additional);
+        await connection.Complete();
     }
         
     /// <summary>
@@ -301,12 +299,11 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
     {
         foreach (var sqlCommand in sqlCommands.Split(new[] { "----" }, StringSplitOptions.RemoveEmptyEntries))
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = sqlCommand;
+            using var command = connection.CreateCommand();
+            
+            command.CommandText = sqlCommand;
 
-                Execute(command);
-            }
+            Execute(command);
         }
     }
 
@@ -366,9 +363,9 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
 
         TransportMessage receivedTransportMessage;
 
-        using (var selectCommand = connection.CreateCommand())
-        {
-            selectCommand.CommandText = $@"
+        using var selectCommand = connection.CreateCommand();
+
+        selectCommand.CommandText = $@"
 
 	SET NOCOUNT ON
 
@@ -394,18 +391,16 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
 	SET NOCOUNT OFF
 						";
 
-            try
-            {
-                using (var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            catch (Exception exception) when (cancellationToken.IsCancellationRequested)
-            {
-                // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
-                throw new TaskCanceledException("Receive operation was cancelled", exception);
-            }
+        try
+        {
+            using var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            
+            receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (cancellationToken.IsCancellationRequested)
+        {
+            // ADO.NET does not throw the right exception when the task gets cancelled - therefore we need to do this:
+            throw new TaskCanceledException("Receive operation was cancelled", exception);
         }
 
         return receivedTransportMessage;
@@ -428,7 +423,6 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
 
         return new TransportMessage(headersDictionary, body);
     }
-
 
     /// <summary>
     /// Gets the address a message will actually be sent to. Handles deferred messsages.
@@ -459,10 +453,10 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
     protected async Task InnerSend(string destinationAddress, TransportMessage message, IDbConnection connection)
     {
         var sendTable = TableName.Parse(destinationAddress);
-            
-        using (var command = connection.CreateCommand())
-        {
-            command.CommandText = $@"
+
+        using var command = connection.CreateCommand();
+        
+        command.CommandText = $@"
 INSERT INTO {sendTable.QualifiedName}
 (
     [headers],
@@ -480,25 +474,24 @@ VALUES
     dateadd(ms, @ttlmilliseconds, dateadd(ss, @ttltotalseconds, sysdatetimeoffset()))
 )";
 
-            var headers = message.Headers.Clone();
+        var headers = message.Headers.Clone();
 
-            var priority = GetMessagePriority(headers);
-            var visible = GetInitialVisibilityDelay(headers);
-            var ttl = GetTtl(headers);
+        var priority = GetMessagePriority(headers);
+        var visible = GetInitialVisibilityDelay(headers);
+        var ttl = GetTtl(headers);
 
-            // must be last because the other functions on the headers might change them
-            var serializedHeaders = HeaderSerializer.Serialize(headers);
+        // must be last because the other functions on the headers might change them
+        var serializedHeaders = HeaderSerializer.Serialize(headers);
 
-            command.Parameters.Add("headers", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(serializedHeaders.Length)).Value = serializedHeaders;
-            command.Parameters.Add("body", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(message.Body.Length)).Value = message.Body;
-            command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
-            command.Parameters.Add("visibletotalseconds", SqlDbType.Int).Value = (int)visible.TotalSeconds;
-            command.Parameters.Add("visiblemilliseconds", SqlDbType.Int).Value = visible.Milliseconds;
-            command.Parameters.Add("ttltotalseconds", SqlDbType.Int).Value = (int)ttl.TotalSeconds;
-            command.Parameters.Add("ttlmilliseconds", SqlDbType.Int).Value = ttl.Milliseconds;
+        command.Parameters.Add("headers", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(serializedHeaders.Length)).Value = serializedHeaders;
+        command.Parameters.Add("body", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(message.Body.Length)).Value = message.Body;
+        command.Parameters.Add("priority", SqlDbType.Int).Value = priority;
+        command.Parameters.Add("visibletotalseconds", SqlDbType.Int).Value = (int)visible.TotalSeconds;
+        command.Parameters.Add("visiblemilliseconds", SqlDbType.Int).Value = visible.Milliseconds;
+        command.Parameters.Add("ttltotalseconds", SqlDbType.Int).Value = (int)ttl.TotalSeconds;
+        command.Parameters.Add("ttlmilliseconds", SqlDbType.Int).Value = ttl.Milliseconds;
 
-            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-        }
+        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
     TimeSpan GetInitialVisibilityDelay(IDictionary<string, string> headers)
@@ -544,14 +537,14 @@ VALUES
 
         while (true)
         {
-            using (var connection = await ConnectionProvider.GetConnection())
-            {
-                int affectedRows;
+            using var connection = await ConnectionProvider.GetConnection();
+            
+            int affectedRows;
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText =
-                        $@"
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText =
+                    $@"
 ;with TopCTE as (
 	SELECT TOP 1 [id] FROM {ReceiveTableName.QualifiedName} WITH (ROWLOCK, READPAST)
 				WHERE 
@@ -560,15 +553,14 @@ VALUES
 DELETE FROM TopCTE
 ";
 
-                    affectedRows = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-                }
-
-                results += affectedRows;
-
-                await connection.Complete();
-
-                if (affectedRows == 0) break;
+                affectedRows = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
+
+            results += affectedRows;
+
+            await connection.Complete();
+
+            if (affectedRows == 0) break;
         }
 
         if (results > 0)
@@ -600,8 +592,8 @@ DELETE FROM TopCTE
                 async () =>
                 {
                     var dbConnection = await ConnectionProvider.GetConnection();
-                    context.OnCommitted(async ctx => await dbConnection.Complete());
-                    context.OnDisposed(ctx =>
+                    context.OnCommitted(async _ => await dbConnection.Complete());
+                    context.OnDisposed(_ =>
                     {
                         dbConnection.Dispose();
                     });
@@ -619,8 +611,11 @@ DELETE FROM TopCTE
         try
         {
             _expiredMessagesCleanupTask.Dispose();
+            
             if (_autoDeleteQueue)
+            {
                 EnsureTableIsDropped();
+            }
         }
         finally
         {
