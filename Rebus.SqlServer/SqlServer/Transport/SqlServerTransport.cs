@@ -69,7 +69,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     /// Logger
     /// </summary>
     protected readonly ILog Log;
-        
+
     readonly AsyncBottleneck _bottleneck = new(20);
     readonly IAsyncTask _expiredMessagesCleanupTask;
     readonly bool _nativeTimeoutManagerDisabled;
@@ -151,7 +151,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     async Task InnerEnsureTableIsCreatedAsync(TableName tableName)
     {
         using var connection = await ConnectionProvider.GetConnection();
-        
+
         var tableNames = connection.GetTableNames();
 
         if (tableNames.Contains(tableName))
@@ -232,7 +232,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
     {
         return string.Empty;
     }
-        
+
     /// <summary>
     /// Checks if the table with the configured name exists - if it is, it will be dropped
     /// </summary>
@@ -247,7 +247,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
             // if it failed because of a collision between another thread doing the same thing, just try again once:
             AsyncHelpers.RunSync(() => EnsureTableIsDroppedAsync(ReceiveTableName));
         }
-    }        
+    }
 
     async Task EnsureTableIsDroppedAsync(TableName tableName)
     {
@@ -266,7 +266,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
     async Task InnerEnsureTableIsDroppedAsync(TableName tableName)
     {
         using var connection = await ConnectionProvider.GetConnection();
-        
+
         var tableNames = connection.GetTableNames();
 
         if (!tableNames.Contains(tableName))
@@ -286,21 +286,21 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         ExecuteCommands(connection, additional);
         await connection.Complete();
     }
-        
+
     /// <summary>
     /// Provides an oppurtunity for derived implementations to also update the schema when the queue is deleted automatically 
     /// </summary>
     protected virtual string AdditionalSchemaModificationsOnDeleteQueue()
     {
         return string.Empty;
-    }        
+    }
 
     static void ExecuteCommands(IDbConnection connection, string sqlCommands)
     {
         foreach (var sqlCommand in sqlCommands.Split(new[] { "----" }, StringSplitOptions.RemoveEmptyEntries))
         {
             using var command = connection.CreateCommand();
-            
+
             command.CommandText = sqlCommand;
 
             Execute(command);
@@ -394,7 +394,7 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         try
         {
             using var reader = await selectCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            
+
             receivedTransportMessage = await ExtractTransportMessageFromReader(reader, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (cancellationToken.IsCancellationRequested)
@@ -455,7 +455,7 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         var sendTable = TableName.Parse(destinationAddress);
 
         using var command = connection.CreateCommand();
-        
+
         command.CommandText = $@"
 INSERT INTO {sendTable.QualifiedName}
 (
@@ -538,7 +538,7 @@ VALUES
         while (true)
         {
             using var connection = await ConnectionProvider.GetConnection();
-            
+
             int affectedRows;
 
             using (var command = connection.CreateCommand())
@@ -611,7 +611,7 @@ DELETE FROM TopCTE
         try
         {
             _expiredMessagesCleanupTask.Dispose();
-            
+
             if (_autoDeleteQueue)
             {
                 EnsureTableIsDropped();

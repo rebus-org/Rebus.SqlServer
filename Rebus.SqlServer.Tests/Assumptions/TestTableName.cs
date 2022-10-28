@@ -38,7 +38,7 @@ public class TestTableName
 
     [TestCase("table", "dbo", "table")]
     [TestCase("[table]", "dbo", "table")]
-    [TestCase("dbo.table", "dbo", "table", Description = "Allow short-hand for this simple case to avoid having to use brackets")]
+    [TestCase("dbo.table", "dbo", "table")]
     [TestCase("schema.table", "schema", "table")]
     [TestCase("[schema].[table]", "schema", "table")]
     [TestCase("[Table name with spaces in it]", "dbo", "Table name with spaces in it")]
@@ -62,9 +62,9 @@ public class TestTableName
     {
         var table = TableName.Parse("TableName");
 
-        Assert.AreEqual(table.Name, "TableName");
-        Assert.AreEqual(table.Schema, "dbo");
-        Assert.AreEqual(table.QualifiedName, "[dbo].[TableName]");
+        Assert.That(table.Name, Is.EqualTo("TableName"));
+        Assert.That(table.Schema, Is.EqualTo("dbo"));
+        Assert.That(table.QualifiedName, Is.EqualTo("[dbo].[TableName]"));
     }
 
     [Test]
@@ -72,19 +72,29 @@ public class TestTableName
     {
         var table = TableName.Parse("[TableName]");
 
-        Assert.AreEqual(table.Name, "TableName");
-        Assert.AreEqual(table.Schema, "dbo");
-        Assert.AreEqual(table.QualifiedName, "[dbo].[TableName]");
+        Assert.That(table.Name, Is.EqualTo("TableName"));
+        Assert.That(table.Schema, Is.EqualTo("dbo"));
+        Assert.That(table.QualifiedName, Is.EqualTo("[dbo].[TableName]"));
     }
 
     [Test]
-    public void ParsesNameWithSchema()
+    public void ParsesNameWithSingleDotAsSchema()
     {
         var table = TableName.Parse("schema.TableName");
 
-        Assert.AreEqual(table.Name, "TableName");
-        Assert.AreEqual(table.Schema, "schema");
-        Assert.AreEqual(table.QualifiedName, "[schema].[TableName]");
+        Assert.That(table.Name, Is.EqualTo("TableName"));
+        Assert.That(table.Schema, Is.EqualTo("schema"));
+        Assert.That(table.QualifiedName, Is.EqualTo("[schema].[TableName]"));
+    }
+
+    [Test]
+    public void ParsesNameWithMultipleDotsAsTableName()
+    {
+        var table = TableName.Parse("notschema.alsonotschema.TableName");
+
+        Assert.That(table.Name, Is.EqualTo("notschema.alsonotschema.TableName"));
+        Assert.That(table.Schema, Is.EqualTo("dbo"));
+        Assert.That(table.QualifiedName, Is.EqualTo("[dbo].[notschema.alsonotschema.TableName]"));
     }
 
     [Test]
@@ -92,8 +102,8 @@ public class TestTableName
     {
         var table = TableName.Parse("[schema].[TableName]");
 
-        Assert.AreEqual(table.Name, "TableName");
-        Assert.AreEqual(table.Schema, "schema");
-        Assert.AreEqual(table.QualifiedName, "[schema].[TableName]");
+        Assert.That(table.Name, Is.EqualTo("TableName"));
+        Assert.That(table.Schema, Is.EqualTo("schema"));
+        Assert.That(table.QualifiedName, Is.EqualTo("[schema].[TableName]"));
     }
 }

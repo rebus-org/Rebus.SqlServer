@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace Rebus.SqlServer;
@@ -8,6 +9,8 @@ namespace Rebus.SqlServer;
 /// </summary>
 public class TableName : IEquatable<TableName>
 {
+    static readonly ConcurrentDictionary<string, TableName> Cache = new();
+
     /// <summary>
     /// Gets the schema name of the table
     /// </summary>
@@ -37,32 +40,46 @@ public class TableName : IEquatable<TableName>
     /// E.g. 'table' will result in a <see cref="TableName"/> representing the '[dbo].[table]' table, whereas 'accounting.messages' will
     /// represent the '[accounting].[messages]' table.
     /// </summary>
-    public static TableName Parse(string name)
+    public static TableName Parse(string name) => Cache.GetOrAdd(name, InnerParse);
+
+    static TableName InnerParse(string input)
     {
-        // special case: bare table name, or schema and table name separated by . (but without any brackets)
+        var name = input.Trim();
+
         if (!(name.StartsWith("[") && name.EndsWith("]")))
         {
-            var parts = name.Split('.');
+            if (name.Contains("[") || name.Contains("]"))
+            {
+                throw new ArgumentException($"The table name '{name}' cannot be used, because it contains '[' or ']'");
+            }
 
-            return TableNameFromParts(name, parts);
+            // special case: the name consists of two parts separated by a single '.' – when this is the case,
+            // we treat the name as '<schema>.<name>'
+            var dotDelimitedParts = name.Split('.');
+
+            if (dotDelimitedParts.Length == 2)
+            {
+                return new TableName(dotDelimitedParts[0], dotDelimitedParts[1]);
+            }
+
+            // otherwise treat the entire name as one single table name for the default schema
+            return new TableName("dbo", name);
         }
-        else
-        {
-            // name has [ and ] around it - we remove those
-            var nameWithoutOutermostBrackets = name.Substring(1, name.Length - 2);
 
-            // now the name either looks like this
-            //   'name'
-            // or like this 
-            //   'schema].[name'
-            // or even like this (because there can be spaces between the parts
-            //   'schema]    .          [name'
-            //
-            // there we split with this regex
-            var parts = Regex.Split(nameWithoutOutermostBrackets, @"\][ ]*\.[ ]*\[");
+        // name has [ and ] around it - we remove those
+        var nameWithoutOutermostBrackets = name.Substring(1, name.Length - 2);
 
-            return TableNameFromParts(name, parts);
-        }
+        // now the name either looks like this
+        //   'name'
+        // or like this 
+        //   'schema].[name'
+        // or even like this (because there can be spaces between the parts
+        //   'schema]    .          [name'
+        //
+        // there we split with this regex
+        var parts = Regex.Split(nameWithoutOutermostBrackets, @"\][ ]*\.[ ]*\[");
+
+        return TableNameFromParts(name, parts);
     }
 
     static TableName TableNameFromParts(string name, string[] parts)
