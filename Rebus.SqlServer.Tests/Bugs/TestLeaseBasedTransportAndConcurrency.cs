@@ -19,7 +19,7 @@ public class TestLeaseBasedTransportAndConcurrency : FixtureBase
     [TestCase(2, 2, 10)]
     [TestCase(5, 10, 100)]
     [TestCase(5, 10, 1000, 10)]
-    [TestCase(5, 10, 10000, 30)]
+    [TestCase(5, 10, 10000, 30, Explicit = true)]
     [Repeat(10)]
     [Description(@"Tried (without success) to reproduce a situation where the same message seemed to be received twice, allegedly because of SQL Server failing to properly handling the exclusive lock&update required to grab a lease on the message. 
 
