@@ -22,7 +22,7 @@ namespace Rebus.SqlServer.Transport;
 /// <summary>
 /// Implementation of <see cref="ITransport"/> that uses SQL Server to do its thing
 /// </summary>
-public class SqlServerTransport : ITransport, IInitializable, IDisposable
+public class SqlServerTransport : AbstractRebusTransport, IInitializable, IDisposable
 {
     static readonly HeaderSerializer HeaderSerializer = new();
 
@@ -79,7 +79,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     /// <summary>
     /// Constructs the transport with the given <see cref="IDbConnectionProvider"/>
     /// </summary>
-    public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, IRebusTime rebusTime, SqlServerTransportOptions options)
+    public SqlServerTransport(IDbConnectionProvider connectionProvider, string inputQueueName, IRebusLoggerFactory rebusLoggerFactory, IAsyncTaskFactory asyncTaskFactory, IRebusTime rebusTime, SqlServerTransportOptions options) : base(GetReceiveTableName(inputQueueName))
     {
         if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
         if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
@@ -99,6 +99,8 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
         _nativeTimeoutManagerDisabled = options.NativeTimeoutManagerDisabled;
     }
 
+    static string GetReceiveTableName(string inputQueueName) => inputQueueName != null ? TableName.Parse(inputQueueName).QualifiedName : null;
+
     /// <summary>
     /// Initializes the transport by starting a task that deletes expired messages from the SQL table
     /// </summary>
@@ -110,14 +112,9 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     }
 
     /// <summary>
-    /// Gets the name that this SQL transport will use to query by when checking the messages table
-    /// </summary>
-    public string Address => ReceiveTableName?.QualifiedName;
-
-    /// <summary>
     /// Creates the table named after the given <paramref name="address"/>
     /// </summary>
-    public void CreateQueue(string address)
+    public override void CreateQueue(string address)
     {
         if (address == null) return;
 
@@ -321,29 +318,30 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         }
     }
 
-    /// <summary>
-    /// Sends the given transport message to the specified destination queue address by adding it to the queue's table.
-    /// </summary>
-    public virtual async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
-    {
-        var connection = await GetConnection(context).ConfigureAwait(false);
 
-        var destinationAddressToUse = GetDestinationAddressToUse(destinationAddress, message);
+    ///// <summary>
+    ///// Sends the given transport message to the specified destination queue address by adding it to the queue's table.
+    ///// </summary>
+    //public virtual async Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
+    //{
+    //    var connection = await GetConnection(context).ConfigureAwait(false);
 
-        try
-        {
-            await InnerSend(destinationAddressToUse, message, connection).ConfigureAwait(false);
-        }
-        catch (Exception e)
-        {
-            throw new RebusApplicationException(e, $"Unable to send to destination {destinationAddress}");
-        }
-    }
+    //    var destinationAddressToUse = GetDestinationAddressToUse(destinationAddress, message);
+
+    //    try
+    //    {
+    //        await InnerSend(destinationAddressToUse, message, connection).ConfigureAwait(false);
+    //    }
+    //    catch (Exception e)
+    //    {
+    //        throw new RebusApplicationException(e, $"Unable to send to destination {destinationAddress}");
+    //    }
+    //}
 
     /// <summary>
     /// Receives the next message by querying the input queue table for a message with a recipient matching this transport's <see cref="Address"/>
     /// </summary>
-    public async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
+    public override async Task<TransportMessage> Receive(ITransactionContext context, CancellationToken cancellationToken)
     {
         using (await _bottleneck.Enter(cancellationToken).ConfigureAwait(false))
         {
@@ -442,6 +440,38 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
         }
 
         throw new InvalidOperationException($"Attempted to defer message, but no '{Headers.DeferredRecipient}' header was on the message");
+    }
+
+    /// <summary>
+    /// Sends all of the outgoing messages
+    /// </summary>
+    protected override async Task SendOutgoingMessages(IEnumerable<OutgoingMessage> outgoingMessages, ITransactionContext context)
+    {
+        var connection = await GetConnection(context).ConfigureAwait(false);
+
+        foreach (var batch in outgoingMessages.GroupBy(m => m.DestinationAddress))
+        {
+            var destinationQueueName = batch.Key;
+
+            await InnerSend(destinationQueueName, batch, connection);
+        }
+
+        await connection.Complete();
+    }
+
+    async Task InnerSend(string destinationQueueName, IEnumerable<OutgoingMessage> messages, IDbConnection connection)
+    {
+        foreach (var message in messages)
+        {
+            await InnerSend(destinationQueueName, message.TransportMessage, connection);
+        }
+
+        return;
+        // avoid SQL params limits
+        foreach (var batch in messages.Batch(100))
+        {
+
+        }
     }
 
     /// <summary>

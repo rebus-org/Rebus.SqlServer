@@ -92,23 +92,23 @@ public class SqlServerLeaseTransport : SqlServerTransport
         }
     }
 
-    /// <summary>
-    /// Sends the given transport message to the specified logical destination address by adding it to the messages table.
-    /// </summary>
-    public override Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
-    {
-        var outboundMessageBuffer = GetOutboundMessageBuffer(context);
+    ///// <summary>
+    ///// Sends the given transport message to the specified logical destination address by adding it to the messages table.
+    ///// </summary>
+    //public override Task Send(string destinationAddress, TransportMessage message, ITransactionContext context)
+    //{
+    //    var outboundMessageBuffer = GetOutboundMessageBuffer(context);
 
-        outboundMessageBuffer.Enqueue(
-            new AddressedTransportMessage
-            {
-                DestinationAddress = GetDestinationAddressToUse(destinationAddress, message),
-                Message = message
-            }
-        );
+    //    outboundMessageBuffer.Enqueue(
+    //        new AddressedTransportMessage
+    //        {
+    //            DestinationAddress = GetDestinationAddressToUse(destinationAddress, message),
+    //            Message = message
+    //        }
+    //    );
 
-        return CompletedResult;
-    }
+    //    return CompletedResult;
+    //}
 
     /// <summary>
     /// Handle retrieving a message from the queue, decoding it, and performing any transaction maintenance.
