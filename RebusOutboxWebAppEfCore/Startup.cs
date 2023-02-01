@@ -1,24 +1,24 @@
 ﻿using System;
-using System.Data;
+using System.Data.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Rebus.Config;
 using Rebus.Config.Outbox;
+using Rebus.Pipeline;
+using Rebus.Retry.Simple;
 using Rebus.Routing.TypeBased;
-using Rebus.SqlServer;
+using Rebus.SqlServer.Outbox;
 using Rebus.Transport;
 using Rebus.Transport.InMem;
 using RebusOutboxWebAppEfCore.Entities;
 using RebusOutboxWebAppEfCore.Handlers;
 using RebusOutboxWebAppEfCore.Messages;
-using IDbConnection = Rebus.SqlServer.IDbConnection;
 
 namespace RebusOutboxWebAppEfCore
 {
@@ -32,40 +32,65 @@ namespace RebusOutboxWebAppEfCore
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
+        string ConnectionString => Configuration.GetConnectionString("RebusDatabase")
+                                   ?? throw new ApplicationException("Could not find 'RebusDatabase' connection string");
+
+        /// <summary>
+        /// Use this little object to carry connection+transaction around in a neat way
+        /// </summary>
+        record CurrentConnection(SqlConnection Connection, SqlTransaction Transaction);
+
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
 
-            static IDbConnection GetDbConnection(ITransactionContext transactionContext, IServiceProvider provider)
-            {
-                //var http = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
-
-                var scope = provider.CreateScope();
-                transactionContext.OnDisposed(_ => scope.Dispose());
-                var context = scope.ServiceProvider.GetRequiredService<WebAppDbContext>();
-                var connection = context.Database.GetDbConnection();
-                if (connection.State != ConnectionState.Open)
-                {
-                    context.Database.OpenConnection();
-                }
-
-                var transaction = context.Database.CurrentTransaction?.GetDbTransaction();
-
-                transactionContext.OnDisposed(_ => connection.Dispose());
-
-                return new DbConnectionWrapper((SqlConnection)connection, (SqlTransaction)transaction, managedExternally: false);
-            }
+            services.AddHttpContextAccessor();
 
             services.AddRebus(
-                (configure, provider) => configure
+                (configure, _) => configure
                     .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "outbox-test"))
-                    .Outbox(o => o.UseSqlServer(tc => GetDbConnection(tc, provider), "Outbox"))
+                    .Outbox(o => o.StoreInSqlServer(ConnectionString, "Outbox"))
                     .Routing(r => r.TypeBased().Map<ProcessMessageCommand>("outbox-test"))
             );
 
             services.AddRebusHandler<ProcessMessageCommandHandler>();
 
-            services.AddDbContext<WebAppDbContext>(options => options.UseSqlServer("server=.; database=rebusoutboxwebapp; trusted_connection=true"));
+            services.AddScoped(provider =>
+            {
+                CurrentConnection GetCurrentConnetionFromHttpContext()
+                {
+                    // if the WebAppDbContext is being resolved as part of the HTTP request pipeline, we get the connection like this
+                    var httpContext = provider.GetRequiredService<IHttpContextAccessor>().HttpContext;
+                    var items = httpContext?.Items;
+                    if (items == null) return null;
+                    var connection = (SqlConnection)items["current-db-connection"];
+                    var transaction = (SqlTransaction)items["current-db-transaction"];
+                    return new CurrentConnection(connection, transaction);
+                }
+
+                CurrentConnection GetCurrentConnectionFromRebusMessageContext()
+                {
+                    // if the WebAppDbContext is being resolved beacause Rebus is handling the message, we get the connection like this
+                    var transactionContext = MessageContext.Current?.TransactionContext;
+                    var outboxConnection = transactionContext?.Items["current-outbox-connection"] as OutboxConnection;
+                    if (outboxConnection == null) return null;
+                    return new CurrentConnection(outboxConnection.Connection, outboxConnection.Transaction);
+                }
+
+                CurrentConnection GetCurrentConnection() => GetCurrentConnetionFromHttpContext()
+                                                            ?? GetCurrentConnectionFromRebusMessageContext()
+                                                            ?? throw new InvalidOperationException("Can only get DB connection inside HTTP context or Rebus transaction context");
+
+                var currentConnection = GetCurrentConnection();
+
+                var builder = new DbContextOptionsBuilder<WebAppDbContext>();
+                builder.UseSqlServer(currentConnection.Connection, options => options.EnableRetryOnFailure());
+
+                var context = new WebAppDbContext(builder.Options);
+                context.Database.UseTransaction(currentConnection.Transaction);
+                
+                return context;
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -87,6 +112,35 @@ namespace RebusOutboxWebAppEfCore
             app.UseRouting();
 
             app.UseAuthorization();
+
+            // BEFORE app.UseEndpoints we register this little middleware that manages the database
+            // connection+transaction when in an HTTP context
+            app.Use(async (context, next) =>
+            {
+                // initialize our SQL connection + start transaction
+                await using var sqlConnection = new SqlConnection(ConnectionString);
+                await sqlConnection.OpenAsync();
+                await using var sqlTransaction = sqlConnection.BeginTransaction();
+
+                // stash in context so we can get to them elsewhere
+                context.Items["current-db-connection"] = sqlConnection;
+                context.Items["current-db-transaction"] = sqlTransaction;
+
+                // start ambient scope to enlist all Rebus actions
+                using var scope = new RebusTransactionScope();
+
+                // enable the outbox
+                scope.UseOutbox(sqlConnection, sqlTransaction);
+
+                // call the rest of the pipeline
+                await next();
+
+                // commit the scope = Rebus saves outgoing messages to the database
+                await scope.CompleteAsync();
+
+                // commit the transaction
+                await sqlTransaction.CommitAsync();
+            });
 
             app.UseEndpoints(endpoints =>
             {
