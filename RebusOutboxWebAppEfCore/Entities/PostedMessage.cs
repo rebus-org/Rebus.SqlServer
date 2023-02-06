@@ -4,6 +4,20 @@
 
 namespace RebusOutboxWebAppEfCore.Entities
 {
+    /*
+
+CREATE TABLE [dbo].[PostedMessages](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Text] [nvarchar](max) NOT NULL,
+	[Time] [datetimeoffset](3) NOT NULL,
+	[State] [int] NOT NULL,
+	PRIMARY KEY CLUSTERED 
+	(
+		[Id] ASC
+	)
+)
+
+     */
     public class PostedMessage
     {
         public static PostedMessage New(string text) => new(text, DateTimeOffset.Now, PostedMessageState.Enqueued);

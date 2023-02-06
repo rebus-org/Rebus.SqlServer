@@ -70,10 +70,6 @@ CREATE OR ALTER TRIGGER [dbo].[{triggerName}] ON [dbo].[{queueName}]
 AFTER INSERT
 AS 
 BEGIN
-    SET NOCOUNT ON;
-    DECLARE @Operation AS VARCHAR(32)
-    SET @Operation = NULL
-
     BEGIN
         THROW 51000, 'THIS IS THE INSERT TRIGGER FAILING ON PURPOSE', 1;  
     END
