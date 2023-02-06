@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Logging;
+using Rebus.Pipeline;
 using Rebus.Sagas;
 using Rebus.SqlServer.Sagas;
 using Rebus.SqlServer.Sagas.Serialization;
 using Rebus.Tests.Contracts;
+using Rebus.Tests.Contracts.Sagas;
+using Rebus.Transport;
 
 namespace Rebus.SqlServer.Tests.Sagas;
 
@@ -34,6 +38,55 @@ public class TestSqlServerSagaStorage : FixtureBase
         _storage = new SqlServerSagaStorage(_connectionProvider, _dataTableName, _indexTableName, loggerFactory, sagaTypeNamingStrategy, serializer);
     }
 
+    [TestCase(10)]
+    [TestCase(100)]
+    [TestCase(1000)]
+    [TestCase(10000)]
+    public async Task CheckPerformanceOfRapidUpdates(int iterations)
+    {
+        _storage.Initialize();
+        _storage.EnsureTablesAreCreated();
+
+        var sagaData = new MySagaDizzle
+        {
+            Id = Guid.NewGuid(),
+            Text = "THIS IS A SLIGHT LONG BUT NOT TOO LONG TEXT REPEATED TWICE THIS IS A SLIGHT LONG BUT NOT TOO LONG TEXT REPEATED TWICE",
+            OrderNumber = 999999242,
+            CorrelationId = "0ce1fb6b-0061-4d9d-825c-a4a3bd49b7b8-af9a9173-986b-44ea-887e-a52964b67eaa"
+        };
+
+        var correlationProperties = new[]
+        {
+            new TestCorrelationProperty(nameof(MySagaDizzle.Text), typeof(MySagaDizzle)),
+            new TestCorrelationProperty(nameof(MySagaDizzle.OrderNumber), typeof(MySagaDizzle)),
+            new TestCorrelationProperty(nameof(MySagaDizzle.CorrelationId), typeof(MySagaDizzle)),
+        };
+
+        await _storage.Insert(sagaData, correlationProperties);
+
+        var stopwatch = Stopwatch.StartNew();
+
+        for (var counter = 0; counter < iterations; counter++)
+        {
+            using var scope = new RebusTransactionScope();
+
+            // fool MessageContext to thing there's an active incoming step context
+            scope.TransactionContext.Items[StepContext.StepContextKey] = new object();
+
+            if (MessageContext.Current == null)
+            {
+                throw new AssertionException("Expected MessageContext.Current to return something != NULL at this point");
+            }
+
+            var loadedSagaData = await _storage.Find(typeof(MySagaDizzle), "Id", sagaData.Id);
+            await _storage.Update(loadedSagaData, correlationProperties);
+        }
+
+        var elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+
+        Console.WriteLine($"Executed {iterations} updates in {elapsedSeconds:0.0} s - that's {iterations / elapsedSeconds:0.0} updates/s");
+    }
+
     [Test]
     public async Task DoesNotThrowExceptionWhenInitializeOnOldSchema()
     {
@@ -53,7 +106,7 @@ public class TestSqlServerSagaStorage : FixtureBase
 
         _storage.Initialize();
 
-        var sagaData = new MySagaDizzle {Id=Guid.NewGuid(), Text = "whee!"};
+        var sagaData = new MySagaDizzle { Id = Guid.NewGuid(), Text = "whee!" };
 
         await _storage.Insert(sagaData, noProps);
 
@@ -69,6 +122,8 @@ public class TestSqlServerSagaStorage : FixtureBase
         public Guid Id { get; set; }
         public int Revision { get; set; }
         public string Text { get; set; }
+        public int OrderNumber { get; set; }
+        public string CorrelationId { get; set; }
     }
 
     async Task CreatePreviousSchema()
