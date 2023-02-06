@@ -8,6 +8,7 @@ using Microsoft.Data.SqlClient;
 using Rebus.Bus;
 using Rebus.Exceptions;
 using Rebus.Logging;
+using Rebus.Pipeline;
 using Rebus.Sagas;
 using Rebus.SqlServer.Sagas.Serialization;
 
@@ -60,7 +61,7 @@ public class SqlServerSagaStorage : ISagaStorage, IInitializable
         AsyncHelpers.RunSync(async () =>
         {
             using var connection = await _connectionProvider.GetConnection();
-            
+
             var columns = connection.GetColumns(_dataTableName.Schema, _dataTableName.Name);
             var datacolumn = columns.FirstOrDefault(c => string.Equals(c.Name, "data", StringComparison.OrdinalIgnoreCase));
 
@@ -83,9 +84,9 @@ public class SqlServerSagaStorage : ISagaStorage, IInitializable
     async Task EnsureTablesAreCreatedAsync()
     {
         using var connection = await _connectionProvider.GetConnection();
-        
+
         var tableNames = connection.GetTableNames().ToList();
-                
+
         var hasDataTable = tableNames.Contains(_dataTableName);
         var hasIndexTable = tableNames.Contains(_indexTableName);
 
@@ -176,14 +177,14 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 
     static async Task ExecuteCommands(IDbConnection connection, string sqlCommands)
     {
-        foreach (var commandText in sqlCommands.Split(new[] {"----"}, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var commandText in sqlCommands.Split(new[] { "----" }, StringSplitOptions.RemoveEmptyEntries))
         {
             try
             {
                 using var command = connection.CreateCommand();
-                
+
                 command.CommandText = commandText;
-                
+
                 await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
             catch (Exception exception)
@@ -193,7 +194,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 {commandText}");
             }
         }
-            
+
     }
 
     /// <summary>
@@ -209,7 +210,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
         using var connection = await _connectionProvider.GetConnection();
 
         using var command = connection.CreateCommand();
-        
+
         if (propertyName.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
         {
             command.CommandText = $@"SELECT TOP 1 [data] FROM {_dataTableName.QualifiedName} WHERE [id] = @value";
@@ -236,7 +237,7 @@ WHERE [index].[saga_type] = @saga_type
         command.Parameters.Add("value", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(correlationPropertyValue.Length)).Value = correlationPropertyValue;
 
         using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-        
+
         if (!await reader.ReadAsync().ConfigureAwait(false)) return null;
 
         var value = GetData(reader);
@@ -244,6 +245,7 @@ WHERE [index].[saga_type] = @saga_type
         try
         {
             var sagaData = _sagaSerializer.DeserializeFromString(sagaDataType, value);
+            CacheOriginalSagaDataIfPossible(sagaData, value);
             return sagaData;
         }
         catch (Exception exception)
@@ -251,6 +253,18 @@ WHERE [index].[saga_type] = @saga_type
             throw new RebusApplicationException(exception, $"An error occurred while attempting to deserialize '{value}' into a {sagaDataType}");
         }
     }
+
+    static void CacheOriginalSagaDataIfPossible(ISagaData sagaData, string value)
+    {
+        var items = MessageContext.Current?.TransactionContext.Items;
+
+        if (items != null)
+        {
+            items[GetTxContextKeyFromSagaData(sagaData)] = value;
+        }
+    }
+
+    static string GetTxContextKeyFromSagaData(ISagaData sagaData) => $"saga-data/{sagaData.GetType().FullName}/{sagaData.Id:N}";
 
     /// <summary>
     /// Serializes the given <see cref="ISagaData"/> and generates entries in the index for the specified <paramref name="correlationProperties"/>
@@ -270,7 +284,7 @@ WHERE [index].[saga_type] = @saga_type
         using var connection = await _connectionProvider.GetConnection();
 
         using var command = connection.CreateCommand();
-        
+
         var data = _sagaSerializer.SerializeToString(sagaData);
 
         command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
@@ -308,15 +322,20 @@ WHERE [index].[saga_type] = @saga_type
     public async Task Update(ISagaData sagaData, IEnumerable<ISagaCorrelationProperty> correlationProperties)
     {
         using var connection = await _connectionProvider.GetConnection();
-        
+
         var revisionToUpdate = sagaData.Revision;
+
+        var oneOrMoreSagaPropertiesMightHaveBeenUpdated = OneOrMoreSagaPropertiesMightHaveBeenUpdated(sagaData);
+
         sagaData.Revision++;
 
         try
         {
-            // first, delete existing index
-            using (var command = connection.CreateCommand())
+            // first, delete existing index if necessary
+            if (oneOrMoreSagaPropertiesMightHaveBeenUpdated)
             {
+                using var command = connection.CreateCommand();
+
                 command.CommandText = $@"DELETE FROM {_indexTableName.QualifiedName} WHERE [saga_id] = @id";
                 command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
 
@@ -347,11 +366,14 @@ UPDATE {_dataTableName.QualifiedName}
                 }
             }
 
-            var propertiesToIndex = GetPropertiesToIndex(sagaData, correlationProperties);
-
-            if (propertiesToIndex.Any())
+            if (oneOrMoreSagaPropertiesMightHaveBeenUpdated)
             {
-                await CreateIndex(connection, sagaData, propertiesToIndex).ConfigureAwait(false);
+                var propertiesToIndex = GetPropertiesToIndex(sagaData, correlationProperties);
+
+                if (propertiesToIndex.Any())
+                {
+                    await CreateIndex(connection, sagaData, propertiesToIndex).ConfigureAwait(false);
+                }
             }
 
             await connection.Complete();
@@ -361,6 +383,21 @@ UPDATE {_dataTableName.QualifiedName}
             sagaData.Revision--;
             throw;
         }
+    }
+
+    bool OneOrMoreSagaPropertiesMightHaveBeenUpdated(ISagaData sagaData)
+    {
+        var items = MessageContext.Current?.TransactionContext.Items;
+        if (items == null) return true;
+
+        if (!items.TryGetValue(GetTxContextKeyFromSagaData(sagaData), out var serializedSagaData)) return true;
+
+        // if we found a stashed & cached previous version of the saga data, check if it was actually changed.... if it wasn't, we can skip updating the correlation properties
+        var serializedSagaDataAfterHandlingMessage = _sagaSerializer.SerializeToString(sagaData);
+
+        var previousVersionAndCurrentVersionAreTheSame = Equals(serializedSagaData, serializedSagaDataAfterHandlingMessage);
+
+        return !previousVersionAndCurrentVersionAreTheSame;
     }
 
     /// <summary>
@@ -445,7 +482,7 @@ UPDATE {_dataTableName.QualifiedName}
 
         // lastly, generate new index
         using var command = connection.CreateCommand();
-        
+
         // generate batch insert with SQL for each entry in the index
         var inserts = parameters
             .Select(a =>
@@ -453,8 +490,7 @@ UPDATE {_dataTableName.QualifiedName}
 INSERT INTO {_indexTableName.QualifiedName}
     ([saga_type], [key], [value], [saga_id]) 
 VALUES
-    (@saga_type, @{
-        a.PropertyNameParameter}, @{a.PropertyValueParameter}, @saga_id)
+    (@saga_type, @{a.PropertyNameParameter}, @{a.PropertyValueParameter}, @saga_id)
 ")
             .ToList();
 
