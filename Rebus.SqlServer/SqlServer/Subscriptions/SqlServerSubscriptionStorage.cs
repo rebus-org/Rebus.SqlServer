@@ -48,11 +48,10 @@ public class SqlServerSubscriptionStorage : ISubscriptionStorage, IInitializable
         {
             try
             {
-                using (var connection = await _connectionProvider.GetConnection())
-                {
-                    _topicLength = GetColumnWidth("topic", connection);
-                    _addressLength = GetColumnWidth("address", connection);
-                }
+                using var connection = await _connectionProvider.GetConnection();
+                
+                _topicLength = GetColumnWidth("topic", connection);
+                _addressLength = GetColumnWidth("address", connection);
             }
             catch (Exception exception)
             {
@@ -77,11 +76,11 @@ WHERE
 
         try
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = sql;
-                return (int)command.ExecuteScalar();
-            }
+            using var command = connection.CreateCommand();
+            
+            command.CommandText = sql;
+            
+            return (int)command.ExecuteScalar();
         }
         catch (Exception exception)
         {
@@ -107,20 +106,20 @@ WHERE
 
     async Task EnsureTableIsCreatedAsync()
     {
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+        
+        var tableNames = connection.GetTableNames();
+
+        if (tableNames.Contains(_tableName))
         {
-            var tableNames = connection.GetTableNames();
+            return;
+        }
 
-            if (tableNames.Contains(_tableName))
-            {
-                return;
-            }
+        _log.Info("Table {tableName} does not exist - it will be created now", _tableName.QualifiedName);
 
-            _log.Info("Table {tableName} does not exist - it will be created now", _tableName.QualifiedName);
-
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $@"
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 	EXEC('CREATE SCHEMA {_tableName.Schema}')
 
@@ -137,39 +136,36 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
         )
     )
 ";
-                command.ExecuteNonQuery();
-            }
-
-            await connection.Complete();
+            command.ExecuteNonQuery();
         }
+
+        await connection.Complete();
     }
 
     /// <summary>
     /// Gets all destination addresses for the given topic
     /// </summary>
-    public async Task<string[]> GetSubscriberAddresses(string topic)
+    public async Task<IReadOnlyList<string>> GetSubscriberAddresses(string topic)
     {
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+
+        using var command = connection.CreateCommand();
+        
+        command.CommandText = $"SELECT [address] FROM {_tableName.QualifiedName} WHERE [topic] = @topic";
+        command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
+
+        var subscriberAddresses = new List<string>();
+
+        using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
         {
-            using (var command = connection.CreateCommand())
+            while (await reader.ReadAsync().ConfigureAwait(false))
             {
-                command.CommandText = $"SELECT [address] FROM {_tableName.QualifiedName} WHERE [topic] = @topic";
-                command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
-
-                var subscriberAddresses = new List<string>();
-
-                using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        var address = (string)reader["address"];
-                        subscriberAddresses.Add(address);
-                    }
-                }
-
-                return subscriberAddresses.ToArray();
+                var address = (string)reader["address"];
+                subscriberAddresses.Add(address);
             }
         }
+
+        return subscriberAddresses.ToArray();
     }
 
     /// <summary>
@@ -179,23 +175,22 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     {
         CheckLengths(topic, subscriberAddress);
 
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+        
+        using (var command = connection.CreateCommand())
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $@"
+            command.CommandText = $@"
 IF NOT EXISTS (SELECT * FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @address)
 BEGIN
     INSERT INTO {_tableName.QualifiedName} ([topic], [address]) VALUES (@topic, @address)
 END";
-                command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
-                command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
+            command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
+            command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
 
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-
-            await connection.Complete();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
+
+        await connection.Complete();
     }
 
     void CheckLengths(string topic, string subscriberAddress)
@@ -220,22 +215,21 @@ END";
     {
         CheckLengths(topic, subscriberAddress);
 
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+        
+        using (var command = connection.CreateCommand())
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText =
-                    $@"
+            command.CommandText =
+                $@"
 DELETE FROM {_tableName.QualifiedName} WHERE [topic] = @topic AND [address] = @address
 ";
-                command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
-                command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
+            command.Parameters.Add("topic", SqlDbType.NVarChar, _topicLength).Value = topic;
+            command.Parameters.Add("address", SqlDbType.NVarChar, _addressLength).Value = subscriberAddress;
 
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-
-            await connection.Complete();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
+
+        await connection.Complete();
     }
 
     /// <summary>

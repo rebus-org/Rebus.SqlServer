@@ -130,6 +130,9 @@
 ## 7.3.1
 * Optimize saga updates by skipping update of the index table when the saga data hasn't changed
 
+## 8.0.0-alpha01
+* Update to Rebus 8
+
 ----
 
 [clegendre]: https://github.com/clegendre

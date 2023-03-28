@@ -7,5 +7,4 @@ namespace Rebus.SqlServer.Tests.Transport.Contract;
 [TestFixture, Category(Categories.SqlServer)]
 public class SqlServerLeaseTransportBasicSendReceive : BasicSendReceive<SqlLeaseTransportFactory>
 {
-    protected override TransportBehavior Behavior => new(ReturnsNullWhenQueueIsEmpty: true);
 }

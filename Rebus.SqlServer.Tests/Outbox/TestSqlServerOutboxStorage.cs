@@ -33,7 +33,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
     public async Task CanStoreBatchOfMessages_Roundtrip()
     {
         var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
-        var outgoingMessage = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+        var outgoingMessage = new OutgoingTransportMessage(transportMessage, "wherever");
 
         await _storage.Save(new[] { outgoingMessage });
 
@@ -58,7 +58,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
             var dbConnection = new DbConnectionWrapper(connection, transaction, managedExternally: true);
 
             var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
-            var outgoingMessage = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+            var outgoingMessage = new OutgoingTransportMessage(transportMessage, "wherever");
 
             await _storage.Save(new[] { outgoingMessage }, dbConnection);
 
@@ -90,7 +90,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
     public async Task CanStoreBatchOfMessages_Complete()
     {
         var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
-        var outgoingMessage = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+        var outgoingMessage = new OutgoingTransportMessage(transportMessage, "wherever");
 
         await _storage.Save(new[] { outgoingMessage });
 
@@ -106,10 +106,10 @@ public class TestSqlServerOutboxStorage : FixtureBase
     [Test]
     public async Task CanGetBatchesOfMessages_VaryingBatchSize()
     {
-        static AbstractRebusTransport.OutgoingMessage CreateOutgoingMessage(string body)
+        static OutgoingTransportMessage CreateOutgoingMessage(string body)
         {
             var transportMessage = new TransportMessage(new Dictionary<string, string>(), Encoding.UTF8.GetBytes(body));
-            var outgoingMessage1 = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+            var outgoingMessage1 = new OutgoingTransportMessage(transportMessage, "wherever");
             return outgoingMessage1;
         }
 
@@ -132,10 +132,10 @@ public class TestSqlServerOutboxStorage : FixtureBase
     [Test]
     public async Task CanGetBatchesOfMessages_TwoBatchesInParallel()
     {
-        static AbstractRebusTransport.OutgoingMessage CreateOutgoingMessage(string body)
+        static OutgoingTransportMessage CreateOutgoingMessage(string body)
         {
             var transportMessage = new TransportMessage(new Dictionary<string, string>(), Encoding.UTF8.GetBytes(body));
-            var outgoingMessage1 = new AbstractRebusTransport.OutgoingMessage(transportMessage, "wherever");
+            var outgoingMessage1 = new OutgoingTransportMessage(transportMessage, "wherever");
             return outgoingMessage1;
         }
 

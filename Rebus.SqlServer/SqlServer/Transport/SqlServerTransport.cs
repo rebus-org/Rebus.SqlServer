@@ -592,11 +592,8 @@ DELETE FROM TopCTE
                 async () =>
                 {
                     var dbConnection = await ConnectionProvider.GetConnection();
-                    context.OnCommitted(async _ => await dbConnection.Complete());
-                    context.OnDisposed(_ =>
-                    {
-                        dbConnection.Dispose();
-                    });
+                    context.OnAck(async _ => await dbConnection.Complete());
+                    context.OnDisposed(_ => dbConnection.Dispose());
                     return dbConnection;
                 });
     }

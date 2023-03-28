@@ -263,13 +263,13 @@ END
                 this, ReceiveTableName.QualifiedName, messageId, ConnectionProvider, _automaticLeaseRenewalInterval, _leaseInterval, cancellationToken);
         }
 
-        context.OnAborted(_ =>
+        context.OnNack(async _ =>
         {
             renewal?.Dispose();
             try
             {
-                AsyncHelpers.RunSync(() => UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName,
-                    messageId, null, cancellationToken));
+                await UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName,
+                    messageId, null, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -277,7 +277,7 @@ END
             }
         });
 
-        context.OnCompleted(async _ =>
+        context.OnAck(async _ =>
         {
             renewal?.Dispose();
             try
@@ -343,7 +343,7 @@ WHERE	id = @id
                     await connection.Complete();
                 }
 
-                context.OnCommitted(SendOutgoingMessages);
+                context.OnCommit(SendOutgoingMessages);
 
                 return outgoingMessages;
             }

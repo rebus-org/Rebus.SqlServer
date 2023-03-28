@@ -14,12 +14,12 @@ public interface IOutboxStorage
     /// in the queue of this particular endpoint. If <paramref name="outgoingMessages"/> is an empty sequence, a note is made of the fact
     /// that the message with ID <paramref name="messageId"/> has been processed.
     /// </summary>
-    Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null);
+    Task Save(IEnumerable<OutgoingTransportMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null);
 
     /// <summary>
     /// Stores the given <paramref name="outgoingMessages"/> using the given <paramref name="dbConnection"/>.
     /// </summary>
-    Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, IDbConnection dbConnection);
+    Task Save(IEnumerable<OutgoingTransportMessage> outgoingMessages, IDbConnection dbConnection);
 
     /// <summary>
     /// Gets the next message batch to be sent, possibly filtered by the given <paramref name="correlationId"/>. MIGHT return messages from other send operations in the rare

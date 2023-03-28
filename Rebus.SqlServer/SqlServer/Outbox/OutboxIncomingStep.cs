@@ -23,7 +23,7 @@ class OutboxIncomingStep : IIncomingStep
 
         transactionContext.Items[OutboxExtensions.CurrentOutboxConnectionKey] = outboxConnection;
 
-        transactionContext.OnCommitted(async _ => outboxConnection.Transaction.Commit());
+        transactionContext.OnCommit(async _ => outboxConnection.Transaction.Commit());
 
         transactionContext.OnDisposed(_ =>
         {

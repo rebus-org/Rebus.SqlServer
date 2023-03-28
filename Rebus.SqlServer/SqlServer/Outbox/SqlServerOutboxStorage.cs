@@ -80,7 +80,7 @@ CREATE TABLE {_tableName} (
     /// in the queue of this particular endpoint. If <paramref name="outgoingMessages"/> is an empty sequence, a note is made of the fact
     /// that the message with ID <paramref name="messageId"/> has been processed.
     /// </summary>
-    public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
+    public async Task Save(IEnumerable<OutgoingTransportMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
     {
         if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
 
@@ -90,7 +90,7 @@ CREATE TABLE {_tableName} (
     /// <summary>
     /// Stores the given <paramref name="outgoingMessages"/> using the given <paramref name="dbConnection"/>.
     /// </summary>
-    public async Task Save(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, IDbConnection dbConnection)
+    public async Task Save(IEnumerable<OutgoingTransportMessage> outgoingMessages, IDbConnection dbConnection)
     {
         if (outgoingMessages == null) throw new ArgumentNullException(nameof(outgoingMessages));
         if (dbConnection == null) throw new ArgumentNullException(nameof(dbConnection));
@@ -158,7 +158,7 @@ CREATE TABLE {_tableName} (
         }
     }
 
-    async Task InnerSave(IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId, string sourceQueue, string correlationId)
+    async Task InnerSave(IEnumerable<OutgoingTransportMessage> outgoingMessages, string messageId, string sourceQueue, string correlationId)
     {
         using var scope = new RebusTransactionScope();
         using var connection = _connectionProvider(scope.TransactionContext);
@@ -169,7 +169,7 @@ CREATE TABLE {_tableName} (
         await scope.CompleteAsync();
     }
 
-    async Task SaveUsingConnection(IDbConnection connection, IEnumerable<AbstractRebusTransport.OutgoingMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
+    async Task SaveUsingConnection(IDbConnection connection, IEnumerable<OutgoingTransportMessage> outgoingMessages, string messageId = null, string sourceQueue = null, string correlationId = null)
     {
         foreach (var message in outgoingMessages)
         {

@@ -34,13 +34,13 @@ class OutboxClientTransportDecorator : ITransport
 
         var outgoingMessages = context.GetOrAdd(OutgoingMessagesKey, () =>
         {
-            var queue = new ConcurrentQueue<AbstractRebusTransport.OutgoingMessage>();
+            var queue = new ConcurrentQueue<OutgoingTransportMessage>();
             var dbConnectionWrapper = new DbConnectionWrapper(connection.Connection, connection.Transaction, managedExternally: true);
-            context.OnCommitted(async _ => await _outboxStorage.Save(queue, dbConnectionWrapper));
+            context.OnCommit(async _ => await _outboxStorage.Save(queue, dbConnectionWrapper));
             return queue;
         });
 
-        outgoingMessages.Enqueue(new AbstractRebusTransport.OutgoingMessage(message, destinationAddress));
+        outgoingMessages.Enqueue(new OutgoingTransportMessage(message, destinationAddress));
 
         return Task.CompletedTask;
     }
