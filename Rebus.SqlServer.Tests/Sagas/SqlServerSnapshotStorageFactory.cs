@@ -13,10 +13,7 @@ public class SqlServerSnapshotStorageFactory : ISagaSnapshotStorageFactory
 {
     const string TableName = "SagaSnapshots";
 
-    public SqlServerSnapshotStorageFactory()
-    {
-        SqlTestHelper.DropTable(TableName);
-    }
+    public SqlServerSnapshotStorageFactory() => SqlTestHelper.DropTable(TableName);
 
     public ISagaSnapshotStorage Create()
     {
@@ -39,25 +36,25 @@ public class SqlServerSnapshotStorageFactory : ISagaSnapshotStorageFactory
     {
         var storedCopies = new List<SagaDataSnapshot>();
 
-        using (var connection = await connectionProvider.GetConnection())
+        using var connection = await connectionProvider.GetConnection();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = $@"SELECT * FROM [{tableName}]";
+
+        await using var reader = await command.ExecuteReaderAsync();
+        
+        while (await reader.ReadAsync())
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $@"SELECT * FROM [{tableName}]";
+            var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
+            var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
 
-                using var reader = command.ExecuteReader();
-                while (await reader.ReadAsync())
-                {
-                    var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
-                    var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
-
-                    storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
-                }
-            }
-
-            await connection.Complete();
+            storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
         }
+
+        await connection.Complete();
+        
         return storedCopies;
     }
-    
+
+    public void Dispose() => SqlTestHelper.DropTable(TableName);
 }
