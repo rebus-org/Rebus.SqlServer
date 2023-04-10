@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 using Microsoft.Data.SqlClient;
 using NUnit.Framework;
 using Rebus.Activation;
@@ -20,7 +21,7 @@ using Rebus.Transport.InMem;
 namespace Rebus.SqlServer.Tests.Outbox;
 
 [TestFixture]
-public class TestOutbox_OutsideOfRebusHandler : FixtureBase
+public class TestOutbox_OutsideOfRebusHandler_TransactionScope : FixtureBase
 {
     static string ConnectionString => SqlTestHelper.ConnectionString;
 
@@ -67,23 +68,20 @@ public class TestOutbox_OutsideOfRebusHandler : FixtureBase
         // real transport - this is a job for the outbox! 
         settings.SuccessRate = 0;
 
+        using var txScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+
         // pretending we're in a web app - we have these two bad boys at work:
-        await using (var connection = new SqlConnection(ConnectionString))
+
+        // this is how we would use the outbox for outgoing messages
+        using var scope = new RebusTransactionScope();
+        scope.UseOutboxWithAmbientTransaction();
+        await client.Publish(new SomeMessage());
+        await scope.CompleteAsync();
+
+        if (commitTransaction)
         {
-            await connection.OpenAsync();
-            await using var transaction = connection.BeginTransaction();
-
-            // this is how we would use the outbox for outgoing messages
-            using var scope = new RebusTransactionScope();
-            scope.UseOutbox(connection, transaction);
-            await client.Publish(new SomeMessage());
-            await scope.CompleteAsync();
-
-            if (commitTransaction)
-            {
-                // this is what we were all waiting for!
-                await transaction.CommitAsync();
-            }
+            // this is what we were all waiting for!
+            txScope.Complete();
         }
 
         // we would not have gotten this far without the outbox - now let's pretend that the transport has recovered

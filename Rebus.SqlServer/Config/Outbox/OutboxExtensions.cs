@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Transactions;
 using Microsoft.Data.SqlClient;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
@@ -78,6 +79,30 @@ public static class OutboxExtensions
         if (rebusTransactionScope == null) throw new ArgumentNullException(nameof(rebusTransactionScope));
         if (connection == null) throw new ArgumentNullException(nameof(connection));
         if (transaction == null) throw new ArgumentNullException(nameof(transaction));
+
+        var context = rebusTransactionScope.TransactionContext;
+
+        if (!context.Items.TryAdd(CurrentOutboxConnectionKey, new OutboxConnection(connection, transaction)))
+        {
+            throw new InvalidOperationException("Cannot add the given connection/transaction to the current Rebus transaction, because a connection/transaction has already been added!");
+        }
+    }
+
+    /// <summary>
+    /// Enables the use of outbox on the <see cref="RebusTransactionScope"/> by enlisting in the current ambient transaction.
+    /// This requires that a <see cref="TransactionScope"/> has been started beforehand.
+    /// </summary>
+    public static void UseOutboxWithAmbientTransaction(this RebusTransactionScope rebusTransactionScope)
+    {
+        if (rebusTransactionScope == null) throw new ArgumentNullException(nameof(rebusTransactionScope));
+
+        if (Transaction.Current == null)
+        {
+            throw new InvalidOperationException(
+                @"This method requires that an ambient transaction has been started before being called.
+
+You do this by creating a TransactionScope - and PLEASE PLEASE PLEASE REMEMBER to start it with new TransactionScope(TransactionScopeAsyncFlowOption.Enabled) !!!!");
+        }
 
         var context = rebusTransactionScope.TransactionContext;
 
