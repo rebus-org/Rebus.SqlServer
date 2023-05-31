@@ -27,7 +27,6 @@ public class TestOutbox_InsideRebusHandler : FixtureBase
     static string ConnectionString => SqlTestHelper.ConnectionString;
 
     InMemNetwork _network;
-    InMemorySubscriberStore _subscriberStore;
 
     protected override void SetUp()
     {
@@ -36,7 +35,6 @@ public class TestOutbox_InsideRebusHandler : FixtureBase
         SqlTestHelper.DropTable("RebusOutbox");
 
         _network = new InMemNetwork();
-        _subscriberStore = new InMemorySubscriberStore();
     }
 
     record SomeMessage;
@@ -95,7 +93,6 @@ public class TestOutbox_InsideRebusHandler : FixtureBase
                         flakySenderTransportDecoratorSettings));
                 }
             })
-            .Subscriptions(s => s.StoreInMemory(_subscriberStore))
             .Outbox(o => o.StoreInSqlServer(ConnectionString, "RebusOutbox"))
             .Start();
 
@@ -107,7 +104,6 @@ public class TestOutbox_InsideRebusHandler : FixtureBase
         return Configure.With(new BuiltinHandlerActivator())
             .Transport(t => t.UseInMemoryTransportAsOneWayClient(_network))
             .Routing(r => routing?.Invoke(r))
-            .Subscriptions(s => s.StoreInMemory(_subscriberStore))
             .Start();
     }
 

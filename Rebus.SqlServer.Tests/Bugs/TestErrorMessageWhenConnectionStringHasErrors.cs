@@ -33,7 +33,7 @@ public class TestErrorMessageWhenConnectionStringHasErrors : FixtureBase
         using var activator = new BuiltinHandlerActivator();
 
         var exception = Assert.Throws<ResolutionException>(() => Configure.With(activator)
-            .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter"))
+            .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), "doesn't matter", registerSubscriptionStorage: false))
             .Subscriptions(s => s.StoreInSqlServer("server=.; inital catalog=whatever", "subs"))
             .Start());
 
