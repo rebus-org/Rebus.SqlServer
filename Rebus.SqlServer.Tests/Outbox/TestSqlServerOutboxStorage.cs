@@ -9,6 +9,7 @@ using Rebus.SqlServer.Outbox;
 using Rebus.Tests.Contracts;
 using Rebus.Transport;
 // ReSharper disable ArgumentsStyleLiteral
+#pragma warning disable CS1998
 
 namespace Rebus.SqlServer.Tests.Outbox;
 
@@ -154,7 +155,7 @@ public class TestSqlServerOutboxStorage : FixtureBase
         Assert.That(roundtrippedTexts.OrderBy(t => t), Is.EqualTo(texts));
     }
 
-    static IDbConnection GetNewDbConnection(ITransactionContext _)
+    static async Task<IDbConnection> GetNewDbConnection(ITransactionContext _)
     {
         var connection = new SqlConnection(SqlTestHelper.ConnectionString);
         connection.Open();

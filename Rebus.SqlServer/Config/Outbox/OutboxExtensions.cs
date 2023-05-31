@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Outbox;
 using Rebus.Transport;
+#pragma warning disable CS1998
 
 // ReSharper disable ArgumentsStyleLiteral
 
@@ -27,6 +29,36 @@ public static class OutboxExtensions
         StoreInSqlServer(configurer, connectionString, TableName.Parse(tableName));
     }
 
+
+
+    /// <summary>
+    /// Configures SQL Server as the outbox storage
+    /// </summary>
+    public static void StoreInSqlServer(this StandardConfigurer<IOutboxStorage> configurer, Func<Task<IDbConnection>> connectionFactory, TableName tableName)
+    {
+        if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+        if (connectionFactory == null) throw new ArgumentNullException(nameof(connectionFactory));
+        if (tableName == null) throw new ArgumentNullException(nameof(tableName));
+
+        async Task<IDbConnection> ConnectionProvider(ITransactionContext context)
+        {
+            // if we find a connection in the context, use that (and accept that its lifestyle is managed somewhere else):
+            if (context.Items.TryGetValue(CurrentOutboxConnectionKey, out var result) && result is OutboxConnection outboxConnection)
+            {
+                return new DbConnectionWrapper(outboxConnection.Connection, outboxConnection.Transaction, managedExternally: true);
+            }
+
+            return await connectionFactory();
+        }
+
+        configurer
+            .OtherService<IOutboxStorage>()
+            .Register(_ => new SqlServerOutboxStorage(ConnectionProvider, tableName));
+
+        configurer.OtherService<IOutboxConnectionProvider>()
+            .Register(_ => new OutboxConnectionProvider(connectionFactory));
+    }
+
     /// <summary>
     /// Configures SQL Server as the outbox storage
     /// </summary>
@@ -36,7 +68,7 @@ public static class OutboxExtensions
         if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
         if (tableName == null) throw new ArgumentNullException(nameof(tableName));
 
-        IDbConnection ConnectionProvider(ITransactionContext context)
+        async Task<IDbConnection> ConnectionProvider(ITransactionContext context)
         {
             // if we find a connection in the context, use that (and accept that its lifestyle is managed somewhere else):
             if (context.Items.TryGetValue(CurrentOutboxConnectionKey, out var result) && result is OutboxConnection outboxConnection)
@@ -46,10 +78,10 @@ public static class OutboxExtensions
 
             var connection = new SqlConnection(connectionString);
 
-            connection.Open();
-
             try
             {
+                connection.Open();
+
                 var transaction = connection.BeginTransaction();
 
                 return new DbConnectionWrapper(connection, transaction, managedExternally: false);

@@ -1,6 +1,8 @@
-﻿namespace Rebus.SqlServer.Outbox;
+﻿using System.Threading.Tasks;
+
+namespace Rebus.SqlServer.Outbox;
 
 interface IOutboxConnectionProvider
 {
-    OutboxConnection GetDbConnection();
+    Task<OutboxConnection> GetDbConnection();
 }

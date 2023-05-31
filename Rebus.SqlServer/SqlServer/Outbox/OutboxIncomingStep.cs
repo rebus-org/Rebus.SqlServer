@@ -18,7 +18,7 @@ class OutboxIncomingStep : IIncomingStep
 
     public async Task Process(IncomingStepContext context, Func<Task> next)
     {
-        var outboxConnection = _outboxConnectionProvider.GetDbConnection();
+        var outboxConnection = await _outboxConnectionProvider.GetDbConnection();
         var transactionContext = context.Load<ITransactionContext>();
 
         transactionContext.Items[OutboxExtensions.CurrentOutboxConnectionKey] = outboxConnection;

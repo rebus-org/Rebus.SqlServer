@@ -15,13 +15,13 @@ namespace Rebus.SqlServer.Outbox;
 public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
 {
     static readonly HeaderSerializer HeaderSerializer = new();
-    readonly Func<ITransactionContext, IDbConnection> _connectionProvider;
+    readonly Func<ITransactionContext, Task<IDbConnection>> _connectionProvider;
     readonly TableName _tableName;
 
     /// <summary>
     /// Creates the outbox storage
     /// </summary>
-    public SqlServerOutboxStorage(Func<ITransactionContext, IDbConnection> connectionProvider, TableName tableName)
+    public SqlServerOutboxStorage(Func<ITransactionContext, Task<IDbConnection>> connectionProvider, TableName tableName)
     {
         _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
         _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
@@ -35,7 +35,7 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
         async Task InitializeAsync()
         {
             using var scope = new RebusTransactionScope();
-            using var connection = _connectionProvider(scope.TransactionContext);
+            using var connection = await _connectionProvider(scope.TransactionContext);
 
             if (connection.GetTableNames().Contains(_tableName)) return;
 
@@ -119,7 +119,7 @@ CREATE TABLE {_tableName} (
         try
         {
             // no 'using' here either, because this will be passed to the outbox message batch
-            var connection = _connectionProvider(scope.TransactionContext);
+            var connection = await _connectionProvider(scope.TransactionContext);
 
             // this must be done when cleanining up
             void Dispose()
@@ -161,7 +161,7 @@ CREATE TABLE {_tableName} (
     async Task InnerSave(IEnumerable<OutgoingTransportMessage> outgoingMessages, string messageId, string sourceQueue, string correlationId)
     {
         using var scope = new RebusTransactionScope();
-        using var connection = _connectionProvider(scope.TransactionContext);
+        using var connection = await _connectionProvider(scope.TransactionContext);
 
         await SaveUsingConnection(connection, outgoingMessages, messageId, sourceQueue, correlationId);
 
