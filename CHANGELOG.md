@@ -133,6 +133,9 @@
 ## 8.0.0
 * Update to Rebus 8
 
+## 8.0.1
+* Fix saga data deserialization bug that would result in trying to deserialize the saga data as the wrong type
+
 ----
 
 [clegendre]: https://github.com/clegendre

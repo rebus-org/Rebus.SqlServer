@@ -9,8 +9,10 @@ namespace Rebus.SqlServer.Sagas.Serialization;
 /// Implement <seealso cref="ISagaSerializer"/> to make your own custom serializer and register it using the UseSagaSerializer extension method.
 /// <seealso cref="Rebus.Config.SqlServerSagaConfigurationExtensions.UseSagaSerializer"/>
 /// </summary>
-public class DefaultSagaSerializer : ObjectSerializer, ISagaSerializer
+public class DefaultSagaSerializer : ISagaSerializer
 {
+    readonly ObjectSerializer _objectSerializer = new();
+
     /// <summary>
     /// Serializes the given ISagaData object into a string
     /// </summary>
@@ -18,7 +20,7 @@ public class DefaultSagaSerializer : ObjectSerializer, ISagaSerializer
     /// <returns></returns>
     public string SerializeToString(ISagaData obj)
     {
-        return base.SerializeToString(obj);
+        return _objectSerializer.SerializeToString(obj);
     }
 
     /// <summary>
@@ -29,12 +31,13 @@ public class DefaultSagaSerializer : ObjectSerializer, ISagaSerializer
     /// <returns></returns>
     public ISagaData DeserializeFromString(Type type, string str)
     {
-        var sagaData = base.DeserializeFromString(str) as ISagaData;
+        var sagaData = _objectSerializer.DeserializeFromString(str) as ISagaData;
 
         if (!type.IsInstanceOfType(sagaData))
         {
             return null;
         }
+
         return sagaData;
     }
 }

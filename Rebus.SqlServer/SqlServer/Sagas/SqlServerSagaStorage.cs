@@ -213,7 +213,7 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
 
         if (propertyName.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
         {
-            command.CommandText = $@"SELECT TOP 1 [data] FROM {_dataTableName.QualifiedName} WHERE [id] = @value";
+            command.CommandText = $"SELECT TOP 1 [data] FROM {_dataTableName.QualifiedName} WHERE [id] = @value";
         }
         else
         {
@@ -245,7 +245,12 @@ WHERE [index].[saga_type] = @saga_type
         try
         {
             var sagaData = _sagaSerializer.DeserializeFromString(sagaDataType, value);
+            
+            // if we get NULL here, the saga data was a match by correlation, but it turned out to be the wrong type
+            if (sagaData == null) return null;
+
             CacheOriginalSagaDataIfPossible(sagaData, value);
+            
             return sagaData;
         }
         catch (Exception exception)
