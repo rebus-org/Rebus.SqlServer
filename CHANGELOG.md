@@ -136,6 +136,9 @@
 ## 8.0.1
 * Fix saga data deserialization bug that would result in trying to deserialize the saga data as the wrong type
 
+## 8.0.2
+* Make `IsExternalInit` class declaration internal - thanks [zlepper]
+
 ----
 
 [clegendre]: https://github.com/clegendre
@@ -151,4 +154,4 @@
 [Simplicitdk]: https://github.com/Simplicitdk
 [thomasdc]: https://github.com/thomasdc
 [tompazourek]: https://github.com/tompazourek
-
+[zlepper]: https://github.com/zlepper
