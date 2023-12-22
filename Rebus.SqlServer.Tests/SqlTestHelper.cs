@@ -145,7 +145,7 @@ Here are all the currently active connections:
         }
     }
 
-    public static IEnumerable<T> Query<T>(string query)
+    public static IEnumerable<T> Query<T>(string query) where T : class
     {
         using var connection = new SqlConnection(ConnectionString);
         connection.Open();
