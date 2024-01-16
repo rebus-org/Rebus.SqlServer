@@ -17,7 +17,7 @@
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="microsoft.data.sqlclient" Version="5.1.2" />
+		<PackageReference Include="microsoft.data.sqlclient" Version="5.1.3" />
 		<PackageReference Include="rebus" Version="8.0.2" />
 	</ItemGroup>
 	<ItemGroup>
