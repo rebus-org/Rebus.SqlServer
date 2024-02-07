@@ -139,6 +139,9 @@
 ## 8.0.2
 * Make `IsExternalInit` class declaration internal - thanks [zlepper]
 
+## 8.0.3
+* Fix saga persister's ability to query for sagas with NULL as a property value
+
 ----
 
 [clegendre]: https://github.com/clegendre

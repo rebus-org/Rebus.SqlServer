@@ -205,7 +205,6 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
     {
         if (sagaDataType == null) throw new ArgumentNullException(nameof(sagaDataType));
         if (propertyName == null) throw new ArgumentNullException(nameof(propertyName));
-        if (propertyValue == null) throw new ArgumentNullException(nameof(propertyValue));
 
         using var connection = await _connectionProvider.GetConnection();
 
