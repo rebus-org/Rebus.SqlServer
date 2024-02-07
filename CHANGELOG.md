@@ -142,6 +142,9 @@
 ## 8.0.3
 * Fix saga persister's ability to query for sagas with NULL as a property value
 
+## 8.1.0
+* Update Microsoft.Data.SqlClient and Rebus dependencies to 5.1.5 and 8.2.2 respectively
+
 ----
 
 [clegendre]: https://github.com/clegendre
