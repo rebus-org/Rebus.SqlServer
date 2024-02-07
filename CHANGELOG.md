@@ -145,6 +145,9 @@
 ## 8.1.0
 * Update Microsoft.Data.SqlClient and Rebus dependencies to 5.1.5 and 8.2.2 respectively
 
+## 8.1.1
+* Fix yet another saga-persister-header-correlation scenario
+
 ----
 
 [clegendre]: https://github.com/clegendre

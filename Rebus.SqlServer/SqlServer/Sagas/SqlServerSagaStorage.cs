@@ -213,6 +213,12 @@ ALTER TABLE {_indexTableName.QualifiedName} CHECK CONSTRAINT [FK_{_dataTableName
         if (propertyName.Equals(IdPropertyName, StringComparison.OrdinalIgnoreCase))
         {
             command.CommandText = $"SELECT TOP 1 [data] FROM {_dataTableName.QualifiedName} WHERE [id] = @value";
+
+            var correlationPropertyValue = GetValueAsGuid(propertyValue);
+
+            if (correlationPropertyValue == null) return null;
+
+            command.Parameters.Add("value", SqlDbType.UniqueIdentifier).Value = correlationPropertyValue.Value;
         }
         else
         {
@@ -229,11 +235,11 @@ WHERE [index].[saga_type] = @saga_type
 
             command.Parameters.Add("key", SqlDbType.NVarChar, propertyName.Length).Value = propertyName;
             command.Parameters.Add("saga_type", SqlDbType.NVarChar, sagaTypeName.Length).Value = sagaTypeName;
+
+            var correlationPropertyValue = GetCorrelationPropertyValue(propertyValue);
+
+            command.Parameters.Add("value", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(correlationPropertyValue.Length)).Value = correlationPropertyValue;
         }
-
-        var correlationPropertyValue = GetCorrelationPropertyValue(propertyValue);
-
-        command.Parameters.Add("value", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(correlationPropertyValue.Length)).Value = correlationPropertyValue;
 
         using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
 
@@ -244,18 +250,41 @@ WHERE [index].[saga_type] = @saga_type
         try
         {
             var sagaData = _sagaSerializer.DeserializeFromString(sagaDataType, value);
-            
+
             // if we get NULL here, the saga data was a match by correlation, but it turned out to be the wrong type
             if (sagaData == null) return null;
 
             CacheOriginalSagaDataIfPossible(sagaData, value);
-            
+
             return sagaData;
         }
         catch (Exception exception)
         {
             throw new RebusApplicationException(exception, $"An error occurred while attempting to deserialize '{value}' into a {sagaDataType}");
         }
+    }
+
+    static Guid? GetValueAsGuid(object propertyValue)
+    {
+        if (propertyValue is Guid guid) return guid;
+
+        if (propertyValue == null) return null;
+
+        if (propertyValue is string str)
+        {
+            if (string.IsNullOrWhiteSpace(str)) return null;
+
+            try
+            {
+                return Guid.Parse(str);
+            }
+            catch (Exception exception)
+            {
+                throw new FormatException($"The string '{str}' could not be parsed into a Guid", exception);
+            }
+        }
+
+        throw new InvalidCastException($"The value {propertyValue} was not a Guid or a string-encoded Guid");
     }
 
     static void CacheOriginalSagaDataIfPossible(ISagaData sagaData, string value)
