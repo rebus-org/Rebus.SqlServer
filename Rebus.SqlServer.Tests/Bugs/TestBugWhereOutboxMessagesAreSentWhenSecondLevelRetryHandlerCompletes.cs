@@ -17,6 +17,9 @@ using Rebus.Transport.InMem;
 namespace Rebus.SqlServer.Tests.Bugs;
 
 [TestFixture]
+[Description(@"When outbox and 2nd level retries are combined, it's important that outgoing messages from 1st level handler do not get sent 
+when 1st level handler throws an exception. It used to be the case that when 1st level handler threw, but 2nd level handler SUCCEEDED, then
+outbox messages sent by 1st level handler would end up getting sent. This is no longer the case, as verified by this test.")]
 public class TestBugWhereOutboxMessagesAreSentWhenSecondLevelRetryHandlerCompletes : FixtureBase
 {
     string _outboxTable;
