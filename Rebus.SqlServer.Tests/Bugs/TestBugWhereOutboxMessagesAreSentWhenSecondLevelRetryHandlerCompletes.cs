@@ -30,7 +30,7 @@ public class TestBugWhereOutboxMessagesAreSentWhenSecondLevelRetryHandlerComplet
 
         SqlTestHelper.DropTable(_outboxTable);
 
-        //Using(new DisposableCallback(() => SqlTestHelper.DropTable(_outboxTable)));
+        Using(new DisposableCallback(() => SqlTestHelper.DropTable(_outboxTable)));
     }
 
     [Test]
