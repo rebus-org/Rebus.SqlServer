@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -11,7 +10,6 @@ using Microsoft.Extensions.Hosting;
 using Rebus.Config;
 using Rebus.Config.Outbox;
 using Rebus.Pipeline;
-using Rebus.Retry.Simple;
 using Rebus.Routing.TypeBased;
 using Rebus.SqlServer.Outbox;
 using Rebus.Transport;

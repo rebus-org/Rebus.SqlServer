@@ -148,6 +148,9 @@
 ## 8.1.1
 * Fix yet another saga-persister-header-correlation scenario
 
+## 8.1.2
+* Fix bug that would result in sending outgoing outbox messages sent from a failing 1st level handler IF the 2nd level handler completed successfully
+ 
 ----
 
 [clegendre]: https://github.com/clegendre

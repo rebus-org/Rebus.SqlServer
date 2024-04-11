@@ -7,7 +7,6 @@ using Rebus.Activation;
 using Rebus.Bus;
 using Rebus.Config;
 using Rebus.Config.Outbox;
-using Rebus.Persistence.InMem;
 using Rebus.Routing;
 using Rebus.Routing.TypeBased;
 using Rebus.Tests.Contracts;

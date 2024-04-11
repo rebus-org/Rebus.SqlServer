@@ -2,13 +2,10 @@
 using System.Threading.Tasks;
 using Rebus.Injection;
 using Rebus.Logging;
-using Rebus.Pipeline;
-using Rebus.Pipeline.Receive;
 using Rebus.SqlServer;
 using Rebus.SqlServer.Transport;
 using Rebus.Threading;
 using Rebus.Time;
-using Rebus.Timeouts;
 using Rebus.Transport;
 
 namespace Rebus.Config;

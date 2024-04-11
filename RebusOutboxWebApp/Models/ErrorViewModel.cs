@@ -1,5 +1,3 @@
-using System;
-
 namespace RebusOutboxWebApp.Models
 {
     public class ErrorViewModel

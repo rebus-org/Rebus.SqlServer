@@ -22,7 +22,7 @@ public class TestSagaOptimisticConcurrency : FixtureBase
     protected override void SetUp()
     {
         base.SetUp();
-
+        
         Using(new DisposableCallback(() =>
         {
             SqlTestHelper.DropTable("sagaindex");
