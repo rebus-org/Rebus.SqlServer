@@ -130,7 +130,7 @@ The transactional outbox in Rebus.SqlServer ensures consistent and reliable mess
 
 ### Basic Setup
 
-To configure the transactional outbox with Rebus, you can use the `StoreInSqlServer` method during the setup. Rebus allows you to use any transport, and the outbox will work in conjunction with your chosen transport.
+To configure the transactional outbox with Rebus, use the `Outbox` extension method during the setup. Rebus allows you to use any transport, and the outbox will work in conjunction with your chosen transport.
 
 ```csharp
 services.AddRebus(
