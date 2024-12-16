@@ -150,12 +150,18 @@
 
 ## 8.1.2
 * Fix bug that would result in sending outgoing outbox messages sent from a failing 1st level handler IF the 2nd level handler completed successfully
- 
+
+## 8.2.0
+* Update Microsoft.Data.SqlClient dependency to 5.2.2
+* Add readme to NuGet package
+* Add section about outbox to readme - thanks [jeroenkoknl]
+
 ----
 
 [clegendre]: https://github.com/clegendre
 [cleytonb]: https://github.com/cleytonb
 [IsaacSee]: https://github.com/IsaacSee
+[jeroenkoknl]: https://github.com/jeroenkoknl
 [larsw]: https://github.com/larsw
 [magnus-tretton37]: https://github.com/magnus-tretton37
 [mathiasnohall]: https://github.com/mathiasnohall

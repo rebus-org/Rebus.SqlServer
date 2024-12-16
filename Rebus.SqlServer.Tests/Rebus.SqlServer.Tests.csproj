@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<LangVersion>10</LangVersion>
-		<TargetFrameworks>net6.0</TargetFrameworks>
+		<LangVersion>13</LangVersion>
+		<TargetFramework>net8.0</TargetFramework>
 		<Authors>mookid8000</Authors>
 		<PackageLicenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</PackageLicenseUrl>
 		<PackageProjectUrl>https://rebus.fm/what-is-rebus/</PackageProjectUrl>

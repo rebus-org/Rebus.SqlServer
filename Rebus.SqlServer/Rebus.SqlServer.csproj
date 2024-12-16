@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<LangVersion>11</LangVersion>
+		<LangVersion>13</LangVersion>
 		<RootNamespace>Rebus</RootNamespace>
 		<AssemblyName>Rebus.SqlServer</AssemblyName>
 		<Authors>mookid8000</Authors>
@@ -15,15 +15,20 @@
 		<RepositoryUrl>https://github.com/rebus-org/Rebus.SqlServer</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="microsoft.data.sqlclient" Version="5.1.5" />
+		<PackageReference Include="microsoft.data.sqlclient" Version="5.2.2" />
 		<PackageReference Include="rebus" Version="8.4.2" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Include="..\artwork\little_rebusbus2_copy-500x500.png">
 			<Pack>True</Pack>
 			<PackagePath></PackagePath>
+		</None>
+		<None Include="..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
 		</None>
 	</ItemGroup>
 </Project>
