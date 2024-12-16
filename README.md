@@ -122,5 +122,117 @@ services.AddRebus(
 
 This will cause `someMessage` to be sent to the timeout manager when you `await bus.Defer(TimeSpan.FromMinutes(5), someMessage)`, which will store it in its timeouts database for 5 minutes before sending it to whoever was configured as the recipient of `someMessage`.
 
+# Transactional Outbox
 
+The transactional outbox in Rebus.SqlServer ensures consistent and reliable message delivery by storing outgoing messages in an outbox table within the same SQL transaction as your other database operations. This approach helps prevent data inconsistencies in case of failures, as it ties the message dispatch to the success of your data changes.
+
+## How to Configure the Transactional Outbox
+
+### Basic Setup
+
+To configure the transactional outbox with Rebus, use the `Outbox` extension method during the setup. Rebus allows you to use any transport, and the outbox will work in conjunction with your chosen transport.
+
+```csharp
+services.AddRebus(
+    configure => configure
+        .Transport(t => /* configure your transport here */)
+        .Outbox(o => o.StoreInSqlServer(connectionString, "Outbox"))
+);
+```
+
+- **`connectionString`**: The connection string to your SQL Server database.
+- **`"Outbox"`**: The name of the table where outbox messages will be stored.
+
+### Scenarios for Using the Transactional Outbox
+
+#### Scenario 1: Outside a Rebus Handler
+
+When you are outside a Rebus handler (e.g., in a web request or any other application context), you need to manage the SQL connection and transaction manually. Here's how you can do it:
+
+```csharp
+using var connection = new SqlConnection(connectionString);
+await connection.OpenAsync();
+using var transaction = connection.BeginTransaction();
+
+try
+{
+    using var scope = new RebusTransactionScope();
+    scope.UseOutbox(connection, transaction);
+
+    // Perform your database operations using 'connection' and 'transaction'
+
+    // Send messages using Rebus
+    await bus.Send(new YourMessage());
+
+    // Complete the Rebus transaction scope
+    await scope.CompleteAsync();
+
+    // Commit your transaction
+    await transaction.CommitAsync();
+}
+catch (Exception ex)
+{
+    // Handle exceptions
+    await transaction.RollbackAsync();
+    // Log or rethrow the exception as needed
+}
+```
+
+- **Explanation**:
+  - You create and open a `SqlConnection` and begin a `SqlTransaction`.
+  - Use `scope.UseOutbox(connection, transaction)` to inform Rebus to use your connection and transaction.
+  - Perform your business logic and database operations within the transaction.
+  - Send messages using Rebus; the messages will be stored in the outbox table within the same transaction.
+  - After calling `scope.CompleteAsync()`, commit the transaction to ensure both your data changes and messages are persisted atomically.
+
+#### Scenario 2: Inside a Rebus Handler
+
+When inside a Rebus handler, Rebus manages the SQL connection and transaction for you. To include your database operations in the same transaction as Rebus, you can access the connection and transaction from the message context.
+
+```csharp
+public class YourMessageHandler : IHandleMessages<YourMessage>
+{
+    public async Task Handle(YourMessage message)
+    {
+        var messageContext = MessageContext.Current 
+            ?? throw new InvalidOperationException("No message context available.");
+
+        var transactionContext = messageContext.TransactionContext;
+        var outboxConnection = (OutboxConnection)transactionContext.Items["current-outbox-connection"];
+
+        var connection = outboxConnection.SqlConnection;
+        var transaction = outboxConnection.SqlTransaction;
+
+        // Perform your database operations using 'connection' and 'transaction'
+
+        // Send messages using Rebus; they will be included in the same transaction
+        await messageContext.Bus.Send(new AnotherMessage());
+    }
+}
+```
+
+- **Explanation**:
+  - Retrieve the current `MessageContext`.
+  - Access the `OutboxConnection` from the transaction context.
+  - Use `outboxConnection.SqlConnection` and `outboxConnection.SqlTransaction` to perform your database operations.
+  - Any messages you send will be stored in the outbox table within the same transaction.
+
+## What Happens After the Message is Stored
+
+Once a message is stored in the outbox table and the transaction is committed, Rebus handles the retrieval and forwarding of the message to its intended destination. This ensures that message dispatch is reliable and decoupled from your application logic.
+
+- **High-Level Overview**:
+  - The message remains in the outbox table until it is successfully dispatched.
+  - Rebus periodically scans the outbox table for pending messages.
+  - Upon successful delivery, messages are marked appropriately to prevent re-sending.
+  - This mechanism ensures **at-least-once** delivery; your application should be designed to handle potential duplicate messages.
+
+## Example Projects
+
+For practical examples of how to implement the transactional outbox with Rebus.SqlServer, you can refer to the following sample projects in the GitHub repository:
+
+- [RebusOutboxWebApp](https://github.com/rebus-org/Rebus.SqlServer/tree/master/RebusOutboxWebApp)
+- [RebusOutboxWebAppEfCore](https://github.com/rebus-org/Rebus.SqlServer/tree/master/RebusOutboxWebAppEfCore)
+
+These examples demonstrate the outbox implementation in different contexts, including integration with Entity Framework Core.
 
