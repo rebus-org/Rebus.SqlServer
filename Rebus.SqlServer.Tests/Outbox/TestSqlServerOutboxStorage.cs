@@ -102,6 +102,25 @@ public class TestSqlServerOutboxStorage : FixtureBase
         Assert.That(batch1.Count(), Is.EqualTo(1));
         Assert.That(batch2.Count(), Is.EqualTo(0));
     }
+    
+    [Test]
+    public async Task CanStoreLargeBatchOfMessages_Complete()
+    {
+        var transportMessage = new TransportMessage(new Dictionary<string, string>(), new byte[] { 1, 2, 3 });
+        var outgoingMessage = new OutgoingTransportMessage(transportMessage, "wherever");
+        const int messageCount = 1100;
+        var outgoingMessages = Enumerable.Repeat(outgoingMessage, messageCount).ToArray();
+
+        await _storage.Save(outgoingMessages);
+
+        using var batch1 = await _storage.GetNextMessageBatch(maxMessageBatchSize: messageCount);
+        await batch1.Complete();
+
+        using var batch2 = await _storage.GetNextMessageBatch();
+
+        Assert.That(batch1.Count(), Is.EqualTo(messageCount));
+        Assert.That(batch2.Count(), Is.EqualTo(0));
+    }
 
     [Test]
     public async Task CanGetBatchesOfMessages_VaryingBatchSize()
