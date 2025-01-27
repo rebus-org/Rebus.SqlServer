@@ -23,7 +23,10 @@ public class TestNumberOfSqlConnections : FixtureBase
     {
         var activeConnections = new ConcurrentDictionary<int, object>();
 
-        var bus = Configure.With(new BuiltinHandlerActivator())
+        // ensure everything is disposed, no matter what
+        using var activator = new BuiltinHandlerActivator();
+
+        var bus = Configure.With(activator)
             .Transport(t => t.Register(c =>
             {
                 var connectionProvider = new TestConnectionProvider(SqlTestHelper.ConnectionString, activeConnections);
@@ -35,8 +38,9 @@ public class TestNumberOfSqlConnections : FixtureBase
             }))
             .Start();
 
-        using (new Timer(_ => Console.WriteLine("Active connections: {0}", activeConnections.Count), null, 0, 1000))
+        await using (new Timer(_ => Console.WriteLine("Active connections: {0}", activeConnections.Count), null, 0, 1000))
         {
+            // scope disposal of the bus to be nested beneath the lifetime scope of the timer
             using (bus)
             {
                 await Task.Delay(TimeSpan.FromSeconds(5));

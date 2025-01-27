@@ -10,6 +10,7 @@ using Rebus.Sagas;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Utilities;
 using Rebus.Transport.InMem;
+// ReSharper disable AccessToDisposedClosure
 
 #pragma warning disable 1998
 
@@ -54,7 +55,7 @@ public class TestSqlSagaStorageSpeed : FixtureBase
     [Test]
     public async Task CheckTimes()
     {
-        var counter = new SharedCounter(2);
+        using var counter = new SharedCounter(2);
 
         _activator.Register(() => new LongStringSaga(counter));
         _starter.Start();

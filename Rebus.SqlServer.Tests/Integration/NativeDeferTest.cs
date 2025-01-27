@@ -8,6 +8,7 @@ using Rebus.Messages;
 using Rebus.Routing.TypeBased;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
+// ReSharper disable AccessToDisposedClosure
 
 #pragma warning disable 1998
 
@@ -41,7 +42,8 @@ public class NativeDeferTest : FixtureBase
     [Test]
     public async Task UsesNativeDeferralMechanism()
     {
-        var done = new ManualResetEvent(false);
+        using var done = new ManualResetEvent(false);
+
         var receiveTime = DateTimeOffset.MinValue;
         var hadDeferredUntilHeader = false;
 

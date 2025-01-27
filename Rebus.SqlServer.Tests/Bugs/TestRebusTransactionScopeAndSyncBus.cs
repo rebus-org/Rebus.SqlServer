@@ -23,8 +23,8 @@ namespace Rebus.SqlServer.Tests.Bugs;
 [Description("Just a quick test to verify that the syncbus API will enlist in RebusTransactionScope just like all other bus operations (copied from Rebus core to work with SQL transport)")]
 public class VerifySyncBusAndTransactionScope : FixtureBase
 {
-    private SqlServerSubscriptionStorage _subscriptionStorage;
-    private SqlServerTransport _subscriberTransport;
+    SqlServerSubscriptionStorage _subscriptionStorage;
+    SqlServerTransport _subscriberTransport;
 
     protected override void SetUp()
     {
@@ -41,7 +41,10 @@ public class VerifySyncBusAndTransactionScope : FixtureBase
         _subscriptionStorage.EnsureTableIsCreated();
         _subscriptionStorage.Initialize();
 
-        _subscriberTransport = Using(new SqlServerTransport(connectionProvider, "subscriber", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new FakeRebusTime(), new SqlServerTransportOptions(connectionProvider)));
+        _subscriberTransport = new SqlServerTransport(connectionProvider, "subscriber", loggerFactory, new TplAsyncTaskFactory(loggerFactory), new FakeRebusTime(), new SqlServerTransportOptions(connectionProvider));
+        
+        Using(_subscriberTransport);
+        
         _subscriberTransport.EnsureTableIsCreated();
         _subscriberTransport.Initialize();
     }
@@ -52,7 +55,7 @@ public class VerifySyncBusAndTransactionScope : FixtureBase
         // manually register the subscriber transport as a subscriber
         await _subscriptionStorage.RegisterSubscriber(typeof(TestEvent).GetSimpleAssemblyQualifiedName(), "subscriber");
 
-        var bus = Configure.With(new BuiltinHandlerActivator())
+        using var bus = Configure.With(new BuiltinHandlerActivator())
             .Subscriptions(config => config.StoreInSqlServer(SqlTestHelper.ConnectionString, "Subscriptions"))
             .Transport(configurer => configurer.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), "Test"))
             .Start();

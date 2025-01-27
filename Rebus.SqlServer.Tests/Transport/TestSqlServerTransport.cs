@@ -35,10 +35,10 @@ public class TestSqlServerTransport : FixtureBase
         var asyncTaskFactory = new TplAsyncTaskFactory(consoleLoggerFactory);
 
         _transport = new SqlServerTransport(connectionProvider, QueueName, consoleLoggerFactory, asyncTaskFactory, rebusTime, new SqlServerTransportOptions(connectionProvider));
-        _transport.EnsureTableIsCreated();
-
+        
         Using(_transport);
 
+        _transport.EnsureTableIsCreated();
         _transport.Initialize();
 
         _cancellationToken = new CancellationTokenSource().Token;

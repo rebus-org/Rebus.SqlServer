@@ -86,7 +86,7 @@ public class TestSqlServerTransportMessageOrdering : FixtureBase
         await scope.CompleteAsync();
     }
 
-    static SqlServerTransport GetTransport(TransportType transportType)
+    SqlServerTransport GetTransport(TransportType transportType)
     {
         var rebusTime = new DefaultRebusTime();
         var loggerFactory = new ConsoleLoggerFactory(false);
@@ -113,6 +113,8 @@ public class TestSqlServerTransportMessageOrdering : FixtureBase
                 rebusTime,
                 new SqlServerTransportOptions(connectionProvider)
             );
+
+        Using(transport);
 
         transport.EnsureTableIsCreated();
         transport.Initialize();

@@ -36,7 +36,7 @@ It did not look like this was the case though, as everything seemed to work just
             .Range(0, numberOfBusInstances)
             .Select(_ =>
             {
-                var activator = new BuiltinHandlerActivator();
+                var activator = Using(new BuiltinHandlerActivator());
 
                 activator.Handle<MessageWithId>(async msg => receiveCountsByMessageId.AddOrUpdate(msg.Id, 1, (_, count) => count + 1));
 
@@ -54,6 +54,7 @@ It did not look like this was the case though, as everything seemed to work just
             })
             .ToList();
 
+        // optimistic attempt at disposing in parallel, because it's quicker
         Using(new DisposableCallback(() => Parallel.ForEach(instances, i => i.Dispose()))); ;
 
         var messages = Enumerable

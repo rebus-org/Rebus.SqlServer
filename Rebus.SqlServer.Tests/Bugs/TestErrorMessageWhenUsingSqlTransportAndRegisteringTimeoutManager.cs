@@ -13,7 +13,9 @@ public class TestErrorMessageWhenUsingSqlTransportAndRegisteringTimeoutManager
     {
         try
         {
-            Configure.With(new BuiltinHandlerActivator())
+            using var activator = new BuiltinHandlerActivator();
+
+            Configure.With(activator)
                 .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(SqlTestHelper.ConnectionString), "whatever"))
                 .Timeouts(t => t.StoreInSqlServer(SqlTestHelper.ConnectionString, "timeouts"))
                 .Start();

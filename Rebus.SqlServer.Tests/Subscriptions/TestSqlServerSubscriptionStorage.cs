@@ -31,7 +31,7 @@ namespace Rebus.SqlServer.Tests.Subscriptions
             var aggregateException = Assert.Throws<AggregateException>(() =>
             {
                 storage.RegisterSubscriber(tooLongTopic, subscriberAddress).Wait();
-            });
+            })!;
 
             var baseException = aggregateException.GetBaseException();
 

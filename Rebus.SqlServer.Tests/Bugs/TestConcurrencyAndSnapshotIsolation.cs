@@ -88,6 +88,8 @@ public class TestConcurrencyAndSnapshotIsolation : FixtureBase
             options: new SqlServerTransportOptions(connectionProvider)
         );
 
+        Using(transport);
+
         transport.Initialize();
 
         return transport;

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -253,7 +254,7 @@ END
     /// <param name="context">Transaction context of the message processing</param>
     /// <param name="messageId">Identifier of the message currently being processed</param>
     /// <param name="cancellationToken">Token to abort processing</param>
-    private void ApplyTransactionSemantics(ITransactionContext context, long messageId, CancellationToken cancellationToken)
+    void ApplyTransactionSemantics(ITransactionContext context, long messageId, CancellationToken cancellationToken)
     {
         AutomaticLeaseRenewer renewal = null;
 
@@ -271,6 +272,14 @@ END
                 await UpdateLease(ConnectionProvider, ReceiveTableName.QualifiedName,
                     messageId, null, cancellationToken);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // we're being cancelled - just ignore
+            }
+            catch (SqlException) when (cancellationToken.IsCancellationRequested)
+            {
+                // we're being cancelled - just ignore
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, "While Resetting Lease");
@@ -284,9 +293,17 @@ END
             {
                 await DeleteMessage(messageId, cancellationToken);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // we're being cancelled - just ignore
+            }
+            catch (SqlException) when (cancellationToken.IsCancellationRequested)
+            {
+                // we're being cancelled - just ignore
+            }
             catch (Exception ex)
             {
-                Log.Error(ex, "While Deleteing Message");
+                Log.Error(ex, "While Deleting Message");
             }
         });
     }
@@ -300,7 +317,7 @@ END
     {
         // Delete the message
         using var deleteConnection = await ConnectionProvider.GetConnection();
-        
+
         using (var deleteCommand = deleteConnection.CreateCommand())
         {
             deleteCommand.CommandType = CommandType.Text;
@@ -329,7 +346,7 @@ WHERE	id = @id
                 async Task SendOutgoingMessages(ITransactionContext _)
                 {
                     using var connection = await ConnectionProvider.GetConnection();
-                    
+
                     while (outgoingMessages.IsEmpty == false)
                     {
                         if (outgoingMessages.TryDequeue(out var addressed) == false)
@@ -361,7 +378,7 @@ WHERE	id = @id
     protected virtual async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, TimeSpan? leaseInterval, CancellationToken cancellationToken)
     {
         using var connection = await connectionProvider.GetConnection();
-        
+
         using (var command = connection.CreateCommand())
         {
             command.CommandType = CommandType.Text;

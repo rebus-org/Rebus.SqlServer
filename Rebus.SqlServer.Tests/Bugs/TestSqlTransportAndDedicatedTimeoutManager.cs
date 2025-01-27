@@ -7,6 +7,7 @@ using Rebus.Config;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Timeouts;
+// ReSharper disable AccessToDisposedClosure
 #pragma warning disable 1998
 
 namespace Rebus.SqlServer.Tests.Bugs;
@@ -39,7 +40,7 @@ public class TestSqlTransportAndDedicatedTimeoutManager : FixtureBase
 
         using var ordinaryEndpoint = new BuiltinHandlerActivator();
 
-        ordinaryEndpoint.Handle<string>(async str => gotTheString.Set());
+        ordinaryEndpoint.Handle<string>(async _ => gotTheString.Set());
 
         Configure.With(ordinaryEndpoint)
             .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(connectionString), "OrdinaryEndpoint").DisableNativeTimeoutManager())

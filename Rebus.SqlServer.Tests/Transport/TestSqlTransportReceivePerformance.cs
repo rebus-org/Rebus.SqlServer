@@ -82,7 +82,7 @@ After PR 55:
 
         var counter = Using(new SharedCounter(messageCount));
 
-        adapter.Handle<string>(async message => counter.Decrement());
+        adapter.Handle<string>(async _ => counter.Decrement());
 
         Console.WriteLine("Waiting for messages to be received...");
 

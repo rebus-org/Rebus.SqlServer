@@ -6,6 +6,7 @@ using Rebus.Activation;
 using Rebus.Config;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
+// ReSharper disable AccessToDisposedClosure
 
 #pragma warning disable 1998
 
@@ -53,7 +54,8 @@ public class TestSqlAllTheWay : FixtureBase
     [Test]
     public async Task SendAndReceiveOneSingleMessage()
     {
-        var gotTheMessage = new ManualResetEvent(false);
+        using var gotTheMessage = new ManualResetEvent(false);
+
         var receivedMessageCount = 0;
 
         _activator.Handle<string>(async message =>

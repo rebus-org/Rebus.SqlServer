@@ -10,6 +10,7 @@ using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Tests.Contracts.Utilities;
 // ReSharper disable ArgumentsStyleLiteral
+// ReSharper disable AccessToDisposedClosure
 
 namespace Rebus.SqlServer.Tests.Transport;
 
@@ -37,9 +38,9 @@ public class TestSqlServerTransportCleanup : FixtureBase
     }
 
     [Test]
-    public void DoesNotBarfInTheBackground()
+    public async Task DoesNotBarfInTheBackground()
     {
-        var doneHandlingMessage = new ManualResetEvent(false);
+        using var doneHandlingMessage = new ManualResetEvent(false);
 
         _activator.Handle<string>(async str =>
         {
@@ -55,7 +56,8 @@ public class TestSqlServerTransportCleanup : FixtureBase
         });
 
         var bus = _starter.Start();
-        bus.SendLocal("hej med dig min ven!").Wait();
+        
+        await bus.SendLocal("hej med dig min ven!");
 
         doneHandlingMessage.WaitOrDie(TimeSpan.FromMinutes(2));
 

@@ -11,6 +11,7 @@ using Rebus.SqlServer.Transport;
 using Rebus.Tests.Contracts;
 using Rebus.Tests.Contracts.Extensions;
 using Rebus.Tests.Contracts.Utilities;
+// ReSharper disable AccessToDisposedClosure
 #pragma warning disable 1998
 
 namespace Rebus.SqlServer.Tests.Transport;
@@ -28,7 +29,7 @@ public class TestMessagePriority : FixtureBase
 
     async Task RunTest(string type, int messageCount)
     {
-        var counter = new SharedCounter(messageCount);
+        using var counter = new SharedCounter(messageCount);
         var receivedMessagePriorities = new List<int>();
         var server = new BuiltinHandlerActivator();
 

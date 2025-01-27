@@ -41,7 +41,7 @@ public class TestSqlServerDataBusLazyRead : FixtureBase
         Console.WriteLine("Reading data...");
 
         var stopwatch = Stopwatch.StartNew();
-        using var source = await _storage.Read(dataId);
+        await using var source = await _storage.Read(dataId);
         using var destination = new MemoryStream();
         var elapsedWhenStreamIsOpen = stopwatch.Elapsed;
 
