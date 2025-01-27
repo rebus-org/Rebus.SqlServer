@@ -195,10 +195,13 @@ CREATE TABLE {_tableName} (
     {
         using var command = connection.CreateCommand();
 
-        var ids = messages.Select(m => m.Id).ToList();
-        var idString = string.Join(", ", ids);
+        var outboxMessageIds = messages.Select(m => m.Id).ToArray();
+        var json = $"[{string.Join(",", outboxMessageIds)}]";
+        // a batch size of 100 will fit into 4000 chars, but default to max size if 4000 chars is exceeded
+        var size = json.Length > 4000 ? -1 : 4000;
+        command.Parameters.Add("@outboxMessageIds", SqlDbType.VarChar, size).Value = json;
 
-        command.CommandText = $"UPDATE {_tableName} SET [Sent] = 1 WHERE [Id] IN ({idString})";
+        command.CommandText = $"UPDATE {_tableName} SET [Sent] = 1 WHERE [Id] IN (SELECT [value] FROM OPENJSON(@outboxMessageIds))";
 
         await command.ExecuteNonQueryAsync();
     }
