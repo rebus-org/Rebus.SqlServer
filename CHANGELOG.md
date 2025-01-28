@@ -156,8 +156,12 @@
 * Add readme to NuGet package
 * Add section about outbox to readme - thanks [jeroenkoknl]
 
+## 8.3.0
+* Reduce SQL Server query plan cache pollution - thanks [blundell89]
+
 ----
 
+[blundell89]: https://github.com/blundell89
 [clegendre]: https://github.com/clegendre
 [cleytonb]: https://github.com/cleytonb
 [IsaacSee]: https://github.com/IsaacSee
