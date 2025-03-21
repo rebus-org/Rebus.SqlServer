@@ -33,9 +33,14 @@ class ConnectionLocker(int buckets) : IDisposable
 
     SemaphoreSlim GetSemaphore(IDbConnection connection)
     {
-        var bucket = (int)((uint)connection.GetHashCode() % buckets);
+        var bucket = GetIntBucket(connection, buckets);
         var semaphore = _semaphores.GetOrAdd(bucket, _ => new SemaphoreSlim(initialCount: 1));
         return semaphore;
+    }
+
+    internal static int GetIntBucket(object obj, int bucketCount)
+    {
+        return (int)((uint)obj.GetHashCode() % bucketCount);
     }
 
     readonly struct SemaphoreReleaser(SemaphoreSlim semaphore) : IDisposable
