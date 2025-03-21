@@ -159,6 +159,9 @@
 ## 8.3.0
 * Reduce SQL Server query plan cache pollution - thanks [blundell89]
 
+## 8.4.0-b01
+* Remove requirement for enabling MARS (which will also no longer automatically be enabled)
+
 ----
 
 [blundell89]: https://github.com/blundell89

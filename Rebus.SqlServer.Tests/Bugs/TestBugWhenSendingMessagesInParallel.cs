@@ -57,6 +57,7 @@ public class TestBugWhenSendingMessagesInParallel : FixtureBase
 
     [Test]
     [Description("When using the SQL transport, publishing to two subscribers would hit a requirement from SQL Server to have MARS enabled on the connection")]
+    [Repeat(5)]
     public async Task CheckRealisticScenarioWithSqlAllTheWay()
     {
         await Task.WhenAll(

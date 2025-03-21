@@ -151,6 +151,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     async Task InnerEnsureTableIsCreatedAsync(TableName tableName)
     {
         using var connection = await ConnectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
         var tableNames = connection.GetTableNames();
 
@@ -266,6 +267,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = '{expirationIndexName}')
     async Task InnerEnsureTableIsDroppedAsync(TableName tableName)
     {
         using var connection = await ConnectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
         var tableNames = connection.GetTableNames();
 
@@ -330,6 +332,8 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
 
         var destinationAddressToUse = GetDestinationAddressToUse(destinationAddress, message);
 
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+
         try
         {
             await InnerSend(destinationAddressToUse, message, connection).ConfigureAwait(false);
@@ -360,6 +364,8 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
     protected virtual async Task<TransportMessage> ReceiveInternal(ITransactionContext context, CancellationToken cancellationToken)
     {
         var connection = await GetConnection(context).ConfigureAwait(false);
+
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
         TransportMessage receivedTransportMessage;
 
@@ -538,6 +544,7 @@ VALUES
         while (true)
         {
             using var connection = await ConnectionProvider.GetConnection();
+            using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
             int affectedRows;
 
@@ -592,8 +599,10 @@ DELETE FROM TopCTE
                 async () =>
                 {
                     var dbConnection = await ConnectionProvider.GetConnection();
+
                     context.OnAck(async _ => await dbConnection.Complete());
                     context.OnDisposed(_ => dbConnection.Dispose());
+
                     return dbConnection;
                 });
     }

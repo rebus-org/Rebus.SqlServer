@@ -30,7 +30,8 @@ public class DbConnectionProvider : IDbConnectionProvider
 
         _log = rebusLoggerFactory.GetLogger<DbConnectionProvider>();
 
-        _connectionString = EnsureMarsIsEnabled(connectionString);
+        //_connectionString = EnsureMarsIsEnabled(connectionString);
+        _connectionString = connectionString;
         _enlistInAmbientTransaction = enlistInAmbientTransaction;
     }
 

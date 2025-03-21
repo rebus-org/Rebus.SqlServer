@@ -19,8 +19,8 @@ public class SqlServerSagaSnapshotStorage : ISagaSnapshotStorage
     readonly TableName _tableName;
     readonly ILog _log;
 
-    static readonly ObjectSerializer DataSerializer = new ObjectSerializer();
-    static readonly HeaderSerializer MetadataSerializer = new HeaderSerializer();
+    static readonly ObjectSerializer DataSerializer = new();
+    static readonly HeaderSerializer MetadataSerializer = new();
 
     /// <summary>
     /// Constructs the snapshot storage
@@ -53,20 +53,21 @@ public class SqlServerSagaSnapshotStorage : ISagaSnapshotStorage
 
     async Task EnsureTableIsCreatedAsync()
     {
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+        
+        var tableNames = connection.GetTableNames();
+
+        if (tableNames.Contains(_tableName))
         {
-            var tableNames = connection.GetTableNames();
+            return;
+        }
 
-            if (tableNames.Contains(_tableName))
-            {
-                return;
-            }
+        _log.Info("Table {tableName} does not exist - it will be created now", _tableName.QualifiedName);
 
-            _log.Info("Table {tableName} does not exist - it will be created now", _tableName.QualifiedName);
-
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $@"
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 	EXEC('CREATE SCHEMA {_tableName.Schema}')
 
@@ -88,11 +89,10 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     )
 
 ";
-                command.ExecuteNonQuery();
-            }
-
-            await connection.Complete();
+            command.ExecuteNonQuery();
         }
+
+        await connection.Complete();
     }
 
     /// <summary>
@@ -100,12 +100,13 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     /// </summary>
     public async Task Save(ISagaData sagaData, Dictionary<string, string> sagaAuditMetadata)
     {
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+        
+        using (var command = connection.CreateCommand())
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText =
-                    $@"
+            command.CommandText =
+                $@"
 
 INSERT INTO {_tableName.QualifiedName} (
     [id],
@@ -121,20 +122,19 @@ INSERT INTO {_tableName.QualifiedName} (
 
 ";
 
-                var dataString = DataSerializer.SerializeToString(sagaData);
-                var metadataString = MetadataSerializer.SerializeToString(sagaAuditMetadata);
+            var dataString = DataSerializer.SerializeToString(sagaData);
+            var metadataString = MetadataSerializer.SerializeToString(sagaAuditMetadata);
 
-                command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
-                command.Parameters.Add("revision", SqlDbType.Int).Value = sagaData.Revision;
-                command.Parameters.Add("data", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(dataString.Length)).Value = dataString;
-                command.Parameters.Add("metadata", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(metadataString.Length)).Value = metadataString;
+            command.Parameters.Add("id", SqlDbType.UniqueIdentifier).Value = sagaData.Id;
+            command.Parameters.Add("revision", SqlDbType.Int).Value = sagaData.Revision;
+            command.Parameters.Add("data", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(dataString.Length)).Value = dataString;
+            command.Parameters.Add("metadata", SqlDbType.NVarChar, MathUtil.GetNextPowerOfTwo(metadataString.Length)).Value = metadataString;
 
-                Console.WriteLine($"OK WE'RE SAVING SAGA SNAPSHOT {sagaData.Id} rev. {sagaData.Revision} NOW");
+            Console.WriteLine($"OK WE'RE SAVING SAGA SNAPSHOT {sagaData.Id} rev. {sagaData.Revision} NOW");
                      
-                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-            }
-
-            await connection.Complete();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
+
+        await connection.Complete();
     }
 }

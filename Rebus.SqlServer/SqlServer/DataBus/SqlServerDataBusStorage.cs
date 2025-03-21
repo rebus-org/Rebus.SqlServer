@@ -67,38 +67,40 @@ public class SqlServerDataBusStorage : IDataBusStorage, IDataBusStorageManagemen
 
     async Task EnsureTableIsCreatedAsync()
     {
-        using (var connection = await _connectionProvider.GetConnection())
+        using var connection = await _connectionProvider.GetConnection();
+
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+
+        if (connection.GetTableNames().Contains(_tableName))
         {
-            if (connection.GetTableNames().Contains(_tableName))
+            var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
+
+            if (!columns.Any(x => x.Name == "CreationTime"))
             {
-                var columns = connection.GetColumns(_tableName.Schema, _tableName.Name);
+                _log.Info("Adding CreationTime column to data bus table {tableName}", _tableName.QualifiedName);
 
-                if (!columns.Any(x => x.Name == "CreationTime"))
+                using (var command = connection.CreateCommand())
                 {
-                    _log.Info("Adding CreationTime column to data bus table {tableName}", _tableName.QualifiedName);
-
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = $@"
+                    command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = N'CreationTime' AND Object_ID = Object_ID(N'{_tableName.QualifiedName}'))
 BEGIN
     ALTER TABLE {_tableName.QualifiedName} ADD [CreationTime] DATETIMEOFFSET
 END
 ";
-                        command.ExecuteNonQuery();
-                    }
-
-                    await connection.Complete();
+                    command.ExecuteNonQuery();
                 }
 
-                return;
+                await connection.Complete();
             }
 
-            _log.Info("Creating data bus table {tableName}", _tableName.QualifiedName);
+            return;
+        }
 
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $@"
+        _log.Info("Creating data bus table {tableName}", _tableName.QualifiedName);
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $@"
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 	EXEC('CREATE SCHEMA {_tableName.Schema}')
 
@@ -115,21 +117,20 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     );
 
 ";
-                const int tableAlreadyExists = 2714;
+            const int tableAlreadyExists = 2714;
 
-                try
-                {
-                    command.ExecuteNonQuery();
-                }
-                catch (SqlException exception) when (exception.Number == tableAlreadyExists)
-                {
-                    // table already exists - just quit now
-                    return;
-                }
+            try
+            {
+                command.ExecuteNonQuery();
             }
-
-            await connection.Complete();
+            catch (SqlException exception) when (exception.Number == tableAlreadyExists)
+            {
+                // table already exists - just quit now
+                return;
+            }
         }
+
+        await connection.Complete();
     }
 
     /// <summary>
@@ -144,24 +145,25 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
         try
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using var connection = await _connectionProvider.GetConnection();
+
+            using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+
+            using (var command = connection.CreateCommand())
             {
-                using (var command = connection.CreateCommand())
-                {
-                    var metadataBytes = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
+                var metadataBytes = TextEncoding.GetBytes(_dictionarySerializer.SerializeToString(metadataToWrite));
 
-                    command.CommandTimeout = _commandTimeout;
-                    command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data], [CreationTime]) VALUES (@id, @meta, @data, @now)";
-                    command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
-                    command.Parameters.Add("meta", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(metadataBytes.Length)).Value = metadataBytes;
-                    command.Parameters.Add("data", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo((int)source.Length)).Value = source;
-                    command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = _rebusTime.Now;
+                command.CommandTimeout = _commandTimeout;
+                command.CommandText = $"INSERT INTO {_tableName.QualifiedName} ([Id], [Meta], [Data], [CreationTime]) VALUES (@id, @meta, @data, @now)";
+                command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
+                command.Parameters.Add("meta", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo(metadataBytes.Length)).Value = metadataBytes;
+                command.Parameters.Add("data", SqlDbType.VarBinary, MathUtil.GetNextPowerOfTwo((int)source.Length)).Value = source;
+                command.Parameters.Add("now", SqlDbType.DateTimeOffset).Value = _rebusTime.Now;
 
-                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-                }
-
-                await connection.Complete();
+                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
+
+            await connection.Complete();
         }
         catch (Exception exception)
         {
@@ -206,7 +208,7 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
                     var stream = reader.GetStream(dataOrdinal);
 
                     objectsToDisposeOnException.Push(stream);
-                        
+
                     return new StreamWrapper(stream, new IDisposable[]
                     {
                         // defer closing these until the returned stream is closed
@@ -237,11 +239,11 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
 
     async Task UpdateLastReadTime(string id)
     {
-        using (var connection = await _connectionProvider.GetConnection())
-        {
-            await UpdateLastReadTime(id, connection).ConfigureAwait(false);
-            await connection.Complete();
-        }
+        using var connection = await _connectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+
+        await UpdateLastReadTime(id, connection).ConfigureAwait(false);
+        await connection.Complete();
     }
 
     async Task UpdateLastReadTime(string id, IDbConnection connection)
@@ -262,40 +264,37 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     {
         try
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using var connection = await _connectionProvider.GetConnection();
+            using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+
+            using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT TOP 1 [Meta], [LastReadTime], DATALENGTH([Data]) AS 'Length' FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
+            command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
+
+            using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+
+            if (!await reader.ReadAsync().ConfigureAwait(false))
             {
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = $"SELECT TOP 1 [Meta], [LastReadTime], DATALENGTH([Data]) AS 'Length' FROM {_tableName.QualifiedName} WITH (NOLOCK) WHERE [Id] = @id";
-                    command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
-
-                    using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
-                    {
-                        if (!await reader.ReadAsync().ConfigureAwait(false))
-                        {
-                            throw new ArgumentException($"Row with ID {id} not found");
-                        }
-
-                        var bytes = (byte[])reader["Meta"];
-                        var length = (long)reader["Length"];
-                        var lastReadTimeDbValue = reader["LastReadTime"];
-
-                        var jsonText = TextEncoding.GetString(bytes);
-                        var metadata = _dictionarySerializer.DeserializeFromString(jsonText);
-
-                        metadata[MetadataKeys.Length] = length.ToString();
-
-                        if (lastReadTimeDbValue != DBNull.Value)
-                        {
-                            var lastReadTime = (DateTimeOffset)lastReadTimeDbValue;
-
-                            metadata[MetadataKeys.ReadTime] = lastReadTime.ToString("O");
-                        }
-
-                        return metadata;
-                    }
-                }
+                throw new ArgumentException($"Row with ID {id} not found");
             }
+
+            var bytes = (byte[])reader["Meta"];
+            var length = (long)reader["Length"];
+            var lastReadTimeDbValue = reader["LastReadTime"];
+
+            var jsonText = TextEncoding.GetString(bytes);
+            var metadata = _dictionarySerializer.DeserializeFromString(jsonText);
+
+            metadata[MetadataKeys.Length] = length.ToString();
+
+            if (lastReadTimeDbValue != DBNull.Value)
+            {
+                var lastReadTime = (DateTimeOffset)lastReadTimeDbValue;
+
+                metadata[MetadataKeys.ReadTime] = lastReadTime.ToString("O");
+            }
+
+            return metadata;
         }
         catch (ArgumentException)
         {
@@ -312,18 +311,18 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     {
         try
         {
-            using (var connection = await _connectionProvider.GetConnection())
+            using var connection = await _connectionProvider.GetConnection();
+            using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
+
+            using (var command = connection.CreateCommand())
             {
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [Id] = @id";
-                    command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
+                command.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [Id] = @id";
+                command.Parameters.Add("id", SqlDbType.VarChar, 200).Value = id;
 
-                    await command.ExecuteNonQueryAsync();
-                }
-
-                await connection.Complete();
+                await command.ExecuteNonQueryAsync();
             }
+
+            await connection.Complete();
         }
         catch (Exception exception)
         {
@@ -338,13 +337,12 @@ IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_t
     {
         IDbConnection connection = null;
 
-        AsyncHelpers.RunSync(async () =>
-        {
-            connection = await _connectionProvider.GetConnection();
-        });
+        AsyncHelpers.RunSync(async () => connection = await _connectionProvider.GetConnection());
 
         using (connection)
         {
+            using var _ = ConnectionLocker.Instance.GetLock(connection);
+
             using (var command = connection.CreateCommand())
             {
                 var query = new StringBuilder($"SELECT [Id] FROM {_tableName.QualifiedName} WHERE 1=1");

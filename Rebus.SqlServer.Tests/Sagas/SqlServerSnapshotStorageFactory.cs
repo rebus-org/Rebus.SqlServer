@@ -41,14 +41,15 @@ public class SqlServerSnapshotStorageFactory : ISagaSnapshotStorageFactory
         await using var command = connection.CreateCommand();
         command.CommandText = $@"SELECT * FROM [{tableName}]";
 
-        await using var reader = await command.ExecuteReaderAsync();
-        
-        while (await reader.ReadAsync())
+        await using (var reader = await command.ExecuteReaderAsync())
         {
-            var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
-            var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
+            while (await reader.ReadAsync())
+            {
+                var sagaData = (ISagaData)new ObjectSerializer().DeserializeFromString((string)reader["data"]);
+                var metadata = new HeaderSerializer().DeserializeFromString((string)reader["metadata"]);
 
-            storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
+                storedCopies.Add(new SagaDataSnapshot { SagaData = sagaData, Metadata = metadata });
+            }
         }
 
         await connection.Complete();

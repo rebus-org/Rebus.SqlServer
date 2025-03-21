@@ -122,6 +122,7 @@ public class SqlServerLeaseTransport : SqlServerTransport
         TransportMessage transportMessage;
 
         using var connection = await ConnectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
         using (var selectCommand = connection.CreateCommand())
         {
@@ -317,6 +318,7 @@ END
     {
         // Delete the message
         using var deleteConnection = await ConnectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(deleteConnection);
 
         using (var deleteCommand = deleteConnection.CreateCommand())
         {
@@ -346,6 +348,7 @@ WHERE	id = @id
                 async Task SendOutgoingMessages(ITransactionContext _)
                 {
                     using var connection = await ConnectionProvider.GetConnection();
+                    using var __ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
                     while (outgoingMessages.IsEmpty == false)
                     {
@@ -378,6 +381,7 @@ WHERE	id = @id
     protected virtual async Task UpdateLease(IDbConnectionProvider connectionProvider, string tableName, long messageId, TimeSpan? leaseInterval, CancellationToken cancellationToken)
     {
         using var connection = await connectionProvider.GetConnection();
+        using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
 
         using (var command = connection.CreateCommand())
         {
