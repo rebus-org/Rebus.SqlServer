@@ -132,10 +132,9 @@ public class TestSqlServerTransport : FixtureBase
 
         if (kvpsDifferentThanOne.Any())
         {
-            Assert.Fail(@"Oh no! the following IDs were not received exactly once:
+            Assert.Fail($@"Oh no! the following IDs were not received exactly once:
 
-{0}",
-                string.Join(Environment.NewLine, kvpsDifferentThanOne.Select(kvp => $"   {kvp.Key}: {kvp.Value}")));
+{string.Join(Environment.NewLine, kvpsDifferentThanOne.Select(kvp => $"   {kvp.Key}: {kvp.Value}"))}");
         }
     }
 
@@ -151,6 +150,6 @@ public class TestSqlServerTransport : FixtureBase
             {"recognizzle", "hej"},
             {"id", id.ToString()}
         };
-        return new TransportMessage(headers, new byte[] { 1, 2, 3 });
+        return new TransportMessage(headers, [1, 2, 3]);
     }
 }

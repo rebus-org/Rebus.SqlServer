@@ -336,7 +336,7 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
 
         try
         {
-            await InnerSend(destinationAddressToUse, message, connection).ConfigureAwait(false);
+            await InnerSendAsync(destinationAddressToUse, message, connection).ConfigureAwait(false);
         }
         catch (Exception e)
         {
@@ -456,7 +456,7 @@ IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{tableN
     /// <param name="destinationAddress">Address the message will be sent to</param>
     /// <param name="message">Message to be sent</param>
     /// <param name="connection">Connection to use for writing to the database</param>
-    protected async Task InnerSend(string destinationAddress, TransportMessage message, IDbConnection connection)
+    protected async Task InnerSendAsync(string destinationAddress, TransportMessage message, IDbConnection connection)
     {
         var sendTable = TableName.Parse(destinationAddress);
 

@@ -357,7 +357,7 @@ WHERE	id = @id
                             break;
                         }
 
-                        await InnerSend(addressed.DestinationAddress, addressed.Message, connection);
+                        await InnerSendAsync(addressed.DestinationAddress, addressed.Message, connection);
                     }
 
                     await connection.Complete();
