@@ -27,15 +27,16 @@ public static class SqlServerTimeoutsConfigurationExtensions
         {
             var rebusTime = c.Get<IRebusTime>();
             var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-            var connectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
-            var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+            var sendConnectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction);
+            var dueMessagesConnectionProvider = new DbConnectionProvider(connectionString, rebusLoggerFactory, enlistInAmbientTransaction: false);
+            var timeoutManager = new SqlServerTimeoutManager(sendConnectionProvider, dueMessagesConnectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
             if (automaticallyCreateTables)
             {
-                subscriptionStorage.EnsureTableIsCreated();
+                timeoutManager.EnsureTableIsCreated();
             }
 
-            return subscriptionStorage;
+            return timeoutManager;
         });
     }
 
@@ -54,14 +55,14 @@ public static class SqlServerTimeoutsConfigurationExtensions
             var rebusTime = c.Get<IRebusTime>();
             var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
             var connectionProvider = new DbConnectionFactoryProvider(connectionFactory);
-            var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+            var timeoutManager = new SqlServerTimeoutManager(connectionProvider, connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
             if (automaticallyCreateTables)
             {
-                subscriptionStorage.EnsureTableIsCreated();
+                timeoutManager.EnsureTableIsCreated();
             }
 
-            return subscriptionStorage;
+            return timeoutManager;
         });
     }
 
@@ -79,14 +80,14 @@ public static class SqlServerTimeoutsConfigurationExtensions
             var rebusTime = c.Get<IRebusTime>();
             var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
             var connectionProvider = options.ConnectionProviderFactory(c);
-            var subscriptionStorage = new SqlServerTimeoutManager(connectionProvider, tableName, rebusLoggerFactory, rebusTime);
+            var timeoutManager = new SqlServerTimeoutManager(connectionProvider, connectionProvider, tableName, rebusLoggerFactory, rebusTime);
 
             if (options.EnsureTablesAreCreated)
             {
-                subscriptionStorage.EnsureTableIsCreated();
+                timeoutManager.EnsureTableIsCreated();
             }
 
-            return subscriptionStorage;
+            return timeoutManager;
         });
     }
 }

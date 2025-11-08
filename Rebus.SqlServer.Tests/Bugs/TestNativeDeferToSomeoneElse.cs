@@ -21,12 +21,12 @@ public class TestNativeDeferToSomeoneElse : FixtureBase
     static readonly string ConnectionString = SqlTestHelper.ConnectionString;
 
     [Test]
-    public async Task CanDeferWithImplicitRouting()
+    public async Task CanDeferWithImplicitRouting_OneWayClientSender()
     {
         using var receiver = new BuiltinHandlerActivator();
-        using var gotTheString = new ManualResetEvent(false);
+        using var receiverGotTheString = new ManualResetEvent(false);
 
-        receiver.Handle<string>(async _ => gotTheString.Set());
+        receiver.Handle<string>(async _ => receiverGotTheString.Set());
 
         Configure.With(receiver)
             .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
@@ -39,16 +39,38 @@ public class TestNativeDeferToSomeoneElse : FixtureBase
 
         await sender.Defer(TimeSpan.FromSeconds(0.2), "HEEELOOOOOO");
 
-        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+        receiverGotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+    }
+
+    [Test]
+    public async Task CanDeferWithImplicitRouting_NormalSender()
+    {
+        using var receiver = new BuiltinHandlerActivator();
+        using var receiverGotTheString = new ManualResetEvent(false);
+
+        receiver.Handle<string>(async _ => receiverGotTheString.Set());
+
+        Configure.With(receiver)
+            .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
+            .Start();
+
+        using var sender = Configure.With(new BuiltinHandlerActivator())
+             .Transport(x => x.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "sender"))
+             .Routing(r => r.TypeBased().Map<string>("receiver"))
+             .Start();
+
+        await sender.Defer(TimeSpan.FromSeconds(0.2), "HEEELOOOOOO");
+
+        receiverGotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
     }
 
     [Test]
     public async Task CanDeferWithExplicitRouting_AdvancedApi()
     {
         using var receiver = new BuiltinHandlerActivator();
-        using var gotTheString = new ManualResetEvent(false);
+        using var receiverGotTheString = new ManualResetEvent(false);
 
-        receiver.Handle<string>(async _ => gotTheString.Set());
+        receiver.Handle<string>(async _ => receiverGotTheString.Set());
 
         Configure.With(receiver)
             .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
@@ -61,16 +83,16 @@ public class TestNativeDeferToSomeoneElse : FixtureBase
 
         await sender.Advanced.Routing.Defer("receiver", TimeSpan.FromSeconds(0.2), "HEEELOOOOOO");
 
-        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+        receiverGotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
     }
 
     [Test]
     public async Task CanDeferWithExplicitRouting_UsingHeader()
     {
         using var receiver = new BuiltinHandlerActivator();
-        using var gotTheString = new ManualResetEvent(false);
+        using var receiverGotTheString = new ManualResetEvent(false);
 
-        receiver.Handle<string>(async _ => gotTheString.Set());
+        receiver.Handle<string>(async _ => receiverGotTheString.Set());
 
         Configure.With(receiver)
             .Transport(t => t.UseSqlServer(new SqlServerTransportOptions(ConnectionString), "receiver"))
@@ -85,6 +107,6 @@ public class TestNativeDeferToSomeoneElse : FixtureBase
 
         await sender.Defer(TimeSpan.FromSeconds(0.2), "HEEELOOOOOO", headers);
 
-        gotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
+        receiverGotTheString.WaitOrDie(TimeSpan.FromSeconds(5));
     }
 }

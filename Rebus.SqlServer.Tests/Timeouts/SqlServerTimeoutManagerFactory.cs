@@ -16,7 +16,7 @@ public class SqlServerTimeoutManagerFactory : ITimeoutManagerFactory
     {
         var consoleLoggerFactory = new ConsoleLoggerFactory(true);
         var connectionProvider = new DbConnectionProvider(SqlTestHelper.ConnectionString, consoleLoggerFactory);
-        var timeoutManager = new SqlServerTimeoutManager(connectionProvider, TableName, consoleLoggerFactory, _fakeRebusTime);
+        var timeoutManager = new SqlServerTimeoutManager(connectionProvider, connectionProvider, TableName, consoleLoggerFactory, _fakeRebusTime);
 
         timeoutManager.EnsureTableIsCreated();
 

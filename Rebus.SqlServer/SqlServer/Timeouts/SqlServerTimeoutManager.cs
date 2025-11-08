@@ -16,21 +16,23 @@ namespace Rebus.SqlServer.Timeouts;
 /// </summary>
 public class SqlServerTimeoutManager : ITimeoutManager
 {
-    static readonly HeaderSerializer HeaderSerializer = new HeaderSerializer();
-    readonly IDbConnectionProvider _connectionProvider;
-    private readonly IRebusTime _rebusTime;
+    static readonly HeaderSerializer HeaderSerializer = new();
+    readonly IDbConnectionProvider _sendConnectionProvider;
+    readonly IDbConnectionProvider _getDueMessagesConnectionProvider;
+    readonly IRebusTime _rebusTime;
     readonly TableName _tableName;
     readonly ILog _log;
 
     /// <summary>
     /// Constructs the timeout manager, using the specified connection provider and table to store the messages until they're due.
     /// </summary>
-    public SqlServerTimeoutManager(IDbConnectionProvider connectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory, IRebusTime rebusTime)
+    public SqlServerTimeoutManager(IDbConnectionProvider sendConnectionProvider, IDbConnectionProvider getDueMessagesConnectionProvider, string tableName, IRebusLoggerFactory rebusLoggerFactory, IRebusTime rebusTime)
     {
         if (tableName == null) throw new ArgumentNullException(nameof(tableName));
         if (rebusLoggerFactory == null) throw new ArgumentNullException(nameof(rebusLoggerFactory));
 
-        _connectionProvider = connectionProvider ?? throw new ArgumentNullException(nameof(connectionProvider));
+        _sendConnectionProvider = sendConnectionProvider ?? throw new ArgumentNullException(nameof(sendConnectionProvider));
+        _getDueMessagesConnectionProvider = getDueMessagesConnectionProvider ?? throw new ArgumentNullException(nameof(getDueMessagesConnectionProvider));
         _rebusTime = rebusTime ?? throw new ArgumentNullException(nameof(rebusTime));
 
         _tableName = TableName.Parse(tableName);
@@ -55,7 +57,7 @@ public class SqlServerTimeoutManager : ITimeoutManager
 
     async Task EnsureTableIsCreatedAsync()
     {
-        using var connection = await _connectionProvider.GetConnection();
+        using var connection = await _getDueMessagesConnectionProvider.GetConnection();
         using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
         
         var tableNames = connection.GetTableNames();
@@ -115,7 +117,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
     {
         var headersString = HeaderSerializer.SerializeToString(headers);
 
-        using var connection = await _connectionProvider.GetConnection();
+        using var connection = await _sendConnectionProvider.GetConnection();
         using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
         
         using (var command = connection.CreateCommand())
@@ -137,7 +139,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
     /// </summary>
     public async Task<DueMessagesResult> GetDueMessages()
     {
-        var connection = await _connectionProvider.GetConnection();
+        var connection = await _getDueMessagesConnectionProvider.GetConnection();
         var connectionLock = await ConnectionLocker.Instance.GetLockAsync(connection);
 
         try
@@ -172,12 +174,10 @@ ORDER BY [due_time] ASC
 
                     var sqlTimeout = new DueMessage(headers, body, async () =>
                     {
-                        using (var deleteCommand = connection.CreateCommand())
-                        {
-                            deleteCommand.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [id] = @id";
-                            deleteCommand.Parameters.Add("id", SqlDbType.BigInt).Value = id;
-                            await deleteCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
-                        }
+                        using var deleteCommand = connection.CreateCommand();
+                        deleteCommand.CommandText = $"DELETE FROM {_tableName.QualifiedName} WHERE [id] = @id";
+                        deleteCommand.Parameters.Add("id", SqlDbType.BigInt).Value = id;
+                        await deleteCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
                     });
 
                     dueMessages.Add(sqlTimeout);

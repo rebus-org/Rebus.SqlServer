@@ -291,7 +291,7 @@ public static class SqlServerTransportConfigurationExtensions
 
             // if the transport is a one-way client and no external timeout manager has been configured, set the 
             // external timeout manager's address to this magic string, which we'll detect later on
-            if (transportOptions.IsOneWayClient && string.IsNullOrWhiteSpace(options.ExternalTimeoutManagerAddressOrNull))
+            if (string.IsNullOrWhiteSpace(options.ExternalTimeoutManagerAddressOrNull))
             {
                 options.ExternalTimeoutManagerAddressOrNull = SqlServerTransport.MagicExternalTimeoutManagerAddress;
             }

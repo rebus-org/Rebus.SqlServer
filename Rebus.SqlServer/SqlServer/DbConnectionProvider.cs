@@ -30,7 +30,6 @@ public class DbConnectionProvider : IDbConnectionProvider
 
         _log = rebusLoggerFactory.GetLogger<DbConnectionProvider>();
 
-        //_connectionString = EnsureMarsIsEnabled(connectionString);
         _connectionString = connectionString;
         _enlistInAmbientTransaction = enlistInAmbientTransaction;
     }
@@ -39,22 +38,6 @@ public class DbConnectionProvider : IDbConnectionProvider
     /// Callback, which will be invoked every time a new connection is about to be opened
     /// </summary>
     public Func<SqlConnection, Task> SqlConnectionOpening { get; set; } = async _ => { };
-
-    string EnsureMarsIsEnabled(string connectionString)
-    {
-        var connectionStringSettings = connectionString.Split(new[] { ";" }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(kvp => kvp.Split(new[] { "=" }, StringSplitOptions.RemoveEmptyEntries))
-            .ToDictionary(kvp => kvp[0], kvp => string.Join("=", kvp.Skip(1)), StringComparer.OrdinalIgnoreCase);
-
-        if (!connectionStringSettings.ContainsKey("MultipleActiveResultSets"))
-        {
-            _log.Info("Supplied connection string will be modified to enable MARS");
-
-            connectionStringSettings["MultipleActiveResultSets"] = "True";
-        }
-
-        return string.Join("; ", connectionStringSettings.Select(kvp => $"{kvp.Key}={kvp.Value}"));
-    }
 
     /// <summary>
     /// Gets a nice ready-to-use database connection with an open transaction
@@ -75,7 +58,7 @@ public class DbConnectionProvider : IDbConnectionProvider
                 connection = CreateSqlConnectionInAPossiblyAmbientTransaction();
             }
 
-            return new DbConnectionWrapper(connection, transaction, false);
+            return new DbConnectionWrapper(connection, transaction, managedExternally: false);
         }
         catch (Exception)
         {
