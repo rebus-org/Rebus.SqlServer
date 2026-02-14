@@ -163,6 +163,9 @@
 * Remove requirement for enabling MARS (which will also no longer automatically be enabled)
 * Ensure that the timeout manager always uses a transaction when querying for due timeouts
 
+## 8.4.1
+* Improve handling of dues timeouts in high-load scenarios
+
 
 ----
 

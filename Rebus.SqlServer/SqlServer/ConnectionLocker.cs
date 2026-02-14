@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 
 namespace Rebus.SqlServer;
 
+/// <summary>
+/// Helper that helps with getting exclusive access to a specific DB connection.
+/// </summary>
 class ConnectionLocker(int buckets) : IDisposable
 {
     public static readonly ConnectionLocker Instance = new(buckets: 256);
@@ -24,7 +27,7 @@ class ConnectionLocker(int buckets) : IDisposable
     public IDisposable GetLock(IDbConnection connection)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        
+
         var semaphore = GetSemaphore(connection);
         semaphore.Wait(timeout.Token);
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -59,7 +60,7 @@ public class SqlServerTimeoutManager : ITimeoutManager
     {
         using var connection = await _getDueMessagesConnectionProvider.GetConnection();
         using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
-        
+
         var tableNames = connection.GetTableNames();
 
         if (tableNames.Contains(_tableName))
@@ -77,9 +78,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = '{_tableName.Schema}')
 
 ----
 
-IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{
-    _tableName.Name
-}')
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{_tableName.Schema}' AND TABLE_NAME = '{_tableName.Name}')
     CREATE TABLE {_tableName.QualifiedName} (
         [id] [bigint] IDENTITY(1,1) NOT NULL,
 	    [due_time] [datetimeoffset](7) NOT NULL,
@@ -119,7 +118,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
 
         using var connection = await _sendConnectionProvider.GetConnection();
         using var _ = await ConnectionLocker.Instance.GetLockAsync(connection);
-        
+
         using (var command = connection.CreateCommand())
         {
             command.CommandText = $@"INSERT INTO {_tableName.QualifiedName} ([due_time], [headers], [body]) VALUES (@due_time, @headers, @body)";
@@ -139,17 +138,30 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_{_tableName.Schema}_{_
     /// </summary>
     public async Task<DueMessagesResult> GetDueMessages()
     {
-        var connection = await _getDueMessagesConnectionProvider.GetConnection();
-        var connectionLock = await ConnectionLocker.Instance.GetLockAsync(connection);
+        var disposables = new ConcurrentStack<IDisposable>();
+
+        void CleanUpDisposables()
+        {
+            while (disposables.TryPop(out var disposable))
+            {
+                disposable.Dispose();
+            }
+        }
 
         try
         {
+            var connection = await _getDueMessagesConnectionProvider.GetConnection();
+            disposables.Push(connection);
+
+            var connectionLock = await ConnectionLocker.Instance.GetLockAsync(connection);
+            disposables.Push(connectionLock);
+
             var dueMessages = new List<DueMessage>();
 
-            const int maxDueTimeouts = 1000;
+            const int maxDueTimeouts = 100;
 
             using var command = connection.CreateCommand();
-            
+
             command.CommandText =
                 $@"
 SELECT 
@@ -188,17 +200,24 @@ ORDER BY [due_time] ASC
 
             return new DueMessagesResult(dueMessages, async () =>
             {
-                using (connectionLock)
-                using (connection)
+                try
                 {
                     await connection.Complete();
                 }
+                finally
+                {
+                    CleanUpDisposables();
+                }
             });
+        }
+        catch (OperationCanceledException)
+        {
+            CleanUpDisposables();
+            return DueMessagesResult.Empty;
         }
         catch (Exception)
         {
-            connection.Dispose();
-            connectionLock.Dispose();
+            CleanUpDisposables();
             throw;
         }
     }
