@@ -17,6 +17,7 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     static readonly HeaderSerializer HeaderSerializer = new();
     readonly Func<ITransactionContext, IDbConnection> _connectionProvider;
     readonly TableName _tableName;
+    bool? _supportsOpenJson;
 
     /// <summary>
     /// Creates the outbox storage
@@ -32,10 +33,19 @@ public class SqlServerOutboxStorage : IOutboxStorage, IInitializable
     /// </summary>
     public void Initialize()
     {
+        async Task DetectOpenJsonSupportAsync(IDbConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT compatibility_level FROM sys.databases WHERE name = DB_NAME()";
+            _supportsOpenJson = (byte)await command.ExecuteScalarAsync() >= 130;
+        }
+
         async Task InitializeAsync()
         {
             using var scope = new RebusTransactionScope();
             using var connection = _connectionProvider(scope.TransactionContext);
+
+            await DetectOpenJsonSupportAsync(connection);
 
             if (connection.GetTableNames().Contains(_tableName)) return;
 
@@ -196,12 +206,31 @@ CREATE TABLE {_tableName} (
         using var command = connection.CreateCommand();
 
         var outboxMessageIds = messages.Select(m => m.Id).ToArray();
-        var json = $"[{string.Join(",", outboxMessageIds)}]";
-        // a batch size of 100 will fit into 4000 chars, but default to max size if 4000 chars is exceeded
-        var size = json.Length > 4000 ? -1 : 4000;
-        command.Parameters.Add("@outboxMessageIds", SqlDbType.VarChar, size).Value = json;
 
-        command.CommandText = $"UPDATE {_tableName} SET [Sent] = 1 WHERE [Id] IN (SELECT [value] FROM OPENJSON(@outboxMessageIds))";
+        if (_supportsOpenJson.Value)
+        {
+            var json = $"[{string.Join(",", outboxMessageIds)}]";
+            // a batch size of 100 will fit into 4000 chars, but default to max size if 4000 chars is exceeded
+            var size = json.Length > 4000 ? -1 : 4000;
+            command.Parameters.Add("@outboxMessageIds", SqlDbType.VarChar, size).Value = json;
+
+            command.CommandText = $"UPDATE {_tableName} SET [Sent] = 1 WHERE [Id] IN (SELECT [value] FROM OPENJSON(@outboxMessageIds))";
+        }
+        else
+        {
+            var xml = $"<ids>{string.Join("", outboxMessageIds.Select(id => $"<id>{id}</id>"))}</ids>";
+
+            command.Parameters.Add("@outboxMessageIds", SqlDbType.Xml).Value = xml;
+
+            command.CommandText = $@"
+                UPDATE {_tableName} 
+                SET [Sent] = 1 
+                WHERE [Id] IN (
+                    SELECT T.c.value('.', 'bigint') 
+                    FROM @outboxMessageIds.nodes('/ids/id') T(c)
+                )";
+
+        }
 
         await command.ExecuteNonQueryAsync();
     }
@@ -212,7 +241,7 @@ CREATE TABLE {_tableName} (
 
         if (correlationId != null)
         {
-            command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [CorrelationId] = @correlationId [Sent] = 0 ORDER BY [Id]";
+            command.CommandText = $"SELECT TOP {maxMessageBatchSize} [Id], [DestinationAddress], [Headers], [Body] FROM {_tableName} WITH (UPDLOCK, READPAST) WHERE [CorrelationId] = @correlationId AND [Sent] = 0 ORDER BY [Id]";
             command.Parameters.Add("correlationId", SqlDbType.NVarChar, 16).Value = correlationId;
         }
         else
