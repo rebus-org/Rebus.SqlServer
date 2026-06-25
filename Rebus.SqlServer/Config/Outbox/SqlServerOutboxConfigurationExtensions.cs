@@ -20,8 +20,19 @@ public static class SqlServerOutboxConfigurationExtensions
     /// </summary>
     public static RebusConfigurer Outbox(this RebusConfigurer configurer, Action<StandardConfigurer<IOutboxStorage>> configure)
     {
+        return Outbox(configurer, configure, new OutboxOptions());
+    }
+
+    /// <summary>
+    /// Configures Rebus to use an outbox with the specified options.
+    /// This will store a (message ID, source queue) tuple for all processed messages, and under this tuple any messages sent/published will
+    /// also be stored, thus enabling truly idempotent message processing.
+    /// </summary>
+    public static RebusConfigurer Outbox(this RebusConfigurer configurer, Action<StandardConfigurer<IOutboxStorage>> configure, OutboxOptions options)
+    {
         if (configurer == null) throw new ArgumentNullException(nameof(configurer));
         if (configure == null) throw new ArgumentNullException(nameof(configure));
+        if (options == null) throw new ArgumentNullException(nameof(options));
 
         configurer.Options(o =>
         {
@@ -32,20 +43,23 @@ public static class SqlServerOutboxConfigurationExtensions
 
             o.Decorate<ITransport>(c => new OutboxClientTransportDecorator(c.Get<ITransport>(), c.Get<IOutboxStorage>()));
 
-            o.Register(c =>
+            if (options.RunForwarder)
             {
-                var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
-                var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
-                var outboxStorage = c.Get<IOutboxStorage>();
-                var transport = c.Get<ITransport>();
-                return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport);
-            });
+                o.Register(c =>
+                {
+                    var asyncTaskFactory = c.Get<IAsyncTaskFactory>();
+                    var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
+                    var outboxStorage = c.Get<IOutboxStorage>();
+                    var transport = c.Get<ITransport>();
+                    return new OutboxForwarder(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport, options.ForwarderIntervalSeconds);
+                });
 
-            o.Decorate(c =>
-            {
-                _ = c.Get<OutboxForwarder>();
-                return c.Get<Options>();
-            });
+                o.Decorate(c =>
+                {
+                    _ = c.Get<OutboxForwarder>();
+                    return c.Get<Options>();
+                });
+            }
 
             o.Decorate<IPipeline>(c =>
             {
