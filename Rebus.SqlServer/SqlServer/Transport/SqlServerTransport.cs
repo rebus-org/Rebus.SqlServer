@@ -73,6 +73,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     readonly AsyncBottleneck _bottleneck = new(20);
     readonly IAsyncTask _expiredMessagesCleanupTask;
     readonly bool _nativeTimeoutManagerDisabled;
+    readonly bool _ensureTablesAreCreated;
     readonly bool _autoDeleteQueue;
     bool _disposed;
 
@@ -95,6 +96,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
 
         _expiredMessagesCleanupTask = asyncTaskFactory.Create("ExpiredMessagesCleanup", PerformExpiredMessagesCleanupCycle, intervalSeconds: intervalSeconds);
         _autoDeleteQueue = options.AutoDeleteQueue;
+        _ensureTablesAreCreated = options.EnsureTablesAreCreated;
 
         _nativeTimeoutManagerDisabled = options.NativeTimeoutManagerDisabled;
     }
@@ -120,6 +122,7 @@ public class SqlServerTransport : ITransport, IInitializable, IDisposable
     public void CreateQueue(string address)
     {
         if (address == null) return;
+        if (!_ensureTablesAreCreated) return;
 
         var tableName = TableName.Parse(address);
 
