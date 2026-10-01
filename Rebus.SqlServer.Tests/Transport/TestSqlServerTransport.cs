@@ -152,4 +152,34 @@ public class TestSqlServerTransport : FixtureBase
         };
         return new TransportMessage(headers, [1, 2, 3]);
     }
+
+
+    [Test]
+    public void DoesNotCreateQueueWhenTableCreationIsDisabled()
+    {
+        const string queueName = "error";
+
+        var loggerFactory = new ConsoleLoggerFactory(false);
+        var connectionProvider = new DbConnectionProvider(
+            SqlTestHelper.ConnectionString,
+            loggerFactory);
+        var asyncTaskFactory = new TplAsyncTaskFactory(loggerFactory);
+        var options = new SqlServerTransportOptions(connectionProvider)
+            .OptOutOfTableCreation();
+
+        using var transport = new SqlServerTransport(
+            connectionProvider,
+            inputQueueName: null,
+            loggerFactory,
+            asyncTaskFactory,
+            new DefaultRebusTime(),
+            options);
+
+        transport.CreateQueue(queueName);
+
+        Assert.That(
+            SqlTestHelper.GetTableNames(),
+            Does.Not.Contain(new TableName("dbo", queueName)));
+    }
+
 }
