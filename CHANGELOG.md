@@ -166,6 +166,8 @@
 ## 8.4.1
 * Improve handling of dues timeouts in high-load scenarios
 
+## 8.4.2
+* Don't try to create tables when it has been disabled – thanks [moanrose]
 
 ----
 
@@ -177,6 +179,7 @@
 [larsw]: https://github.com/larsw
 [magnus-tretton37]: https://github.com/magnus-tretton37
 [mathiasnohall]: https://github.com/mathiasnohall
+[moanrose]: https://github.com/moanrose
 [MrMDavidson]: https://github.com/MrMDavidson
 [nativenolde]: https://github.com/nativenolde
 [rsivanov]: https://github.com/rsivanov
