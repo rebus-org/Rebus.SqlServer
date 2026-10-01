@@ -5,4 +5,4 @@ using Rebus.Tests.Contracts.Transports;
 namespace Rebus.SqlServer.Tests.Transport.Contract;
 
 [TestFixture]
-public class SqlServerLeaseTestManyMessages : TestManyMessages<SqlServerLeaseBusFactory> { }
+public class SqlServerLeaseTestManyMessages : TestManyMessages<SqlServerLeaseBusFactory>;

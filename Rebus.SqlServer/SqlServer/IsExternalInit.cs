@@ -3,6 +3,4 @@
 #pragma warning disable CS1591
 namespace System.Runtime.CompilerServices;
 
-internal class IsExternalInit
-{
-}
+internal class IsExternalInit;

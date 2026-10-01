@@ -5,4 +5,4 @@ using Rebus.Tests.Contracts.Transports;
 namespace Rebus.SqlServer.Tests.Transport.Contract;
 
 [TestFixture, Category(Categories.SqlServer)]
-public class SqlServerLeaseTransportMessageExpiration : MessageExpiration<SqlLeaseTransportFactory> { }
+public class SqlServerLeaseTransportMessageExpiration : MessageExpiration<SqlLeaseTransportFactory>;

@@ -8,13 +8,13 @@ using Rebus.Tests.Contracts.Sagas;
 namespace Rebus.SqlServer.Tests.Sagas;
 
 [TestFixture, Category(Categories.SqlServer)]
-public class SqlServerSagaStorageBasicLoadAndSaveAndFindOperations : BasicLoadAndSaveAndFindOperations<SqlServerSagaStorageFactory> { }
+public class SqlServerSagaStorageBasicLoadAndSaveAndFindOperations : BasicLoadAndSaveAndFindOperations<SqlServerSagaStorageFactory>;
 
 [TestFixture, Category(Categories.SqlServer)]
-public class SqlServerSagaStorageConcurrencyHandling : ConcurrencyHandling<SqlServerSagaStorageFactory> { }
+public class SqlServerSagaStorageConcurrencyHandling : ConcurrencyHandling<SqlServerSagaStorageFactory>;
 
 [TestFixture, Category(Categories.SqlServer)]
-public class SqlServerSagaStorageSagaIntegrationTests : SagaIntegrationTests<SqlServerSagaStorageFactory> { }
+public class SqlServerSagaStorageSagaIntegrationTests : SagaIntegrationTests<SqlServerSagaStorageFactory>;
 
 public class SqlServerSagaStorageFactory : ISagaStorageFactory
 {

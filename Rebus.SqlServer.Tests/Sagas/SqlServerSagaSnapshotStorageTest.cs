@@ -4,6 +4,4 @@ using Rebus.Tests.Contracts.Sagas;
 namespace Rebus.SqlServer.Tests.Sagas;
 
 [TestFixture]
-public class SqlServerSagaSnapshotStorageTest : SagaSnapshotStorageTest<SqlServerSnapshotStorageFactory>
-{
-}
+public class SqlServerSagaSnapshotStorageTest : SagaSnapshotStorageTest<SqlServerSnapshotStorageFactory>;

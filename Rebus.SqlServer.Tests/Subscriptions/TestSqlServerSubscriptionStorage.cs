@@ -101,12 +101,8 @@ namespace Rebus.SqlServer.Tests.Subscriptions
 
     namespace This.Is.Just.An.Incredibly.Long.And.Silly.Namespace.Name.That.Needs.To.Be.Even.Longer.Because.It.Just.Needs.To.Be.Long.OK.But.Soon.It.Must.Be.Long.Enough.To.Exceed.That.Silly.Limit.In.SqlServer
     {
-        public class SomeClass
-        {
-        }
+        public class SomeClass;
 
-        public class AnotherClass
-        {
-        }
+        public class AnotherClass;
     }
 }
